@@ -916,7 +916,7 @@ function hud(ctx, G) { // extras on top of the engine HUD (hearts, clock, score,
 
 /* ---------- register with the engine ---------- */
 LOD.mission({
-  id: 1, title: 'Sneak Out', unlock: '2026-11-19', until: '2026-11-20', // counts 19 + 20 Nov, final 20 Nov 23:59 cap: 300000, world: WORLD, eggs: true,
+    id: 1, title: 'Sneak Out', unlock: '2026-11-19', until: '2026-11-20', cap: 300000, world: WORLD, eggs: true, // counts 19 + 20 Nov, final 20 Nov 23:59
   intro: ({ player }) => ({ // group chat on your phone
     kind: 'chat', title: 'LAN SQUAD 🎮', sub: 'Löken, Wizcudi, Jrohn, BigWman, Ljunky, Jonas', button: 'Pack my stuff 🤫',
     lines: [
