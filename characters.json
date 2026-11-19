@@ -1,0 +1,106 @@
+{
+  "_note": "Gemini's original: id, name, archetype, role, avatar_file, catchphrase, the first 3 stats, easter_egg. Added by Claude (change freely): color, backstory_short, skills, the last 2 stats. The in-game ability and weakness live in engine.js (PERKS); the first skill and the negative skill describe them.",
+  "game_roster": [
+    {
+      "id": "bigwman",
+      "name": "BigWman",
+      "archetype": "The Spreadsheet Titan",
+      "role": "Tank / Finance",
+      "avatar_file": "bigwman.png",
+      "catchphrase": "YES!",
+      "color": "#3ddc84",
+      "stats": { "strength": 7, "excel_mastery": 10, "wallet_defense": 2, "squat_power": 5, "polestar_range": 8 },
+      "easter_egg": "Gets a panic notification every time a new package of 'essentials' is delivered to the door.",
+      "backstory_short": "The squad's CFO and tank. He has a spreadsheet for everything, including the zombie apocalypse. His wallet defence is weaker: there is always a new package at the door.",
+      "skills": [
+        { "name": "Excel Mastery", "icon": "📊", "type": "positive", "effect": "IN GAME: your combo lasts 60 % longer before it drops." },
+        { "name": "YES! Energy", "icon": "📣", "type": "positive", "effect": "A roaring YES! that lifts the whole squad." },
+        { "name": "Polestar Getaway", "icon": "🔋", "type": "positive", "effect": "The EV is silent. Nobody hears him roll away." },
+        { "name": "Big Frame", "icon": "🛡️", "type": "positive", "effect": "Takes one more hit before he even notices." },
+        { "name": "Package Panic", "icon": "📦", "type": "negative", "effect": "IN GAME: packages lie on the floor. Touch one and you freeze to sign for it." }
+      ],
+      "mods": {}
+    },
+    {
+      "id": "wizcudi",
+      "name": "Wizcudi",
+      "archetype": "The Midlane Overthinker",
+      "role": "Mid / Meter Defense",
+      "avatar_file": "wizcudi.png",
+      "catchphrase": "Who left this light on?!",
+      "color": "#8c6cff",
+      "stats": { "game_knowledge": 10, "jungle_bravery": 1, "app_refresh_speed": 10, "light_switch_reflex": 10, "aik_volume": 9 },
+      "easter_egg": "Sneaks around switching off devices to save the electricity bill while Anna and Ellie switch them back on.",
+      "backstory_short": "Knows every midlane matchup and every kilowatt-hour in the house. Zombies are a problem. A light left on in an empty room is a disaster.",
+      "skills": [
+        { "name": "Light Switch Reflex", "icon": "💡", "type": "positive", "effect": "IN GAME: you see 40 % further in the dark." },
+        { "name": "Meter Shield", "icon": "⚡", "type": "positive", "effect": "The electricity meter is protected. No energy is wasted." },
+        { "name": "Galaxy Brain", "icon": "🧠", "type": "positive", "effect": "Game Knowledge 10. Sees three moves ahead." },
+        { "name": "Refresh Reflex", "icon": "📱", "type": "positive", "effect": "Refreshes the app faster than anyone in Sweden." },
+        { "name": "Jungle Fear", "icon": "🌲", "type": "negative", "effect": "IN GAME: you are slower outside in the garden." }
+      ],
+      "mods": {}
+    },
+    {
+      "id": "jrohn",
+      "name": "Jrohn",
+      "archetype": "The Bohemian Cremator",
+      "role": "Support / Progressive Disrober",
+      "avatar_file": "jrohn.png",
+      "catchphrase": "I love this!",
+      "color": "#ff4fa3",
+      "stats": { "enthusiasm": 10, "clothing_retention": 2, "sprint_after_walter": 9, "green_fingers": 9, "basement_mystery": 10 },
+      "easter_egg": "Loses one piece of clothing per mission and chases Walter, who keeps running away from home.",
+      "backstory_short": "The support who loves everything, even zombies. Grows almost anything and sprints after Walter when he escapes. His clothes disappear one piece at a time. Nobody knows what is in the basement.",
+      "skills": [
+        { "name": "Sprint After Walter", "icon": "🏃", "type": "positive", "effect": "IN GAME: you run 20 % faster." },
+        { "name": "I Love This!", "icon": "💚", "type": "positive", "effect": "Enthusiasm 10. Never stressed, however many zombies there are." },
+        { "name": "Green Fingers", "icon": "🌿", "type": "positive", "effect": "Everything he plants grows. Even health." },
+        { "name": "Support Aura", "icon": "✨", "type": "positive", "effect": "Friends near him feel a little better." },
+        { "name": "Progressive Disrobing", "icon": "👖", "type": "negative", "effect": "IN GAME: get too close to furniture and your pants drop. Stand still to pull them up." }
+      ],
+      "mods": {}
+    },
+    {
+      "id": "loken",
+      "name": "Löken",
+      "archetype": "The Gilded Paladin",
+      "role": "Bruiser / Squad Glue",
+      "avatar_file": "loken.png",
+      "catchphrase": "Stick together, boys!",
+      "color": "#f5c242",
+      "stats": { "lawn_perfection": 10, "coin_drop_rate": 9, "loyalty": 10, "atm_security": 10, "djurgarden_pride": 9 },
+      "stat_labels": { "djurgarden_pride": "Djurgården Pride", "atm_security": "ATM Security" },
+      "easter_egg": "Drops coins from his pockets as he walks and goes into defence mode as soon as a weed appears.",
+      "backstory_short": "The glue that holds the squad together, in golden armour. His lawn is perfect and his loyalty cannot be shaken. Coins fall out of his pockets wherever he goes.",
+      "skills": [
+        { "name": "ATM Security", "icon": "🛡️", "type": "positive", "effect": "IN GAME: your shield blocks one hit every 20 seconds." },
+        { "name": "Loyalty", "icon": "🤝", "type": "positive", "effect": "IN GAME: hugs from the kids give 2 hearts instead of 1." },
+        { "name": "Perfect Lawn", "icon": "🌱", "type": "positive", "effect": "Defence mode the moment a weed (or a zombie) appears." },
+        { "name": "Iron Stoves", "icon": "💙", "type": "positive", "effect": "The Djurgården song gives the squad a little extra power." },
+        { "name": "Coin Leak", "icon": "🪙", "type": "negative", "effect": "IN GAME: you drop coins now and then. Clink clink. Zombies hear it." }
+      ],
+      "mods": {}
+    },
+    {
+      "id": "ljunky",
+      "name": "Ljunky",
+      "archetype": "The Crypto Ranger",
+      "role": "Jungle & ADC / Game Master",
+      "avatar_file": "ljunky.png",
+      "catchphrase": "Have you checked the Bitcoin price today?",
+      "color": "#f7931a",
+      "stats": { "fitness": 10, "aim": 9, "cat_proofing": 1, "bitcoin_faith": 10, "explaining_clearly": 2 },
+      "easter_egg": "Catches fragile things in mid-air when his two cats knock them off the shelves.",
+      "backstory_short": "Jungle, botlane and the rulebook in one person. Fit, accurate and always ready to buy the dip. At home, two cats knock everything off the shelves.",
+      "skills": [
+        { "name": "Ranger Aim", "icon": "🏹", "type": "positive", "effect": "IN GAME: you shoot 35 % faster and 25 % further." },
+        { "name": "Peak Fitness", "icon": "💪", "type": "positive", "effect": "Fitness 10. Runs the longest without getting tired." },
+        { "name": "Air Catch", "icon": "🙌", "type": "positive", "effect": "Catches anything that falls, before it breaks." },
+        { "name": "HODL", "icon": "₿", "type": "positive", "effect": "The worse it goes, the more he believes in it." },
+        { "name": "Cat Chaos", "icon": "🐈", "type": "negative", "effect": "IN GAME: now and then the cat bolts through the house and makes a lot of noise." }
+      ],
+      "mods": {}
+    }
+  ]
+}
