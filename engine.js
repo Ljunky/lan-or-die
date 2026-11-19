@@ -812,9 +812,12 @@ const FAKE_DATE = DEV && /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') || '') ? 
 const dayKey = ts => new Intl.DateTimeFormat('sv-SE', { timeZone: CFG.TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ts));
 const today = () => FAKE_DATE || dayKey(Date.now());
 const prettyDay = k => { const [y, m, d] = k.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }); };
+const lastDay = def => def.until || def.unlock; // a mission can count over several days (until: 'YYYY-MM-DD')
+const untilText = def => lastDay(def) === today() ? '23:59 today' : prettyDay(lastDay(def)) + ' 23:59';
+const daysText = def => def.until && def.until !== def.unlock ? prettyDay(def.unlock) + ' – ' + prettyDay(def.until) : prettyDay(def.unlock);
 function status(def) { // 'live' | 'practice' | 'locked'
   const t = today();
-  if (def.unlock === t) return 'live';
+  if (def.unlock <= t && t <= lastDay(def)) return 'live';
   if (def.unlock < t) return 'practice';
   return DEV ? 'practice' : 'locked';
 }
@@ -876,10 +879,11 @@ async function getBoard() {
   return { rows: localRows(), src: 'local' };
 }
 const cachedRows = () => { const c = store.get('lod.remote', null); return c ? c.concat(store.get('lod.queue', [])) : localRows(); };
-function rankDay(rows, mission, day) { // best per person that day -> rank badge; longest round -> Sidequest King
-  const best = {}; let king = null;
+function rankDay(rows, mission, day, endDay) { // best per person in the mission's days -> rank badge; longest round -> Sidequest King
+  const best = {}; let king = null, end = endDay || day;
   rows.forEach(r => {
-    if (Number(r.mission) !== mission || dayKey(r.ts) !== day) return;
+    const k = dayKey(r.ts);
+    if (Number(r.mission) !== mission || k < day || k > end) return;
     const sc = Number(r.score), tm = Number(r.time) || 0;
     if (!best[r.name] || sc > best[r.name].score) best[r.name] = Object.assign({}, r, { score: sc, time: tm });
     if (tm > 0 && (!king || tm > king.time)) king = Object.assign({}, r, { score: sc, time: tm });
@@ -892,7 +896,7 @@ function collection(rows) { // badges per person over every mission whose day ha
   const get = n => out[n] || (out[n] = { n, pts: 0, c: {} });
   MISSIONS.forEach(def => {
     if (def.unlock > today()) return;
-    const d = rankDay(rows, def.id, def.unlock);
+    const d = rankDay(rows, def.id, def.unlock, lastDay(def));
     d.list.forEach((r, i) => { const o = get(r.name), em = r.rank[0]; o.c[em] = (o.c[em] || 0) + 1; o.pts += 5 - Math.min(i, 4); });
     if (d.king) { const o = get(d.king.name); o.c[CFG.KING] = (o.c[CFG.KING] || 0) + 1; o.pts += .5; }
   });
@@ -1256,7 +1260,7 @@ function showBrief() {
   if (e && M.eggs) tips.push(['🥚 Easter egg:', 'find 3 ' + e.what + ' ' + e.em + ' hidden in the level and hold still on each. +' + fmt(CFG.EGG_BONUS) + '.']);
   $('#brief-tips').innerHTML = tips.map((t, i) => '<li><b>' + (i + 1) + '</b><span><strong>' + esc(t[0]) + '</strong> ' + esc(t[1]) + '</span></li>').join('');
   const n = $('#brief-note');
-  n.textContent = counts(M) ? 'LIVE today. Your best score counts until 23:59.' : 'Practice. This mission counted on ' + prettyDay(M.unlock) + '. Scores are not saved to the board.';
+  n.textContent = counts(M) ? 'LIVE. Your best score counts until ' + untilText(M) + '.' : 'Practice. This mission counted on ' + daysText(M) + '. Scores are not saved to the board.';
   n.className = 'note' + (counts(M) ? ' live' : '');
   show('scr-brief');
 }
@@ -1309,7 +1313,7 @@ function showResult() {
     '<div class="card"><table class="score">' + rows.map(x => '<tr><td>' + esc(x[0]) + '</td><td>' + (x[1] > 0 ? '+' : '') + fmt(x[1]) + '</td></tr>').join('') +
     '<tr class="total"><td>Total</td><td>' + fmt(total) + '</td></tr></table>' +
     '<p class="note" style="margin-top:6px">Round time ' + mmss(time) + (isBest ? ' · new personal best for ' + esc(playerName) + '.' : '') + '</p>' +
-    '<p class="note" id="save-msg" role="status">' + (counted ? 'Saving…' : 'Practice – does not count. Only ' + esc(prettyDay(M.unlock)) + ' counted.') + '</p></div>' +
+    '<p class="note" id="save-msg" role="status">' + (counted ? 'Saving…' : 'Practice – does not count. Only ' + esc(daysText(M)) + ' counted.') + '</p></div>' +
     '<div class="badges">' + earned.map((b, i) => '<span class="badge' + (i === 0 ? ' main' : '') + '">' + b.em + ' ' + esc(b.name) + '</span>').join('') + '</div>' +
     '<textarea id="share-text" readonly hidden aria-label="Share text"></textarea>' +
     '<p class="note" id="copy-msg" role="status"></p>' +
@@ -1425,8 +1429,8 @@ function renderTitle() {
   const t = today();
   box.innerHTML = MISSIONS.length ? MISSIONS.map(def => {
     const st = status(def);
-    const tag = st === 'live' ? 'LIVE today' : st === 'practice' ? (def.unlock > t ? 'Dev' : 'Practice') : '🔒 ' + prettyDay(def.unlock);
-    const sub = st === 'live' ? 'Counts until 23:59' : st === 'practice' ? 'Played ' + prettyDay(def.unlock) + ' · does not count' : 'Unlocks ' + prettyDay(def.unlock);
+    const tag = st === 'live' ? 'LIVE' : st === 'practice' ? (def.unlock > t ? 'Dev' : 'Practice') : '🔒 ' + prettyDay(def.unlock);
+    const sub = st === 'live' ? 'Counts until ' + untilText(def) : st === 'practice' ? 'Played ' + daysText(def) + ' · does not count' : 'Unlocks ' + prettyDay(def.unlock);
     return '<button class="mcard ' + st + '" data-m="' + def.id + '"' + (st === 'locked' || !playerName ? ' disabled' : '') + '><span>Mission ' + def.id + ' · ' + esc(def.title) + '<small>' + sub + '</small></span><span class="st">' + tag + '</span></button>';
   }).join('') : '<p class="muted">No missions yet.</p>';
   $('#missions-note').textContent = !playerName ? 'Pick who is playing first.' : MISSIONS.some(m => status(m) === 'live') ? '' : 'No live mission today. Old missions are practice only.';
@@ -1448,16 +1452,16 @@ async function renderBoard() {
   const def = MISSIONS.find(m => m.id === board.m);
   const { rows, src } = await getBoard();
   if (!def) { $('#board').innerHTML = '<p class="muted">No missions yet.</p>'; return; }
-  const d = rankDay(rows, def.id, def.unlock), live = def.unlock === today();
+  const d = rankDay(rows, def.id, def.unlock, lastDay(def)), live = status(def) === 'live';
   const line = (n, name, sub, score) => '<div class="r"><b>' + n + '</b><span class="n">' + esc(name) + (sub ? '<br><span class="note">' + sub + '</span>' : '') + '</span><span class="s">' + score + '</span></div>';
-  let h = '<div class="board-h">' + (live ? 'Today' : esc(prettyDay(def.unlock))) + '</div>';
+  let h = '<div class="board-h">' + (live ? (def.until && def.until !== def.unlock ? 'Live until ' + esc(untilText(def)) : 'Today') : esc(daysText(def))) + '</div>';
   if (d.king) h += line(CFG.KING, d.king.name, 'Sidequest King · longest round', mmss(d.king.time));
   h += d.list.length ? d.list.map((r, i) => line(i + 1, r.name + (d.king && d.king.name === r.name ? ' ' + CFG.KING : ''), r.rank[0] + ' ' + r.rank[1], fmt(r.score))).join('')
     : '<p class="muted">' + (live ? 'No scores today. Be the first.' : 'Nobody played on the day.') + '</p>';
   $('#board').innerHTML = h;
   const col = Object.values(collection(rows)).sort((a, b) => b.pts - a.pts);
   $('#collection').innerHTML = col.length ? col.map(o => '<div class="r"><b>' + esc(o.n.slice(0, 1)) + '</b><span class="n">' + esc(o.n) + '</span><span class="s">' + badgeText(o) + '</span></div>').join('') : '<p class="muted">No badges yet.</p>';
-  $('#board-note').textContent = (src === 'live' ? 'Shared group board.' : src === 'cache' ? 'Offline: last saved group board.' : 'Scores on this phone only.') + (live ? ' Badges are final at 23:59.' : '');
+  $('#board-note').textContent = (src === 'live' ? 'Shared group board.' : src === 'cache' ? 'Offline: last saved group board.' : 'Scores on this phone only.') + (live ? ' Badges are final ' + untilText(def) + '.' : '');
 }
 
 /* ---------- reset test data (this phone only; the shared board is untouched) ---------- */

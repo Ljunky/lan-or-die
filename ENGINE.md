@@ -16,7 +16,7 @@ Motorn (`engine.js`) äger allt som är lika i alla missions. En mission är en 
 `API_URL`, `TZ` (Europe/Stockholm), `MAX_TIME` (180), `LAN_DATE`, `PLAYERS` (5 namn), `RANKS`.
 
 ## Datum, Practice, dev
-- `unlock: 'YYYY-MM-DD'` = missionens dag. Före: låst. Samma dag: **LIVE** (poäng skickas). Efter: **Practice** (spelbar, poäng skickas inte, räknas inte).
+- `unlock: 'YYYY-MM-DD'` = missionens första dag, `until: 'YYYY-MM-DD'` (valfri) = sista dagen den räknas. En gemensam rankning för hela perioden. Före: låst. Samma dag: **LIVE** (poäng skickas). Efter: **Practice** (spelbar, poäng skickas inte, räknas inte).
 - Rankbadges och 👑 räknas bara på missionens egen dag. Slutgiltiga 23:59.
 - `?dev=all` låser upp allt (som Practice). `?dev=all&date=2026-11-20` låtsas att det är ett annat datum (skickar aldrig poäng).
 
