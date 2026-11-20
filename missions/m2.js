@@ -863,9 +863,10 @@ function drawScreen(ctx, G, t) {
 function hud(ctx, G) { // on top of the engine HUD (clock, score, combo)
   const W = VW, pad = 12;
   ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left'; emo(ctx, '❤️', pad + 9, 48, 16);
-  ctx.textAlign = 'left'; ctx.font = '400 16px Bungee, Impact, sans-serif'; ctx.fillStyle = G.lives <= 3 ? '#e5484d' : '#fff'; ctx.fillText('×' + G.lives, pad + 20, 49);
-  ctx.font = '400 11px Bungee, Impact, sans-serif'; ctx.fillStyle = '#93a7b6'; ctx.fillText('LAP ' + G.lap, pad + 2, 70);
+  const ly = 22 + LOD.view.hudLeftY; // left column sits below the pause button
+  ctx.textAlign = 'left'; emo(ctx, '❤️', pad + 9, ly, 16);
+  ctx.textAlign = 'left'; ctx.font = '400 16px Bungee, Impact, sans-serif'; ctx.fillStyle = G.lives <= 3 ? '#e5484d' : '#fff'; ctx.fillText('×' + G.lives, pad + 20, ly + 1);
+  ctx.font = '400 11px Bungee, Impact, sans-serif'; ctx.fillStyle = '#93a7b6'; ctx.fillText('LAP ' + G.lap, pad + 2, ly + 22);
   ctx.textAlign = 'center'; ctx.font = '400 14px Bungee, Impact, sans-serif'; ctx.fillStyle = G.picked >= 4 ? '#46c28a' : '#f5a524';
   ctx.fillText('Picked up: ' + G.picked + '/4', W / 2, 46);
   G.houses.forEach((h, i) => {
@@ -930,7 +931,7 @@ const BRIEF_TIPS = [
   ['3:00', 'The road gets busier and faster. Final minute = chaos. At 3:00: OVERLOAD.']
 ];
 LOD.mission({
-  id: 2, title: 'The Pickup', unlock: '2026-11-21', until: '2026-11-22', cap: 300000, noFire: true, // counts 21 + 22 Nov, final 22 Nov 23:59
+  id: 2, title: 'The Pickup', unlock: '2026-11-21', until: '2026-11-22', cap: 300000, noFire: true, landscape: true, // counts 21 + 22 Nov, final 22 Nov 23:59
   world: { w: 100000, h: 100000 }, viewScale: () => 1, camTarget: () => [LOD.view.W / 2, LOD.view.H / 2], // world coords = screen coords
   intro: () => ({
     kind: 'chat', title: 'LAN SQUAD 🎮', sub: 'Löken, Wizcudi, Jrohn, BigWman, Ljunky, Jonas', button: 'Start the car ⚡',

@@ -99,7 +99,19 @@ textarea{width:100%;min-height:92px;font:600 15px var(--body);color:var(--fg);ba
 .opt:hover{border-color:var(--amber)}
 .icon{position:absolute;bottom:max(10px,env(safe-area-inset-bottom,0px));width:44px;height:44px;border-radius:50%;border:1px solid var(--line);
   background:rgba(10,16,22,.6);color:var(--fg);font-size:18px;cursor:pointer;z-index:2}
-#btn-mute{left:10px}#btn-pause{left:10px;bottom:calc(max(10px,env(safe-area-inset-bottom,0px)) + 54px)}
+/* top-left pause; --hud-top clears the notch and Telegram's fullscreen buttons (engine reads it via #safe-probe) */
+#stage{--hud-top:max(10px,env(safe-area-inset-top,0px),calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px) + 4px))}
+#btn-pause{left:max(10px,env(safe-area-inset-left,0px));top:var(--hud-top);bottom:auto;font-weight:700;letter-spacing:-1px}
+#safe-probe{position:absolute;left:0;top:var(--hud-top);width:1px;height:1px;visibility:hidden;pointer-events:none}
+/* landscape missions held in portrait */
+#rotate-warning{position:absolute;inset:0;z-index:90;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;text-align:center;background:rgba(3,6,10,.94)}
+#rotate-warning .rw-phone{width:58px;height:96px;border:4px solid var(--fg);border-radius:12px;position:relative;animation:rw-tilt 2.2s ease-in-out infinite}
+#rotate-warning .rw-phone::after{content:"";position:absolute;left:50%;bottom:6px;width:14px;height:4px;margin-left:-7px;border-radius:2px;background:var(--fg)}
+#rotate-warning p{font:400 clamp(17px,5vw,22px)/1.35 var(--display);color:var(--fg);max-width:300px;margin:0}
+#rotate-warning .rw-arrow{font-size:28px;color:var(--amber);animation:rw-fade 2.2s ease-in-out infinite}
+@keyframes rw-tilt{0%,15%{transform:rotate(0)}45%,75%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
+@keyframes rw-fade{0%,15%{opacity:0}45%,75%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){#rotate-warning .rw-phone{animation:none;transform:rotate(-90deg)}}
 .note{font-size:14px;color:var(--muted)}
 /* CORE: cutscenes (phone chat / call), snus tin */
 .cut{position:absolute;inset:0;z-index:65;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 30%,#14202b,#05080c);overflow:hidden;animation:pz-in .25s both}
@@ -202,8 +214,13 @@ textarea{width:100%;min-height:92px;font:600 15px var(--body);color:var(--fg);ba
 <body>
 <div id="stage">
   <canvas id="cv" aria-label="Game"></canvas>
-  <button id="btn-mute" class="icon" aria-label="Toggle sound" hidden>🔊</button>
   <button id="btn-pause" class="icon" aria-label="Pause" hidden>II</button>
+  <div id="safe-probe" aria-hidden="true"></div>
+  <div id="rotate-warning" role="alert" hidden>
+    <div class="rw-phone"></div>
+    <div class="rw-arrow">↺</div>
+    <p>Please tilt your phone sideways (Landscape mode) to play!</p>
+  </div>
   <div id="weapons" hidden></div>
   <button id="btn-fire" class="fire" aria-label="Fire (hold)" hidden>🔫</button>
 
