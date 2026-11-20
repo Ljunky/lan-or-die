@@ -4,7 +4,7 @@
    input, HUD base, result screen, scoreboard, Telegram and backend (see ENGINE.md).
 
    The road (segments, curves, hills, projection, fog, sprite scaling) is adapted from Jake Gordon's
-   javascript-racer (v4.final). No images from the racer are used; everything is canvas shapes or emoji.
+   javascript-racer (v4.final). No images from the racer are used; everything is canvas shapes or emoji. Zombies are drawn by drawZombie().
 
    javascript-racer: Copyright (c) 2012, 2013, 2014, 2015, 2016 Jake Gordon and contributors
 
@@ -233,7 +233,7 @@ function spawnZombies(n, gold) {
   for (let i = 0; i < n; i++) {
     const side = Math.random() < .3 ? pick([-1, 1]) : 0, type = gold ? 'g' : Math.random() < .3 ? 'r' : 'n';
     const x = side ? side * rand(1.2, 1.5) : rand(-.9, .9);
-    spawn('zombie', s0 + i * rand(.5, 3), { x, type, vx: gold ? pick([-1, 1]) * .9 : side ? -side * rand(.2, .35) : rand(-.08, .08) });
+    spawn('zombie', s0 + i * rand(.5, 3), { x, type, zs: Math.floor(Math.random() * 999), vx: gold ? pick([-1, 1]) * .9 : side ? -side * rand(.2, .35) : rand(-.08, .08) });
   }
 }
 function spawnBlock() {
@@ -281,7 +281,7 @@ function hitZombie(o) {
   const c = G.car, sx = c.x + (o.x - G.px) * RW * (CD / PZ) * (VW / 2);
   LOD.pop(sx, c.y - c.w * .7, '+' + fmt(pts), o.type === 'g' ? '#f5c242' : '#b7f07a');
   LOD.burst(sx, c.y - c.w * .45, o.type === 'g' ? '#f5c242' : '#5f8f4a', 9);
-  G.flyers.push({ em: '🧟', t: 0, dir: o.x > G.px ? 1 : -1, toward: false, x0: sx });
+  G.flyers.push({ zombie: true, zs: o.zs, gold: o.type === 'g', t: 0, dir: o.x > G.px ? 1 : -1, toward: false, x0: sx });
   G.speed *= .97; sfx.splat(); LOD.haptic('light');
   if (o.type === 'g') { G.stats.gold++; LOD.toast('✨ GOLDEN ZOMBIE! +' + fmt(pts), 2.2); }
 }
@@ -557,6 +557,81 @@ function drawBackground(ctx, playerY) {
   ctx.lineTo(VW, VH); ctx.fill();
 }
 
+/* ---------- zombies: drawn in canvas, no emoji ---------- */
+// drawZombie(ctx, x, y, h, t, o)
+// x, y = feet (bottom centre), h = height in px (the racer's sprite scale), t = time in seconds.
+// o (optional): { seed, hit: 0..1 flash, gold: true, facing: 1 | -1 }
+function drawZombie(ctx, x, y, h, t, o = {}) {
+  if (h < 3) return;                                   // too far away to see
+  const s = h / 100, seed = o.seed || 0, f = o.facing || 1;
+  const sway = Math.sin(t * 3 + seed) * 4, bob = Math.abs(Math.sin(t * 6 + seed)) * 2;
+  const skin = o.gold ? '#e8c64a' : ['#b9c8a6', '#c4c9b4', '#a9b89c'][seed % 3];
+  const shirt = ['#5a6b7a', '#7a4a42', '#4f5e3c'][seed % 3], pants = '#3a3530';
+  ctx.save();
+  ctx.translate(x, y); ctx.scale(s * f, s); ctx.translate(0, -bob);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,.35)';
+  ctx.beginPath(); ctx.ellipse(0, bob, 22, 5, 0, 0, 7); ctx.fill();
+
+  // legs (shuffling)
+  const step = Math.sin(t * 6 + seed) * 6;
+  ctx.strokeStyle = pants; ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.moveTo(-6, -40); ctx.lineTo(-8 + step, -2); ctx.moveTo(6, -40); ctx.lineTo(8 - step, -2); ctx.stroke();
+  ctx.strokeStyle = skin; ctx.lineWidth = 6;           // bare shin through a torn leg
+  ctx.beginPath(); ctx.moveTo(7 - step * .8, -16); ctx.lineTo(8 - step, -3); ctx.stroke();
+
+  ctx.translate(sway * .3, 0);
+
+  // torso with torn shirt
+  ctx.fillStyle = shirt;
+  ctx.beginPath();
+  ctx.moveTo(-15, -72); ctx.lineTo(15, -72); ctx.lineTo(13, -46);
+  ctx.lineTo(8, -40); ctx.lineTo(4, -45); ctx.lineTo(-1, -38); ctx.lineTo(-6, -44); ctx.lineTo(-10, -39); ctx.lineTo(-13, -46);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = skin;                                 // holes in the shirt
+  ctx.beginPath(); ctx.ellipse(-6, -60, 4, 3, .4, 0, 7); ctx.ellipse(8, -52, 3, 2, -.3, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1.5; // stains
+  ctx.beginPath(); ctx.moveTo(4, -68); ctx.lineTo(9, -62); ctx.stroke();
+  ctx.fillStyle = 'rgba(110,20,20,.55)';
+  ctx.beginPath(); ctx.ellipse(3, -48, 5, 3, 0, 0, 7); ctx.fill();
+
+  // arms reaching forward (towards the viewer)
+  const reach = Math.sin(t * 2.5 + seed) * 3;
+  ctx.strokeStyle = shirt; ctx.lineWidth = 8;
+  ctx.beginPath(); ctx.moveTo(-14, -69); ctx.lineTo(-20, -64); ctx.moveTo(14, -69); ctx.lineTo(20, -64); ctx.stroke();
+  ctx.strokeStyle = skin; ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(-20, -64); ctx.lineTo(-26, -74 - reach);
+  ctx.moveTo(20, -64); ctx.lineTo(27, -76 + reach);
+  ctx.stroke();
+  ctx.lineWidth = 2.5;                                  // claw fingers
+  for (const [hx, hy, d] of [[-26, -74 - reach, -1], [27, -76 + reach, 1]])
+    for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + d * 3 + i * 3, hy - 6); ctx.stroke(); }
+
+  // head (tilted)
+  ctx.save(); ctx.translate(0, -82); ctx.rotate(sway * .03 + .12);
+  ctx.fillStyle = skin;
+  ctx.beginPath(); ctx.ellipse(0, 0, 12, 13, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(60,70,50,.35)';                  // sunken cheeks
+  ctx.beginPath(); ctx.ellipse(-7, 4, 3, 4, 0, 0, 7); ctx.ellipse(7, 4, 3, 4, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#2a2a22';                            // messy hair
+  ctx.beginPath(); ctx.moveTo(-12, -4); ctx.lineTo(-9, -13); ctx.lineTo(-4, -9); ctx.lineTo(1, -14); ctx.lineTo(5, -9); ctx.lineTo(10, -12); ctx.lineTo(12, -4); ctx.quadraticCurveTo(0, -9, -12, -4); ctx.fill();
+  // glowing eyes
+  const glow = o.gold ? '#fff2a8' : '#c6ff4a', pulse = .75 + Math.sin(t * 5 + seed) * .25;
+  ctx.shadowColor = glow; ctx.shadowBlur = 10 * pulse;
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.ellipse(-5, -1, 3, 2.2, 0, 0, 7); ctx.ellipse(5, -1, 3, 2.2, 0, 0, 7); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#1a1010';                            // open mouth
+  ctx.beginPath(); ctx.ellipse(1, 7, 4, 2.5 + Math.abs(Math.sin(t * 4 + seed)) * 1.5, 0, 0, 7); ctx.fill();
+  ctx.restore();
+
+  if (o.hit) { ctx.globalAlpha = o.hit; ctx.fillStyle = '#fff'; ctx.fillRect(-30, -100, 60, 100); }
+  ctx.restore();
+}
+
 /* ---------- sprite drawing (canvas shapes + emoji) ---------- */
 const EMOJI = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 function emo(ctx, ch, x, y, size) { ctx.font = Math.round(size) + 'px ' + EMOJI; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ch, x, y); }
@@ -787,7 +862,7 @@ function drawObj(ctx, seg, o, t) {
     if (o.kind === 'car' || o.kind === 'truck') drawCar(ctx, x, y, w, h, o);
     else if (o.kind === 'zombie') {
       if (o.type === 'g') { ctx.fillStyle = 'rgba(245,194,66,' + (.3 + .2 * Math.sin(t * 8)) + ')'; ctx.beginPath(); ctx.arc(sx, y + h * .5, w * .7, 0, 7); ctx.fill(); }
-      emo(ctx, '🧟', sx + Math.sin(t * 6 + o.seed) * w * .06, y + h * .5, h * (o.type === 'r' ? .9 : 1));
+      drawZombie(ctx, sx, sy, h * (o.type === 'r' ? .9 : 1), t, { seed: o.zs | 0, gold: o.type === 'g', facing: o.vx < 0 ? -1 : 1 });
       if (o.type === 'g' && w > 8) emo(ctx, '✨', sx + w * .4, y + h * .1, h * .3);
     }
     else if (o.kind === 'moose') moosePath(ctx, x, y, w, h, o.dir, '#5a3a22', '#c9a46a');
@@ -809,7 +884,10 @@ function drawWorld(ctx, G, t) {
     let x, y, size;
     if (f.toward) { x = c.x + f.dir * VW * .45 * k; y = c.y - c.w * .65 - Math.sin(Math.min(1, k) * Math.PI) * VH * .18 + k * k * VH * .45; size = 22 + 120 * k * k; }
     else { x = f.x0 + f.dir * VW * .25 * k; y = c.y - c.w * .5 - Math.sin(Math.min(1, k * 1.2) * Math.PI) * VH * .3; size = 30 * (1 - k * .7); }
-    ctx.save(); ctx.globalAlpha = clamp(1.3 - k, 0, 1); ctx.translate(x, y); ctx.rotate(f.dir * f.t * 7); emo(ctx, f.em, 0, 0, size); ctx.restore();
+    ctx.save(); ctx.globalAlpha = clamp(1.3 - k, 0, 1); ctx.translate(x, y); ctx.rotate(f.dir * f.t * 7);
+    if (f.zombie) drawZombie(ctx, 0, size * .5, size * 1.2, t, { seed: f.zs, gold: f.gold, hit: clamp(1 - k * 2.5, 0, 1), facing: f.dir });
+    else emo(ctx, f.em, 0, 0, size);
+    ctx.restore();
   }
   // dark edges, lit centre
   const key = VW + 'x' + VH;
