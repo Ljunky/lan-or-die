@@ -1,0 +1,82 @@
+# LAN OR DIE: brief for any AI model
+
+Paste this file first, then the files the task needs (usually `engine.js` and one mission such as `missions/m1.js`). Ask for **only the changed lines or a new mission file**, never a full rewrite.
+
+## What it is
+A mobile zombie mini-game for 5 friends (Löken, Wizcudi, Jrohn, BigWman, Ljunky). Plain HTML, CSS and JS with no libraries and no build step. Hosted on GitHub Pages and opened from a Telegram group. One mission runs for 2 days, and each round lasts at most 3 minutes. Game text is in English, and Swedish jokes are fine.
+
+## Files
+| File | Role | Change it? |
+|---|---|---|
+| `index.html` | Screens (who/title/story/brief/pause/result/board), CSS, `<script>` tags | Only to add `<script src="missions/mN.js">` |
+| `engine.js` (~1550 lines) | Everything shared: loop, input, camera, HUD, score/combo, fx, timers, difficulty ramp, result screen, backend, scoreboard, badges, date lock, Telegram, music, perks, weapons, cutscenes, RIP screen | Rarely. Treat it as frozen |
+| `missions/mN.js` | One mission's gameplay. Calls `LOD.mission({...})` | Yes, this is where new work goes |
+| `characters.json` + 5 png | The 5 fighters (name, colours, skills, catchphrase) | Text only |
+| Backend | Google Sheet `Scores` + Apps Script `doPost` (saves best score per person and mission, score cap 300000) + Telegram bot posts | Separate, not in the repo |
+
+## Game rules (every mission must follow them)
+- One thumb: drag to move, hold Fire (auto-aim). 3 hearts.
+- Difficulty and points per second rise over time via `LOD.ramp`. At `maxTime` (180 s) → **OVERLOAD**: the round ends and the score still counts.
+- 2–3 bonus moments per mission (angry wife calls, golden zombie, mum texts…).
+- Score cap per mission (`cap`). The best score per person counts.
+- Engine handles ranking badges (Legendary/Epic/Rare/Common/Participated), the 👑 Sidequest King (longest round), the scoreboard and the date lock. Missions don't touch these.
+- No copyrighted characters.
+
+## Mission lifecycle
+`Who's playing?` → title/mission list → character select → intro cutscene (phone chat) → brief → **play** (`init` → `start` → `update`/`draw` each frame) → `LOD.finish(win, why)` → optional outro cutscene → result screen → score submitted (only if the mission is LIVE today).
+
+Date fields: `unlock: 'YYYY-MM-DD'`, `until: 'YYYY-MM-DD'`. Before unlock = locked, between = LIVE (scores count), after = Practice (playable, no points). Test with `?dev=all` or `?dev=all&date=2026-11-21`.
+
+## Mission template
+```js
+(() => {
+const { clamp, rand, pick, mmss } = LOD;
+const CFG = { /* tuning numbers for this mission */ };
+const WORLD = { w: 1600, h: 1000 };
+
+LOD.mission({
+  id: 2, title: 'The Wife Boss', unlock: '2026-11-21', until: '2026-11-22',
+  cap: 300000, world: WORLD, eggs: true,            // eggs: show easter-egg hint
+  // noFire: true,                                  // hide fire button
+  intro: ({ player }) => ({ kind: 'chat', title: 'LAN SQUAD 🎮', sub: 'members', button: 'Go',
+    lines: [{ at: '07:12' }, { from: 'Jonas', text: 'Nothing can go wrong.' }, { sfx: 'zombie', text: '*groan*', shake: true }] }),
+  outro: (G, { player }) => G.why === 'done' ? { kind: 'call', title: 'LAN SQUAD', sub: 'Calling…', tbc: 'Next mission unlocks …', lines: [/*…*/] } : null,
+  brief: { card: '<p>Goal in one line.</p>', tips: [['Move', 'Drag anywhere'], ['Fire', 'Hold the button']] },
+  badges: [{ em: '🍯', name: 'Smooth Operator', t: s => s.smooth }],   // s = result().stats
+
+  init(G) { G.hp = G.maxHp = 3; G.p = { x: 300, y: 300, r: 12 }; G.z = []; G.ramp = LOD.ramp({ every: 20 }); },
+  update(G, dt) {
+    const m = LOD.input.move();                     // {x, y, len}
+    G.p.x += m.x * 200 * LOD.perk('speed') * dt;
+    if (G.ramp.tick(dt)) LOD.toast('Level ' + G.ramp.lvl, 1.5);
+    LOD.addScore(G.ramp.step(10, 6) * dt, 'survive');
+    if (G.hp <= 0) LOD.finish(false, 'down');
+  },
+  camTarget: G => [G.p.x, G.p.y],
+  drawWorld(ctx, G, t) { /* world coords */ },
+  drawScreen(ctx, G, t) { /* screen coords: darkness, rain */ },
+  hud(ctx, G) { /* extra HUD; engine draws hearts, clock, score, combo */ },
+  result: G => ({ head: 'You made it!', lead: 'One line.', rows: [['Kills', G.killScore]],
+    bonus: [['Time bonus', 5000]], stats: { win: true, smooth: false }, line: 'Done in ' + mmss(G.t) + '.' })
+});
+})();
+```
+Total = `G.score` + sum of `bonus`, capped at `cap`.
+
+## Engine API (`window.LOD`) – the parts missions use
+- **State:** `LOD.G` (round state), `LOD.M` (current mission), `LOD.player` (name), `LOD.fighter` (character), `LOD.view {W,H,scale}`, `LOD.cam`.
+- **Input:** `LOD.input.move()`, `LOD.input.fire` (bool), `LOD.weapon()` → `{id, kind:'gun'|'melee'|'spray', rate, range, dmg, noise, silenced}`. The mission does hit detection itself.
+- **Score:** `LOD.addScore(pts, category)`, `LOD.combo()` (1–5×), `LOD.comboBreak()`.
+- **FX:** `LOD.pop(x,y,text,color)`, `LOD.toast(text,sec)`, `LOD.burst(x,y,color,n)`, `LOD.em(emoji,x,y,size)`, `LOD.haptic('light'|'heavy'|'success'|'error')`, `LOD.callout(title,text,'good'|'bad')`.
+- **Time:** `LOD.after(sec, fn)`, `LOD.ramp({every, overload})` → `.tick(dt)`, `.lvl`, `.step(base, perLevel)`.
+- **Flow:** `LOD.finish(win, why)` with why = `'done'|'drive'|'down'|'overload'`. `G.finalMin` turns true in the last minute (hook: `onFinalMinute(G)`).
+- **Perks:** `LOD.perk('speed'|'light'|'fireRate'|'range'|'comboTime'|'hugHeal'|'shield')` → multiplier for the chosen fighter (boosted by beer), `LOD.weak()` → that fighter's weakness, `LOD.egg()` / `LOD.eggFound()` (+50 000 easter egg), `LOD.beer()` (max 3, 20 s), `LOD.tryShield()`.
+- **Weapons:** `LOD.unlockWeapon('knife'|'extinguisher'|'silencer')`, `LOD.hasWeapon(id)`. Saved per player across missions.
+- **Audio:** `LOD.tone(...)`, `LOD.noise(...)`, `LOD.music.play('game')`, `LOD.music.intensity(0..1)`. A mission may also define `intensity: G => 0..1`.
+- **Helpers:** `clamp, rand, pick, fmt, mmss, esc, today()`.
+
+## How to ask another model
+> "Here is MODEL-BRIEF.md and missions/m1.js as an example. Write missions/m2.js for 'The Wife Boss' (boss fight: dodge her attacks, smooth-talk at the right moment to fill a 'promise debt' bar). Follow the template and the rules. Don't change engine.js. If you need something the engine doesn't have, list it separately."
+
+Good tasks for other models: new mission files, balancing numbers in `CFG`, new bonus moments, intro/outro texts, badge ideas, bug hunting in one mission.
+Avoid: rewriting `engine.js` or `index.html`. Changes there break all missions.
