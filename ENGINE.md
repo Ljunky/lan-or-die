@@ -26,6 +26,7 @@ LOD.mission({
   id: 2, title: 'The Wife Boss', unlock: '2026-11-20',
   cap: 300000,              // poängtak (håll lika med Code.gs)
   maxTime: 180,             // valfri, default CFG.MAX_TIME -> OVERLOAD
+  landscape: true,          // valfri: spelas liggande. Stående telefon = paus + #rotate-warning, Telegram låser orienteringen
   world: { w: 1600, h: 1000 },
   intro: ({ player, fighter }) => ({ kind: 'chat', title, sub, button, lines: [{ at }, { from, text }, { sfx: 'zombie', text, shake }] }), // valfri, mobilchatt före briefen ('You' = spelaren)
   outro: (G, { player }) => spec | null,      // valfri, t.ex. { kind: 'call', music: 'game', tbc: 'text', lines } när man klarar banan
@@ -44,13 +45,14 @@ LOD.mission({
   timerText(G) {},          // valfri
   overloadWin(G) {},        // valfri: räknas Overload som klarad? default true
   onFinish(G) {},           // valfri: ljud/toast när rundan tar slut
-  result(G) { return { head, lead, rows: [[label, pts]], bonus: [[label, pts]], stats: {}, line: 'Made it in 1:23.' }; }
+  result(G) { return { head, lead, rows: [[label, pts]], bonus: [[label, pts]], stats: {}, line: 'Made it in 1:23.', noSubmit: false }; } // noSubmit: true = rundan skickas inte (sparas som practice)
 });
 ```
 Total = `G.score + summa(bonus)`, kapad till `cap`.
 
 ## Motorns API (window.LOD)
-- **State:** `LOD.G`, `LOD.M`, `LOD.player`, `LOD.fighter`, `LOD.view {W,H,DPR,scale}`, `LOD.cam`, `LOD.ctx`.
+- **State:** `LOD.G`, `LOD.M`, `LOD.player`, `LOD.fighter`, `LOD.view {W,H,DPR,scale,safeTop,hudLeftY}`, `LOD.cam`, `LOD.ctx`.
+- **HUD-layout:** pausknappen sitter uppe till vänster. `hud()` ritas redan nedflyttad med `view.safeTop` (Telegram fullscreen). Lägg `LOD.view.hudLeftY` på y för allt i vänsterkolumnen, så hamnar det under pausknappen. Ingen ljudknapp i spelet (telefonens volym gäller, sparad mute fungerar fortfarande).
 - **Input:** `LOD.input.move()` → `{x, y, len}` (tangenter + joystick), `LOD.input.clear()`.
 - **Poäng:** `LOD.addScore(pts, kategori?)` (summeras i `G.cats`), `LOD.combo()` → multiplikator 1–5, `LOD.comboBreak()`.
 - **Fx:** `LOD.pop(x,y,text,color)`, `LOD.toast(text, sek)`, `LOD.burst(x,y,color,n)`, `LOD.em(emoji,x,y,size,alpha)`, `LOD.rrect(x,y,w,h,r)`, `LOD.haptic('light'|'medium'|'heavy'|'success'|'error')`.

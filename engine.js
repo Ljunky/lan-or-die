@@ -831,8 +831,12 @@ function initTelegram() {
   s.onload = () => {
     try {
       TG = window.Telegram && Telegram.WebApp; if (!TG) return;
+      const v = x => !TG.isVersionAtLeast || TG.isVersionAtLeast(x); // old clients only log a warning, but skip anyway
       TG.ready(); TG.expand();
-      if (TG.disableVerticalSwipes) TG.disableVerticalSwipes(); // swipe-down must not close the game while dragging
+      if (TG.requestFullscreen && v('8.0')) TG.requestFullscreen();
+      if (TG.disableVerticalSwipes && v('7.7')) TG.disableVerticalSwipes(); // swipe-down must not close the game while dragging
+      ['viewportChanged', 'safeAreaChanged', 'contentSafeAreaChanged', 'fullscreenChanged'].forEach(ev => { try { TG.onEvent(ev, () => setTimeout(resize, 50)); } catch (e) {} });
+      setTimeout(resize, 300);
       if (TG.setHeaderColor) TG.setHeaderColor('#0a1016');
       if (TG.setBackgroundColor) TG.setBackgroundColor('#0a1016');
     } catch (e) {}
@@ -845,6 +849,29 @@ function haptic(kind) {
     if (h) { if (kind === 'success' || kind === 'error' || kind === 'warning') h.notificationOccurred(kind); else h.impactOccurred(kind || 'light'); return; }
     if (navigator.vibrate && (kind === 'heavy' || kind === 'error')) navigator.vibrate(25);
   } catch (e) {}
+}
+
+/* ---------- orientation: landscape missions (def.landscape) ---------- */
+let rotPaused = false, oriLocked = false;
+const isPortrait = () => window.innerHeight > window.innerWidth;
+function lockLandscape() {
+  if (oriLocked) return; oriLocked = true;
+  try { if (TG && TG.lockOrientation && (!TG.isVersionAtLeast || TG.isVersionAtLeast('8.0'))) TG.lockOrientation(); } catch (e) {} // Telegram locks the current one
+  try { const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => {}); } catch (e) {}
+}
+function unlockOrientation() {
+  if (!oriLocked) return; oriLocked = false;
+  try { if (TG && TG.unlockOrientation && (!TG.isVersionAtLeast || TG.isVersionAtLeast('8.0'))) TG.unlockOrientation(); } catch (e) {}
+  try { const o = screen.orientation; if (o && o.unlock) o.unlock(); } catch (e) {}
+}
+function checkRotate() { // runs every frame: cheap, and catches every mode change
+  const inGame = G && M && M.landscape && (G.mode === 'play' || G.mode === 'pause');
+  const warn = inGame && isPortrait();
+  const el = $('#rotate-warning'); if (el && el.hidden === warn) el.hidden = !warn;
+  if (warn && G.mode === 'play') { G.mode = 'pause'; rotPaused = true; J = null; fireHeld = false; music.duck(true); }
+  else if (!warn && rotPaused) { rotPaused = false; if (G && G.mode === 'pause' && $('#scr-pause').hidden) resume(); }
+  if (inGame && !isPortrait()) lockLandscape();
+  else if (!inGame && oriLocked) unlockOrientation();
 }
 
 /* ---------- backend: Google Apps Script (swap this block for Supabase later) ---------- */
@@ -1014,12 +1041,14 @@ function renderWeapons() {
 
 /* ---------- canvas, view, camera ---------- */
 const stage = $('#stage'), cv = $('#cv'), ctx = cv.getContext('2d');
-const view = { W: 300, H: 300, DPR: 1, scale: 1 };
+const view = { W: 300, H: 300, DPR: 1, scale: 1, safeTop: 0, hudLeftY: 48 }; // hudLeftY: how far the left HUD column (hearts, shield, beer) sits below its old row, to clear the pause button
 const cam = { x: 0, y: 0 };
 function resize() {
   const r = stage.getBoundingClientRect();
   view.DPR = Math.min(window.devicePixelRatio || 1, 2); view.W = Math.max(100, r.width); view.H = Math.max(100, r.height);
   cv.width = Math.round(view.W * view.DPR); cv.height = Math.round(view.H * view.DPR);
+  const probe = $('#safe-probe'); // same top as the pause button (CSS var --hud-top)
+  view.safeTop = probe ? Math.max(0, probe.offsetTop - 10) : 0;
   view.scale = M && M.viewScale ? M.viewScale(view.W, view.H) : clamp(Math.min(view.W / 460, view.H / 500), .6, 1.5);
 }
 function camUpdate(dt, snap) {
@@ -1118,25 +1147,27 @@ function draw(now) {
   if (G.mode !== 'menu' && G.mode !== 'result') drawHUD();
 }
 function drawHUD() {
-  const { W, H } = view, pad = 12;
+  const { W, H } = view, pad = 12, ly = 22 + view.hudLeftY; // ly: hearts row, below the pause button
+  ctx.save(); ctx.translate(0, view.safeTop); // fullscreen Telegram: keep the HUD below the notch and Telegram's buttons
   ctx.textBaseline = 'middle';
-  for (let i = 0; i < G.maxHp; i++) em(i < G.hp ? '❤️' : '🖤', pad + 10 + i * 22, 22, 17, i < G.hp ? 1 : .6);
+  for (let i = 0; i < G.maxHp; i++) em(i < G.hp ? '❤️' : '🖤', pad + 10 + i * 22, ly, 17, i < G.hp ? 1 : .6);
   let hx = pad + 10 + G.maxHp * 22 + 4;
-  if (myPerks() && myPerks().shield) { em('🛡️', hx, 22, 16, G.shieldT > 0 ? .25 : 1); hx += 24; }
+  if (myPerks() && myPerks().shield) { em('🛡️', hx, ly, 16, G.shieldT > 0 ? .25 : 1); hx += 24; }
   if (G.beer && G.beer.n) {
-    em('🍺', hx, 22, 16); ctx.textAlign = 'left'; ctx.font = '400 12px Bungee, Impact, sans-serif'; ctx.fillStyle = '#f5c242'; ctx.fillText('×' + G.beer.n, hx + 10, 24);
-    ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(hx - 8, 33, 34, 3); ctx.fillStyle = '#f5c242'; ctx.fillRect(hx - 8, 33, 34 * G.beer.t / CFG.BEER_TIME, 3);
+    em('🍺', hx, ly, 16); ctx.textAlign = 'left'; ctx.font = '400 12px Bungee, Impact, sans-serif'; ctx.fillStyle = '#f5c242'; ctx.fillText('×' + G.beer.n, hx + 10, ly + 2);
+    ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(hx - 8, ly + 11, 34, 3); ctx.fillStyle = '#f5c242'; ctx.fillRect(hx - 8, ly + 11, 34 * G.beer.t / CFG.BEER_TIME, 3);
   }
   ctx.textAlign = 'center'; ctx.fillStyle = G.t > M.maxTime - 30 ? '#e5484d' : '#e8eef3'; ctx.font = '400 18px Bungee, Impact, sans-serif';
   ctx.fillText(M.timerText ? M.timerText(G) : mmss(G.t), W / 2, 22);
   ctx.textAlign = 'right'; ctx.font = '400 18px Bungee, Impact, sans-serif'; ctx.fillStyle = '#f5a524'; ctx.fillText(fmt(G.score), W - pad, 22);
   if (G.mult > 1) { ctx.font = '400 15px Bungee, Impact, sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText('x' + G.mult + ' COMBO', W - pad, 44); }
   if (M.hud) { ctx.save(); M.hud(ctx, G); ctx.restore(); }
+  ctx.restore();
   if (!counts(M)) { ctx.textAlign = 'center'; ctx.font = '400 12px Bungee, Impact, sans-serif'; ctx.fillStyle = 'rgba(232,238,243,.55)'; ctx.fillText('PRACTICE · DOES NOT COUNT', W / 2, H - 30); }
   if (G.callout) drawCallout(G.callout);
   if (G.toast) {
     ctx.globalAlpha = Math.min(1, G.toast.t * 2); ctx.font = '700 16px Barlow, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const w = Math.min(W - 24, ctx.measureText(G.toast.text).width + 28), y = H * .2;
+    const w = Math.min(W - 24, ctx.measureText(G.toast.text).width + 28), y = view.safeTop + H * .2;
     ctx.fillStyle = 'rgba(8,13,18,.82)'; rrect(W / 2 - w / 2, y - 16, w, 32, 10); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(G.toast.text, W / 2, y, W - 40); ctx.globalAlpha = 1;
   }
   if (J && G.mode === 'play') {
@@ -1187,6 +1218,7 @@ function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (M && G) {
     try {
+      checkRotate();
       if (G.mode === 'play' || G.mode === 'ending') update(dt);
       if (M.frame) M.frame(G, dt);
       camUpdate(dt, false);
@@ -1210,7 +1242,7 @@ function panel(id, html, opts = {}) { // a mission's own overlay screen (phone c
   s.innerHTML = html; return s;
 }
 function inGameUI(on) {
-  $('#btn-pause').hidden = !on; $('#btn-mute').hidden = !on;
+  $('#btn-pause').hidden = !on;
   const fireUI = on && !(M && M.noFire); $('#btn-fire').hidden = !fireUI; $('#weapons').hidden = !fireUI;
   if (fireUI) renderWeapons(); else fireHeld = false;
 }
@@ -1278,7 +1310,7 @@ function finish(win, why) {
   if (!G || G.mode !== 'play') return;
   G.mode = 'ending'; G.win = !!win; G.why = why || (win ? 'done' : 'down'); G.endT = win ? .9 : 1.2;
   if (G.why === 'overload') { G.shake = 12; G.endT = 1.4; }
-  J = null; fireHeld = false; inGameUI(false); $('#btn-mute').hidden = false; music.play(null);
+  J = null; fireHeld = false; inGameUI(false); music.play(null);
   if (G.why === 'down') G.endT = Math.max(G.endT, 1.4);
   haptic(G.why === 'down' ? 'error' : 'success');
   if (M.onFinish) M.onFinish(G);
@@ -1294,7 +1326,7 @@ function showResult() {
   const total = clamp(Math.round(G.score + bsum), 0, M.cap);
   const earned = (M.badges || []).filter(b => { try { return b.t(r.stats || {}); } catch (e) { return false; } });
   const main = earned[0] || { em: '🧟', name: 'Survivor' };
-  const counted = counts(M);
+  const counted = counts(M) && !r.noSubmit; // noSubmit: the mission voids this round (kept on the phone as practice)
   const list = store.get('lod.scores', []);
   const prevBest = Math.max(-1, ...list.filter(x => x.name === playerName && x.m === M.id && !x.practice).map(x => x.score));
   const fc = fighter || LOD.getCharacter(), fn = fc ? fc.name : '';
@@ -1325,7 +1357,7 @@ function showResult() {
   $('#share').addEventListener('click', copyShare);
   $('#res-board').addEventListener('click', () => openBoard('scr-result'));
   $('#res-home').addEventListener('click', goTitle);
-  inGameUI(false); $('#btn-mute').hidden = false; music.play('title');
+  inGameUI(false); music.play('title');
   show('scr-result');
   if (fc && LOD.playPose && G.why !== 'down') LOD.playPose(fc, stage, { hold: true });
   if (!counted) return;
@@ -1499,9 +1531,6 @@ function initUI() {
   $('#btn-pause').addEventListener('click', pauseGame);
   $('#resume').addEventListener('click', resumeGame);
   $('#quit').addEventListener('click', goTitle);
-  $('#btn-mute').addEventListener('click', () => LOD.toggleMute());
-  const syncMute = m => { $('#btn-mute').textContent = m ? '🔇' : '🔊'; };
-  LOD.onMute(syncMute); syncMute(LOD.isMuted());
 }
 window.addEventListener('keydown', e => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;

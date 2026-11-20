@@ -905,8 +905,9 @@ function hud(ctx, G) { // extras on top of the engine HUD (hearts, clock, score,
   const { W } = LOD.view, pad = 12;
   ctx.textBaseline = 'middle';
   if (G.sq.on) { ctx.textAlign = 'center'; ctx.font = '400 13px Bungee, Impact, sans-serif'; ctx.fillStyle = '#e5484d'; ctx.fillText('SIDEQUEST · LVL ' + G.sq.lvl, W / 2, 42); }
-  let gi = 0; for (const it of G.items) if (it.kind === 'gear') { icon(it, pad + 12 + gi * 28, 52, 20, it.got ? 1 : .22); gi++; }
-  const eg = LOD.egg(); if (eg) { const n = G.eggs.filter(e => e.got).length; if (n) { ctx.textAlign = 'left'; ctx.font = '400 12px Bungee, Impact, sans-serif'; ctx.fillStyle = '#f5c242'; ctx.fillText(eg.em + ' ' + (G.egg ? '✓' : n + '/3'), pad + 4, 78); } }
+  const ly = LOD.view.hudLeftY; // left column sits below the pause button
+  let gi = 0; for (const it of G.items) if (it.kind === 'gear') { icon(it, pad + 12 + gi * 28, 52 + ly, 20, it.got ? 1 : .22); gi++; }
+  const eg = LOD.egg(); if (eg) { const n = G.eggs.filter(e => e.got).length; if (n) { ctx.textAlign = 'left'; ctx.font = '400 12px Bungee, Impact, sans-serif'; ctx.fillStyle = '#f5c242'; ctx.fillText(eg.em + ' ' + (G.egg ? '✓' : n + '/3'), pad + 4, 78 + ly); } }
   const bw = Math.min(120, W * .32), bx = W - pad - bw, by = G.mult > 1 ? 66 : 54;
   ctx.fillStyle = 'rgba(255,255,255,.12)'; rrect(bx, by, bw, 8, 4); ctx.fill();
   ctx.fillStyle = G.noise > 75 ? '#e5484d' : G.noise > 40 ? '#f5a524' : '#46c28a'; rrect(bx, by, bw * G.noise / 100, 8, 4); ctx.fill();

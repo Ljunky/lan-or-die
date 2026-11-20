@@ -65,6 +65,7 @@ Total = `G.score` + sum of `bonus`, capped at `cap`.
 
 ## Engine API (`window.LOD`) – the parts missions use
 - **State:** `LOD.G` (round state), `LOD.M` (current mission), `LOD.player` (name), `LOD.fighter` (character), `LOD.view {W,H,scale}`, `LOD.cam`.
+- **Layout:** `landscape: true` on a mission = landscape only (portrait pauses and shows a tilt-your-phone overlay). Pause button is top-left; in `hud()` add `LOD.view.hudLeftY` to y for anything in the left column. `result()` may return `noSubmit: true` to void a round (no score sent).
 - **Input:** `LOD.input.move()`, `LOD.input.fire` (bool), `LOD.weapon()` → `{id, kind:'gun'|'melee'|'spray', rate, range, dmg, noise, silenced}`. The mission does hit detection itself.
 - **Score:** `LOD.addScore(pts, category)`, `LOD.combo()` (1–5×), `LOD.comboBreak()`.
 - **FX:** `LOD.pop(x,y,text,color)`, `LOD.toast(text,sec)`, `LOD.burst(x,y,color,n)`, `LOD.em(emoji,x,y,size)`, `LOD.haptic('light'|'heavy'|'success'|'error')`, `LOD.callout(title,text,'good'|'bad')`.
