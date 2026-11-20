@@ -49,6 +49,7 @@ const CFG = {
   DRAW: 130, DRAW_LOW: 90, DRAW_MIN: 60, // draw distance in segments (drops on slow phones)
   FOG: 4,
   // Swap the pixel-art friends for your own PNGs: put a path here, e.g. 'img/loken-wave.png'. Empty = pixel art.
+  HERO_H: 1000,              // height of the heroes waiting at the roadside (world units; the car is 420)
   FRIEND_IMG: { 'Löken': '', 'Wizcudi': '', 'Jrohn': '', 'BigWman': '', 'Ljunky': '' }
 };
 /* =================== /MISSION CONFIG =================== */
@@ -151,7 +152,8 @@ const listNames = a => a.length <= 1 ? (a[0] || '') : a.slice(0, -1).join(', ') 
 
 /* ---------- friends: pixel art placeholders (or your PNGs) ---------- */
 const COLORS = {}, HAIR = { 'Löken': '#e2b955', 'Wizcudi': '#2b1d14', 'Jrohn': '#8a5a2b', 'BigWman': '#3a2a1a', 'Ljunky': '#141414' };
-LOD.loadCharacters().then(list => list.forEach(c => { COLORS[c.name] = c.color; })).catch(() => {});
+const HERO = {}; // the heroes' full-body PNGs from characters.json (same as on the character select screen)
+LOD.loadCharacters().then(list => list.forEach(c => { COLORS[c.name] = c.color; if (c.img && /\.png$/i.test(c.src || '')) HERO[c.name] = c.img; })).catch(() => {});
 const FIMG = {};
 Object.keys(CFG.FRIEND_IMG).forEach(n => { if (CFG.FRIEND_IMG[n]) { const im = new Image(); im.src = CFG.FRIEND_IMG[n]; FIMG[n] = im; } });
 const PIX = ['..HHHH..', '.HHHHHH.', '.HSSSSH.', '.SESSES.', '..SSSS..', '...SS...', '.CCCCCC.', 'CCCCCCCC', 'S.CCCC.S', '..CCCC..', '..PPPP..', '..P..P..', '..P..P..', '.BB..BB.'];
@@ -753,17 +755,21 @@ function drawStatic(ctx, seg, s, t) {
     else if (s.kind === 'friend') {
       const hs = G.houses[s.i]; if (!hs || hs.picked) return;
       const picking = G.pick && G.pick.h === hs, k = picking ? clamp(G.pick.t, 0, 1) : 0;
-      const fx = lerp(x, VW / 2 + (hs.side < 0 ? -1 : 1) * G.car.w * .55 - w / 2, k), fy = lerp(y, G.car.y - h, k);
       if (picking && k >= .98) return;
-      const img = FIMG[hs.name];
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(img && img.complete && img.naturalWidth ? img : friendSprite(hs.name, Math.floor(t * 4) % 2), fx, fy, w, h);
-      ctx.imageSmoothingEnabled = true;
-      if (h > 16 && !picking) {
-        ctx.fillStyle = '#f5a524'; const ay = fy - h * .25 + Math.sin(t * 6) * h * .05;
-        ctx.beginPath(); ctx.moveTo(fx + w * .2, ay); ctx.lineTo(fx + w * .8, ay); ctx.lineTo(fx + w * .5, ay + h * .15); ctx.fill();
-        ctx.font = '700 ' + Math.round(clamp(h * .18, 9, 15)) + 'px Barlow, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-        ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3; ctx.strokeText(hs.name, fx + w / 2, ay - 3); ctx.fillStyle = '#fff'; ctx.fillText(hs.name, fx + w / 2, ay - 3);
+      // your own PNG (CFG.FRIEND_IMG) > the hero from the character select > pixel-art placeholder
+      const own = FIMG[hs.name], hero = HERO[hs.name];
+      const img = own && own.complete && own.naturalWidth ? own : hero && hero.naturalWidth ? hero : null;
+      let fw = w, fh = h, bx = x, by = y;
+      if (img) { fh = CFG.HERO_H * sc * Kx; fw = fh * img.naturalWidth / img.naturalHeight; bx = sx - fw / 2; by = sy - fh; }
+      const jump = img && !picking ? Math.abs(Math.sin(t * 5 + s.i)) * fh * .06 : 0; // the hero hops to wave you down
+      const fx = lerp(bx, VW / 2 + (hs.side < 0 ? -1 : 1) * G.car.w * .55 - fw / 2, k), fy = lerp(by, G.car.y - fh, k) - jump;
+      if (img) ctx.drawImage(img, fx, fy, fw, fh);
+      else { ctx.imageSmoothingEnabled = false; ctx.drawImage(friendSprite(hs.name, Math.floor(t * 4) % 2), fx, fy, fw, fh); ctx.imageSmoothingEnabled = true; }
+      if (fh > 16 && !picking) {
+        ctx.fillStyle = '#f5a524'; const ay = fy - fh * .2 + Math.sin(t * 6) * fh * .04;
+        ctx.beginPath(); ctx.moveTo(fx + fw / 2 - fh * .06, ay); ctx.lineTo(fx + fw / 2 + fh * .06, ay); ctx.lineTo(fx + fw / 2, ay + fh * .1); ctx.fill();
+        ctx.font = '700 ' + Math.round(clamp(fh * .12, 9, 15)) + 'px Barlow, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3; ctx.strokeText(hs.name, fx + fw / 2, ay - 3); ctx.fillStyle = '#fff'; ctx.fillText(hs.name, fx + fw / 2, ay - 3);
       }
     }
     else if (s.kind === 'shop') drawShop(ctx, x, y, w, h, s.shop);
