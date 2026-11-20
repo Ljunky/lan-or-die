@@ -21,6 +21,8 @@ A mobile zombie mini-game for 5 friends (Löken, Wizcudi, Jrohn, BigWman, Ljunky
 - Score cap per mission (`cap`). The best score per person counts.
 - Engine handles ranking badges (Legendary/Epic/Rare/Common/Participated), the 👑 Sidequest King (longest round), the scoreboard and the date lock. Missions don't touch these.
 - No copyrighted characters.
+- M2 zombies are drawn in canvas with `drawZombie()` (pale skin, glowing eyes, torn clothes, reaching arms; gold variant for bonus).
+- M2 (landscape): edit `CFG` (CAM_HEIGHT zoom, SPACE_TIME, MISS_PENALTY…), `BILLBOARDS` (hero face + lines) and `WIFE` (texts) at the top of `missions/m2.js`. Running over a friend voids the round (`noSubmit`); Jrohn's space trip turns cars/zombies into asteroids.
 
 ## Mission lifecycle
 `Who's playing?` → title/mission list → character select → intro cutscene (phone chat) → brief → **play** (`init` → `start` → `update`/`draw` each frame) → `LOD.finish(win, why)` → optional outro cutscene → result screen → score submitted (only if the mission is LIVE today).

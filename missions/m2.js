@@ -4,7 +4,7 @@
    input, HUD base, result screen, scoreboard, Telegram and backend (see ENGINE.md).
 
    The road (segments, curves, hills, projection, fog, sprite scaling) is adapted from Jake Gordon's
-   javascript-racer (v4.final). No images from the racer are used; everything is canvas shapes or emoji.
+   javascript-racer (v4.final). No images from the racer are used; everything is canvas shapes or emoji. Zombies are drawn by drawZombie().
 
    javascript-racer: Copyright (c) 2012, 2013, 2014, 2015, 2016 Jake Gordon and contributors
 
@@ -48,17 +48,46 @@ const CFG = {
   INV: 1.4,                  // seconds of no damage after a crash
   DRAW: 130, DRAW_LOW: 90, DRAW_MIN: 60, // draw distance in segments (drops on slow phones)
   FOG: 4,
+  CAM_HEIGHT: 1300,          // 1000 = as before, higher = further out (smaller car, steeper view, more road ahead)
+  MISS_PENALTY: 2000,        // driving past a friend's house without picking them up
+  WIFE_BONUS: 1500,          // no crash while the wife's text is on screen
+  SPLATS_MAX: 6, SPLAT_TIME: 1.8, // blood on the screen when you hit a zombie: at most 6 at once, fades in 1.8 s
+  SPACE_TIME: 30,            // seconds of Jrohn's space trip
+  SPACE_AGAIN: [25, 40],     // playing AS Jrohn: seconds between trips
   // Swap the pixel-art friends for your own PNGs: put a path here, e.g. 'img/loken-wave.png'. Empty = pixel art.
   HERO_H: 1000,              // height of the heroes waiting at the roadside (world units; the car is 420)
   FRIEND_IMG: { 'Löken': '', 'Wizcudi': '', 'Jrohn': '', 'BigWman': '', 'Ljunky': '' }
 };
+// Billboards along the road. at = segment (the lap is ~2 100 segments; keep 15+ away from the houses at 330, 800, 1290, 1720),
+// side = -1 left / 1 right, hero = a name from characters.json (shows their face) or '' for text only, lines = one line each.
+const BILLBOARDS = [
+  { at: 120, side: 1, hero: '', lines: ['LAN OR DIE', '28 NOV'] },
+  { at: 230, side: -1, hero: 'Jrohn', lines: ['Plant-Based Penis', 'Enlargement Pills', '100% Organic!'] },
+  { at: 520, side: 1, hero: 'Wizcudi', lines: ['Optimize your', 'electricity bill with', 'my master class!'] },
+  { at: 620, side: -1, hero: '', lines: ['KNIVSTA', '42 km'] },
+  { at: 1060, side: -1, hero: 'BigWman', lines: ['Wife for sale!'] },
+  { at: 1100, side: 1, hero: '', lines: ['HAVE YOU CHECKED', 'THE BITCOIN PRICE?'] },
+  { at: 1440, side: 1, hero: 'Löken', lines: ['Pissa,', 'Pissa på,', 'Pissa på AIK!'] },
+  { at: 1600, side: -1, hero: '', lines: ['TURN OFF', 'THE LIGHTS'] },
+  { at: 1900, side: 1, hero: '', lines: ['GROCERY +', 'SYSTEMBOLAGET →'] }
+];
+// The wife texts while you drive. None of it needs an answer right now.
+const WIFE = [
+  'What should we eat on Tuesday?',
+  'Do you think we should change the lamp in the living room?',
+  "I'm thinking about a new carpet in the bedroom. What do you think?",
+  'Should the hallway be grey or a warmer grey?',
+  'Do we have enough napkins for Christmas?',
+  'My sister wants to visit in March. Which weekend works?',
+  'Should we get new cushions for the sofa? Beige or off-white?'
+];
 /* =================== /MISSION CONFIG =================== */
 
 const { clamp, rand, pick, fmt, mmss } = LOD;
 let G = null;
 
 /* ---------- road geometry (Jake Gordon) ---------- */
-const SEG = 200, RUMBLE = 3, LANES = 3, RW = 2000, FOV = 100, CAM_H = 1000, CENTRIFUGAL = .3;
+const SEG = 200, RUMBLE = 3, LANES = 3, RW = 2000, FOV = 100, CAM_H = CFG.CAM_HEIGHT, CENTRIFUGAL = .3;
 const CD = 1 / Math.tan(FOV / 2 * Math.PI / 180), PZ = CAM_H * CD;
 const lerp = (a, b, p) => a + (b - a) * p;
 const easeIn = (a, b, p) => a + (b - a) * p * p;
@@ -123,12 +152,11 @@ S(SHOP_N, 'shop', -1.3, { ww: 5200, wh: 3000, shop: 'grocery' });
 S(SHOP_N, 'shop', 1.3, { ww: 5200, wh: 3000, shop: 'system' });
 S(1, 'banner', 0, { ww: RW * 2.4, wh: 2600, solid: false, center: true });
 [[1000, 1], [1500, -1]].forEach(([n, s]) => S(n, 'msign', s * 1.15, { ww: 620, wh: 1300 }));
-const BILLBOARDS = [[120, 1, 'LAN OR DIE|28 NOV'], [620, -1, 'KNIVSTA|42 km'], [1100, 1, 'HAVE YOU CHECKED|THE BITCOIN PRICE?'], [1600, -1, 'TURN OFF|THE LIGHTS'], [1900, 1, 'GROCERY +|SYSTEMBOLAGET →']];
-BILLBOARDS.forEach(([n, s, text]) => S(n, 'board', s * 1.2, { ww: 2300, wh: 1700, text: text.split('|') }));
+BILLBOARDS.forEach(b => S(b.at, 'board', b.side * 1.2, b.hero ? { ww: 3800, wh: 2700, b } : { ww: 2600, wh: 1900, b }));
 for (let n = 60; n < N - 30; n += 60) if (!nearHouseSeg(n, 12)) S(n, 'lamp', 1.12, { ww: 160, wh: 1500 });
 for (let n = 12; n < N - 30; ) {
   const forest = n > FOREST[0] && n < FOREST[1];
-  if (!nearHouseSeg(n, 9) && !BILLBOARDS.some(b => Math.abs(b[0] - n) < 4)) {
+  if (!nearHouseSeg(n, 9) && !BILLBOARDS.some(b => Math.abs(b.at - n) < (b.hero ? 7 : 4))) {
     S(n, 'tree', -(forest ? 1.25 + Math.random() * 1.6 : 1.4 + Math.random() * 2.6), { v: Math.random() });
     if (forest || Math.random() < .6) S(n, 'tree', forest ? 1.25 + Math.random() * 1.6 : 1.4 + Math.random() * 2.6, { v: Math.random() });
   }
@@ -147,13 +175,12 @@ const LANE_X = [-2 / 3, 0, 2 / 3];
 const CAR_COLS = ['#c0392b', '#2e86de', '#e5e8ea', '#7f8c8d', '#27ae60', '#f39c12', '#8e44ad', '#34495e'];
 const EQUIP = [['🎒', 'Lökens backpack'], ['💻', 'Wizcudis laptop'], ['🖥️', 'Ljunkys monitor'], ['🪑', 'A gaming chair'], ['📡', 'The router'],
   ['🔌', 'All the cables'], ['⌨️', 'BigWmans keyboard'], ['🎧', 'Jrohns headset'], ['🖱️', 'The lucky mouse'], ['🍕', 'The emergency pizza']];
-const MUM = ['Have you eaten? ❤️', 'Drive carefully. Are you wearing a jacket?', 'Who is this Systembolaget??', 'Call me when you arrive!!!'];
 const listNames = a => a.length <= 1 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
 
 /* ---------- friends: pixel art placeholders (or your PNGs) ---------- */
 const COLORS = {}, HAIR = { 'Löken': '#e2b955', 'Wizcudi': '#2b1d14', 'Jrohn': '#8a5a2b', 'BigWman': '#3a2a1a', 'Ljunky': '#141414' };
-const HERO = {}; // the heroes' full-body PNGs from characters.json (same as on the character select screen)
-LOD.loadCharacters().then(list => list.forEach(c => { COLORS[c.name] = c.color; if (c.img && /\.png$/i.test(c.src || '')) HERO[c.name] = c.img; })).catch(() => {});
+const HERO = {}, CHAR = {}; // the heroes' full-body PNGs from characters.json (same as on the character select screen)
+LOD.loadCharacters().then(list => list.forEach(c => { COLORS[c.name] = c.color; CHAR[c.name] = c; if (c.img && /\.png$/i.test(c.src || '')) HERO[c.name] = c.img; })).catch(() => {});
 const FIMG = {};
 Object.keys(CFG.FRIEND_IMG).forEach(n => { if (CFG.FRIEND_IMG[n]) { const im = new Image(); im.src = CFG.FRIEND_IMG[n]; FIMG[n] = im; } });
 const PIX = ['..HHHH..', '.HHHHHH.', '.HSSSSH.', '.SESSES.', '..SSSS..', '...SS...', '.CCCCCC.', 'CCCCCCCC', 'S.CCCC.S', '..CCCC..', '..PPPP..', '..P..P..', '..P..P..', '.BB..BB.'];
@@ -203,8 +230,8 @@ function init(g) {
     pos: 0, speed: 0, px: 0, lap: 1, ramp: LOD.ramp({ every: CFG.LEVEL_EVERY }), objs: [], flyers: [],
     houses: HOUSES.map((h, i) => Object.assign({ i, name: friends[i] || 'Jonas', picked: false }, h)), picked: 0,
     trunk: 0, inv: 0, pick: null, banner: null, steerVis: 0, hold: 0, braking: false, boost: 0, sky: 0, hill: 0, tree: 0, keyWas: false,
-    zT: 2, bT: CFG.BLOCK_EVERY, mT: CFG.MOOSE_EVERY, iT: 5, goldT: rand(25, 40), mumT: rand(35, 55), weakT: rand(12, 18),
-    mum: 0, mumMsg: '', mumOk: true, pants: 0, cat: 0, lost: 0, recovered: 0, eggsGot: 0, humT: 0, credits: 0, car: { x: 0, y: 0, w: 0 },
+    zT: 2, bT: CFG.BLOCK_EVERY, mT: CFG.MOOSE_EVERY, iT: 5, goldT: rand(25, 40), wifeT: rand(35, 55), weakT: rand(12, 18),
+    wife: 0, wifeMsg: '', wifeOk: true, splats: [], space: 0, spaceVis: false, trans: null, spaceNext: 0, missed: 0, dead: [], pants: 0, cat: 0, lost: 0, recovered: 0, eggsGot: 0, humT: 0, credits: 0, car: { x: 0, y: 0, w: 0 },
     stats: { kills: 0, gold: 0, crashes: 0, mooseHit: 0, mooseSeen: 0, beers: 0 }
   });
   EGGS.forEach(([n, x]) => G.objs.push(Object.assign({ kind: 'egg', z: n * SEG + SEG / 2, pz: n * SEG + SEG / 2, x, static: true }, SIZES.egg)));
@@ -233,7 +260,7 @@ function spawnZombies(n, gold) {
   for (let i = 0; i < n; i++) {
     const side = Math.random() < .3 ? pick([-1, 1]) : 0, type = gold ? 'g' : Math.random() < .3 ? 'r' : 'n';
     const x = side ? side * rand(1.2, 1.5) : rand(-.9, .9);
-    spawn('zombie', s0 + i * rand(.5, 3), { x, type, vx: gold ? pick([-1, 1]) * .9 : side ? -side * rand(.2, .35) : rand(-.08, .08) });
+    spawn('zombie', s0 + i * rand(.5, 3), { x, type, zs: Math.floor(Math.random() * 999), vx: gold ? pick([-1, 1]) * .9 : side ? -side * rand(.2, .35) : rand(-.08, .08) });
   }
 }
 function spawnBlock() {
@@ -260,7 +287,7 @@ function crash(o) {
   if (G.inv > 0) return false;
   const c = G.car;
   if (LOD.tryShield()) { G.inv = 1; LOD.burst(c.x, c.y - c.w * .3, '#f5c242', 14); tone(1200, .1, 'square', .05); return false; } // Löken's shield
-  G.lives--; G.inv = CFG.INV; G.trunk = 1.3; G.shake = 10; G.mumOk = false; LOD.comboBreak(); G.stats.crashes++;
+  G.lives--; G.inv = CFG.INV; G.trunk = 1.3; G.shake = 10; G.wifeOk = false; LOD.comboBreak(); G.stats.crashes++;
   if (o.kind === 'moose') G.stats.mooseHit++;
   G.speed *= .3; sfx.crash(); LOD.haptic('heavy'); LOD.after(.08, sfx.trunk);
   const eq = EQUIP[G.lost % EQUIP.length]; G.lost++;
@@ -280,8 +307,9 @@ function hitZombie(o) {
   LOD.addScore(pts, 'zombies');
   const c = G.car, sx = c.x + (o.x - G.px) * RW * (CD / PZ) * (VW / 2);
   LOD.pop(sx, c.y - c.w * .7, '+' + fmt(pts), o.type === 'g' ? '#f5c242' : '#b7f07a');
-  LOD.burst(sx, c.y - c.w * .45, o.type === 'g' ? '#f5c242' : '#5f8f4a', 9);
-  G.flyers.push({ em: '🧟', t: 0, dir: o.x > G.px ? 1 : -1, toward: false, x0: sx });
+  LOD.burst(sx, c.y - c.w * .45, o.type === 'g' ? '#f5c242' : G.spaceVis ? '#c58bff' : '#5f8f4a', 9);
+  if (!G.spaceVis) addSplat();
+  G.flyers.push({ zombie: true, zs: o.zs, gold: o.type === 'g', t: 0, dir: o.x > G.px ? 1 : -1, toward: false, x0: sx });
   G.speed *= .97; sfx.splat(); LOD.haptic('light');
   if (o.type === 'g') { G.stats.gold++; LOD.toast('✨ GOLDEN ZOMBIE! +' + fmt(pts), 2.2); }
 }
@@ -308,7 +336,7 @@ function collect(o) {
 }
 function nearHouse() {
   const ps = pSegIdx();
-  return G.houses.find(h => { if (h.picked) return false; const d = segDiff(h.n, ps); return d >= CFG.STOP_RANGE[0] && d <= CFG.STOP_RANGE[1]; }) || null;
+  return G.houses.find(h => { if (h.picked || h.dead) return false; const d = segDiff(h.n, ps); return d >= CFG.STOP_RANGE[0] && d <= CFG.STOP_RANGE[1]; }) || null;
 }
 function tryStop() {
   if (!G || G.mode !== 'play' || G.pick) return;
@@ -325,13 +353,104 @@ function finishPick() {
   sfx.pick(); LOD.haptic('success');
   if (heal > 1 && G.lives > before) LOD.abilityCallout('Loyalty! The hug gives +' + heal + ' hearts 🤝');
   LOD.toast(G.picked >= 4 ? 'Everyone is in! Drive to the finish 🏁' : 'Picked up: ' + G.picked + '/4', 2.4);
+  if (G.driver === 'Jrohn') { if (!G.flags.trip) { G.flags.trip = true; LOD.after(.6, jrohnTrip); } } // he does not ask himself
+  else if (h.name === 'Jrohn') LOD.after(.5, openJrohn);
 }
 function crossFinish() {
   if (G.picked >= 4) { LOD.finish(true, 'done'); return; }
   G.lap++;
-  const miss = G.houses.filter(h => !h.picked).map(h => h.name);
-  G.banner = { text: 'Fuck, we forgot to pick up ' + listNames(miss) + '! Need to drive back!', t: 4.5 };
+  const miss = G.houses.filter(h => !h.picked && !h.dead).map(h => h.name);
+  G.banner = miss.length ? { text: 'Fuck, we forgot to pick up ' + listNames(miss) + '! Need to drive back!', t: 4.5 }
+    : { text: listNames(G.dead) + (G.dead.length > 1 ? ' are' : ' is') + ' dead. No LAN this time. Keep driving, but nothing counts.', t: 4.5 };
   sfx.bad(); LOD.haptic('warning');
+}
+
+/* ---------- friends at the roadside: run over, or driven past ---------- */
+function updFriends(oldA, newA) {
+  const so = Math.floor(oldA / SEG) % N, sn = Math.floor(newA / SEG) % N;
+  for (const h of G.houses) {
+    if (h.picked || h.dead || (G.pick && G.pick.h === h)) continue;
+    // drove past the stop zone without stopping: -2 000 (never below 0)
+    if (segDiff(h.n, so) >= CFG.STOP_RANGE[0] && segDiff(h.n, sn) < CFG.STOP_RANGE[0]) {
+      const pen = Math.min(CFG.MISS_PENALTY, Math.floor(G.score)); G.missed++;
+      if (pen > 0) LOD.addScore(-pen, 'missed');
+      LOD.pop(G.car.x, G.car.y - G.car.w * .8, (pen > 0 ? '-' + fmt(pen) + ' ' : '') + 'You drove past ' + h.name + '!', '#ff8a8a');
+      sfx.bad(); LOD.haptic('warning');
+    }
+    // ran over the friend standing at the road edge
+    const fz = h.n * SEG, ro = sdist(fz, oldA), rn = sdist(fz, newA);
+    if (ro >= 0 && rn < 0 && G.speed > 300 && overlap(G.px, PW, h.side * .98, .16, .9)) runOver(h);
+  }
+}
+function runOver(h) {
+  h.dead = true; G.dead.push(h.name); G.shake = 12; LOD.comboBreak();
+  const c = G.car; LOD.burst(c.x + h.side * c.w * .3, c.y - c.w * .4, '#b3121b', 22);
+  for (let i = 0; i < 3; i++) addSplat();
+  sfx.splat(); sfx.crash(); LOD.haptic('error');
+  G.banner = { text: 'You ran over ' + h.name + '! 💀 You can keep driving, but you can\'t win and this round won\'t count.', t: 5 };
+}
+
+/* ---------- blood on the screen (never in the middle) ---------- */
+function addSplat() {
+  if (G.splats.length >= CFG.SPLATS_MAX) G.splats.shift();
+  const a = rand(0, Math.PI * 2), rf = rand(.62, .95), base = Math.min(VW, VH);
+  const sp = { fx: .5 + Math.cos(a) * .5 * rf, fy: .5 + Math.sin(a) * .5 * rf, r: base * rand(.045, .085), t: CFG.SPLAT_TIME, rot: rand(0, 6.3), drops: [], drips: [] };
+  for (let i = 0, n = 6 + Math.floor(Math.random() * 6); i < n; i++) { const da = rand(0, 6.3), dd = rand(.9, 2.1); sp.drops.push([Math.cos(da) * dd, Math.sin(da) * dd, rand(.08, .28)]); }
+  for (let i = 0, n = 1 + Math.floor(Math.random() * 3); i < n; i++) sp.drips.push([rand(-.6, .6), rand(.8, 2.2)]);
+  G.splats.push(sp);
+}
+function drawSplats(ctx) {
+  for (const s of G.splats) {
+    const x = s.fx * VW, y = s.fy * VH, r = s.r, age = CFG.SPLAT_TIME - s.t;
+    ctx.globalAlpha = .85 * Math.min(1, s.t / .7) * Math.min(1, age * 10);
+    ctx.fillStyle = '#5e0608';
+    ctx.beginPath(); for (let i = 0; i <= 10; i++) { const a = s.rot + i / 10 * Math.PI * 2, rr2 = r * (.78 + .22 * Math.sin(i * 2.7 + s.rot * 3)); ctx.lineTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2); } ctx.fill();
+    for (const [dx, dy, dr] of s.drops) { ctx.beginPath(); ctx.arc(x + dx * r, y + dy * r, dr * r, 0, 7); ctx.fill(); }
+    for (const [dx, len] of s.drips) { const w = r * .14, h = r * len * Math.min(1, age * 2); ctx.fillRect(x + dx * r - w / 2, y, w, h); ctx.beginPath(); ctx.arc(x + dx * r, y + h, w * .8, 0, 7); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,120,120,.25)'; ctx.beginPath(); ctx.arc(x - r * .3, y - r * .3, r * .18, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- Jrohn's space trip ---------- */
+LOD.ui.panel('m2-jrohn',
+  '<div class="inner" style="align-items:center;text-align:center;justify-content:center;gap:14px">' +
+  '<canvas id="jr-av" width="120" height="120" style="width:96px;height:96px"></canvas>' +
+  '<div class="eyebrow">Jrohn · back seat</div>' +
+  '<h2 style="margin:0">"Hey man, wanna try something?"</h2>' +
+  '<div class="row" style="justify-content:center"><button id="jr-yes" class="btn">Yes</button><button id="jr-no" class="btn ghost">No</button></div></div>', { nofocus: true });
+document.getElementById('jr-yes').addEventListener('click', () => answerJrohn(true));
+document.getElementById('jr-no').addEventListener('click', () => answerJrohn(false));
+function openJrohn() {
+  if (!G || G.mode !== 'play') return;
+  G.mode = 'pause'; G.jrAsk = true; LOD.input.clear(); LOD.music.duck(true); // the engine stops the clock while paused
+  const btn = document.getElementById('btn-pause'); if (btn) btn.hidden = true;
+  const cv = document.getElementById('jr-av'), av = LOD.charAvatar(CHAR.Jrohn, 120), x = cv.getContext('2d');
+  x.clearRect(0, 0, 120, 120); if (av) x.drawImage(av, 0, 0, 120, 120); else { x.font = '80px ' + EMOJI; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('😏', 60, 66); }
+  LOD.ui.show('m2-jrohn'); sfx.text();
+}
+function answerJrohn(yes) {
+  if (!G || !G.jrAsk) return; G.jrAsk = false;
+  LOD.resume();
+  if (yes) startSpace(); else LOD.toast('"Suit yourself, man." 🤷', 2);
+}
+function jrohnTrip() { if (!G || G.mode !== 'play') return; LOD.callout('JROHN', 'I feel weird…', 'bad'); startSpace(); }
+function startSpace() {
+  G.space = CFG.SPACE_TIME; G.trans = { t: 0, on: true }; G.stats.trips = (G.stats.trips || 0) + 1;
+  tone(200, 1.2, 'sine', .07, 900); tone(300, 1.4, 'triangle', .04, 1400, .2); LOD.haptic('heavy');
+  if (!G.flags.spaceTip) { G.flags.spaceTip = true; LOD.after(1.2, () => LOD.toast('🌌 SPACE! Small rocks = points, big rocks hurt', 2.8)); }
+}
+function updSpace(dt) { // runs every frame while playing or ending
+  if (G.trans) { G.trans.t += dt; if (G.trans.t >= .5) G.spaceVis = G.trans.on; if (G.trans.t >= 1) G.trans = null; }
+  if (G.mode !== 'play') { if (G.mode === 'ending' && G.space > 0) { G.space = 0; G.trans = { t: 0, on: false }; } return; }
+  if (G.space > 0) {
+    G.space -= dt;
+    if (G.space <= 0) {
+      G.space = 0; G.trans = { t: 0, on: false }; tone(900, 1, 'sine', .06, -700);
+      LOD.after(1, () => LOD.toast('Back on Swedish roads. What just happened? 🇸🇪', 2.4));
+      if (G.driver === 'Jrohn') G.spaceNext = rand(CFG.SPACE_AGAIN[0], CFG.SPACE_AGAIN[1]);
+    }
+  } else if (G.spaceNext > 0 && !G.trans) { G.spaceNext -= dt; if (G.spaceNext <= 0) { G.spaceNext = 0; jrohnTrip(); } }
 }
 
 /* ---------- weaknesses + bonus moments ---------- */
@@ -348,11 +467,11 @@ function updWeak(dt) {
 function updBonus(dt) {
   G.goldT -= dt;
   if (G.goldT <= 0) { G.goldT = rand(30, 45); spawnZombies(1, true); LOD.toast('✨ A GOLDEN ZOMBIE is on the road!', 2.2); sfx.horn(); }
-  G.mumT -= dt;
-  if (G.mumT <= 0 && G.mum <= 0) { G.mumT = rand(45, 65); G.mum = 3.5; G.mumOk = true; G.mumMsg = pick(MUM); sfx.text(); LOD.haptic('warning'); }
-  if (G.mum > 0) {
-    G.mum -= dt;
-    if (G.mum <= 0 && G.mumOk) { LOD.addScore(1500, 'bonus'); LOD.toast('Eyes on the road. Mum is proud. +1 500 📱', 2.2); }
+  G.wifeT -= dt;
+  if (G.wifeT <= 0 && G.wife <= 0) { G.wifeT = rand(45, 65); G.wife = 3.5; G.wifeOk = true; G.wifeMsg = pick(WIFE); sfx.text(); LOD.haptic('warning'); }
+  if (G.wife > 0) {
+    G.wife -= dt;
+    if (G.wife <= 0 && G.wifeOk) { LOD.addScore(CFG.WIFE_BONUS, 'bonus'); LOD.toast('Eyes on the road. The carpet can wait. +' + fmt(CFG.WIFE_BONUS) + ' 📱', 2.2); }
   }
 }
 
@@ -415,6 +534,7 @@ function update(G, dt) {
     else collect(o);
     if (G.mode !== 'play') return;
   }
+  updFriends(oldA, newA);
   // clean up
   G.objs = G.objs.filter(o => {
     if (o.dead) return false; if (o.static) return true;
@@ -450,7 +570,8 @@ function frame(G, dt) {
     G.pos = (G.pos + G.speed * dt) % L;
     if (G.why === 'down' && Math.random() < .5) G.parts.push({ x: G.car.x + rand(-10, 10), y: G.car.y - G.car.w * .5, vx: rand(-20, 20), vy: rand(-80, -40), t: .9, c: '#555' });
   }
-  if (playing || G.mode === 'ending') { for (const f of G.flyers) f.t += dt; if (G.trunk > 0) G.trunk -= dt; }
+  if (playing || G.mode === 'ending') { for (const f of G.flyers) f.t += dt; if (G.trunk > 0) G.trunk -= dt; updSpace(dt); }
+  if (G.splats.length && G.mode !== 'pause') { for (const s of G.splats) s.t -= dt; G.splats = G.splats.filter(s => s.t > 0); }
   if (G.flyers.length) G.flyers = G.flyers.filter(f => f.t < 1.3);
   // electric whine + road noise
   const sp = clamp(G.speed / CFG.MAX_SPEED, 0, 1.4);
@@ -515,6 +636,17 @@ const COL = {
   road: ['#3a3f47', '#363b42'], grass: ['#17331f', '#132b1a'], forest: ['#10241a', '#0d1f16'], rumble: ['#d9dce0', '#b3262c'], lane: '#d8dde2'
 };
 function poly(ctx, x1, y1, x2, y2, x3, y3, x4, y4, c) { ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.lineTo(x4, y4); ctx.closePath(); ctx.fill(); }
+function drawSpaceSegment(ctx, seg, t) { // a faint glowing laser grid instead of the road
+  const a = seg.p1.screen, b = seg.p2.screen, f = seg.fog, hue = (t * 40 + seg.index * 3) % 360;
+  poly(ctx, a.x - a.w, a.y, a.x + a.w, a.y, b.x + b.w, b.y, b.x - b.w, b.y, 'rgba(70,20,140,' + (.16 * f) + ')');
+  const e1 = Math.max(1, a.w / 70), e2 = Math.max(.6, b.w / 70), edge = 'hsla(' + hue + ',100%,65%,' + (.85 * f) + ')';
+  poly(ctx, a.x - a.w - e1, a.y, a.x - a.w + e1, a.y, b.x - b.w + e2, b.y, b.x - b.w - e2, b.y, edge);
+  poly(ctx, a.x + a.w - e1, a.y, a.x + a.w + e1, a.y, b.x + b.w + e2, b.y, b.x + b.w - e2, b.y, edge);
+  const l1 = a.w / 60, l2 = b.w / 60, lw1 = a.w * 2 / LANES, lw2 = b.w * 2 / LANES;
+  for (let i = 1; i < LANES; i++) { const x1 = a.x - a.w + lw1 * i, x2 = b.x - b.w + lw2 * i; poly(ctx, x1 - l1, a.y, x1 + l1, a.y, x2 + l2, b.y, x2 - l2, b.y, 'rgba(120,230,255,' + (.35 * f) + ')'); }
+  if (seg.index % 4 === 0) { const hy = Math.max(1, (a.y - b.y) * .2); ctx.fillStyle = 'rgba(120,230,255,' + (.4 * f) + ')'; ctx.fillRect(a.x - a.w, a.y - hy, a.w * 2, hy); }
+  if (seg.finish) { ctx.fillStyle = 'rgba(255,255,255,' + (.6 * f) + ')'; ctx.fillRect(b.x - b.w, b.y, b.w * 2, Math.max(2, a.y - b.y)); }
+}
 function drawSegment(ctx, seg) {
   const a = seg.p1.screen, b = seg.p2.screen, f = seg.fog, d = seg.dark ? 1 : 0;
   const r1 = a.w / 6, r2 = b.w / 6;
@@ -534,6 +666,47 @@ function drawSegment(ctx, seg) {
     const l1 = a.w / 32, l2 = b.w / 32, lw1 = a.w * 2 / LANES, lw2 = b.w * 2 / LANES;
     for (let i = 1; i < LANES; i++) { const x1 = a.x - a.w + lw1 * i, x2 = b.x - b.w + lw2 * i; poly(ctx, x1 - l1 / 2, a.y, x1 + l1 / 2, a.y, x2 + l2 / 2, b.y, x2 - l2 / 2, b.y, fogc(COL.lane, f)); }
   }
+}
+
+/* space: black sky, twinkling stars, nebulae, planets */
+const SPACE_STARS = Array.from({ length: 150 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() < .15 ? 2.2 : Math.random() < .5 ? 1.4 : .9, p: Math.random() * 6.3, c: pick(['#ffffff', '#cfe3ff', '#ffe7c2', '#e7d1ff']) }));
+let nebKey = '', nebs = null;
+function drawSpaceBg(ctx, t) {
+  ctx.fillStyle = '#020108'; ctx.fillRect(0, 0, VW, VH);
+  const key = VW + 'x' + VH;
+  if (key !== nebKey) {
+    nebKey = key; const m = Math.max(VW, VH);
+    nebs = [['rgba(170,40,200,.42)', .25, .3, .45], ['rgba(30,120,230,.36)', .75, .42, .5], ['rgba(230,60,120,.25)', .5, .8, .4]].map(([c, x, y, r]) => {
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, m * r); g.addColorStop(0, c); g.addColorStop(1, 'rgba(0,0,0,0)'); return { g, x, y, r: m * r };
+    });
+  }
+  for (const n of nebs) { const x = ((((n.x - G.sky * .8) % 1) + 1) % 1) * VW * 1.2 - VW * .1; ctx.save(); ctx.translate(x, n.y * VH); ctx.fillStyle = n.g; ctx.fillRect(-n.r, -n.r, n.r * 2, n.r * 2); ctx.restore(); }
+  for (const s of SPACE_STARS) {
+    const x = (((s.x - G.sky * 2) % 1) + 1) % 1 * VW;
+    ctx.globalAlpha = .45 + .55 * Math.abs(Math.sin(t * 2.2 + s.p)); ctx.fillStyle = s.c; ctx.fillRect(x, s.y * VH, s.s, s.s);
+  }
+  ctx.globalAlpha = 1;
+  // ringed planet + a small moon (parallax)
+  const R = Math.min(VW, VH) * .13, px = (((.2 - G.sky * 1.2) % 1.4) + 1.4) % 1.4 * VW, py = VH * .2;
+  const pg = ctx.createLinearGradient(px - R, py - R, px + R, py + R); pg.addColorStop(0, '#ffb86b'); pg.addColorStop(.5, '#d0603a'); pg.addColorStop(1, '#3a1430');
+  ctx.strokeStyle = 'rgba(255,220,170,.55)'; ctx.lineWidth = R * .12;
+  ctx.beginPath(); ctx.ellipse(px, py, R * 1.9, R * .45, -.25, Math.PI, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = pg; ctx.beginPath(); ctx.arc(px, py, R, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(px, py, R * 1.9, R * .45, -.25, 0, Math.PI); ctx.stroke();
+  const mx = (((.85 - G.sky * 1.6) % 1.3) + 1.3) % 1.3 * VW, my = VH * .12, mr = R * .35;
+  const mg = ctx.createRadialGradient(mx - mr * .4, my - mr * .4, 0, mx, my, mr); mg.addColorStop(0, '#9ff3ff'); mg.addColorStop(1, '#2a4a8a');
+  ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mx, my, mr, 0, 7); ctx.fill();
+}
+function drawAsteroid(ctx, x, y, r, t, seed, gold) {
+  if (r < 1) return;
+  const n = 9, spin = (seed % 2 ? 1 : -1) * (.6 + seed % 1.4);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(t * spin + seed);
+  ctx.fillStyle = gold ? '#e8c64a' : seed % 3 < 1 ? '#6d6470' : seed % 3 < 2 ? '#7a6656' : '#5c6470';
+  ctx.beginPath(); for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, k = .72 + .28 * Math.abs(Math.sin(seed * 7.1 + i * 2.3)); ctx.lineTo(Math.cos(a) * r * k, Math.sin(a) * r * k); } ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = gold ? 'rgba(255,240,160,.9)' : 'rgba(150,220,255,.55)'; ctx.lineWidth = Math.max(1, r * .07); ctx.stroke(); // neon rim light
+  ctx.fillStyle = 'rgba(0,0,0,.28)';
+  ctx.beginPath(); ctx.arc(-r * .25, -r * .15, r * .2, 0, 7); ctx.arc(r * .3, r * .2, r * .14, 0, 7); ctx.arc(r * .05, r * .42, r * .1, 0, 7); ctx.fill();
+  ctx.restore();
 }
 
 /* sky, moon, stars, hills and tree line (parallax with the curves) */
@@ -557,6 +730,81 @@ function drawBackground(ctx, playerY) {
   ctx.lineTo(VW, VH); ctx.fill();
 }
 
+/* ---------- zombies: drawn in canvas, no emoji ---------- */
+// drawZombie(ctx, x, y, h, t, o)
+// x, y = feet (bottom centre), h = height in px (the racer's sprite scale), t = time in seconds.
+// o (optional): { seed, hit: 0..1 flash, gold: true, facing: 1 | -1 }
+function drawZombie(ctx, x, y, h, t, o = {}) {
+  if (h < 3) return;                                   // too far away to see
+  const s = h / 100, seed = o.seed || 0, f = o.facing || 1;
+  const sway = Math.sin(t * 3 + seed) * 4, bob = Math.abs(Math.sin(t * 6 + seed)) * 2;
+  const skin = o.gold ? '#e8c64a' : ['#b9c8a6', '#c4c9b4', '#a9b89c'][seed % 3];
+  const shirt = ['#5a6b7a', '#7a4a42', '#4f5e3c'][seed % 3], pants = '#3a3530';
+  ctx.save();
+  ctx.translate(x, y); ctx.scale(s * f, s); ctx.translate(0, -bob);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,.35)';
+  ctx.beginPath(); ctx.ellipse(0, bob, 22, 5, 0, 0, 7); ctx.fill();
+
+  // legs (shuffling)
+  const step = Math.sin(t * 6 + seed) * 6;
+  ctx.strokeStyle = pants; ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.moveTo(-6, -40); ctx.lineTo(-8 + step, -2); ctx.moveTo(6, -40); ctx.lineTo(8 - step, -2); ctx.stroke();
+  ctx.strokeStyle = skin; ctx.lineWidth = 6;           // bare shin through a torn leg
+  ctx.beginPath(); ctx.moveTo(7 - step * .8, -16); ctx.lineTo(8 - step, -3); ctx.stroke();
+
+  ctx.translate(sway * .3, 0);
+
+  // torso with torn shirt
+  ctx.fillStyle = shirt;
+  ctx.beginPath();
+  ctx.moveTo(-15, -72); ctx.lineTo(15, -72); ctx.lineTo(13, -46);
+  ctx.lineTo(8, -40); ctx.lineTo(4, -45); ctx.lineTo(-1, -38); ctx.lineTo(-6, -44); ctx.lineTo(-10, -39); ctx.lineTo(-13, -46);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = skin;                                 // holes in the shirt
+  ctx.beginPath(); ctx.ellipse(-6, -60, 4, 3, .4, 0, 7); ctx.ellipse(8, -52, 3, 2, -.3, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1.5; // stains
+  ctx.beginPath(); ctx.moveTo(4, -68); ctx.lineTo(9, -62); ctx.stroke();
+  ctx.fillStyle = 'rgba(110,20,20,.55)';
+  ctx.beginPath(); ctx.ellipse(3, -48, 5, 3, 0, 0, 7); ctx.fill();
+
+  // arms reaching forward (towards the viewer)
+  const reach = Math.sin(t * 2.5 + seed) * 3;
+  ctx.strokeStyle = shirt; ctx.lineWidth = 8;
+  ctx.beginPath(); ctx.moveTo(-14, -69); ctx.lineTo(-20, -64); ctx.moveTo(14, -69); ctx.lineTo(20, -64); ctx.stroke();
+  ctx.strokeStyle = skin; ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(-20, -64); ctx.lineTo(-26, -74 - reach);
+  ctx.moveTo(20, -64); ctx.lineTo(27, -76 + reach);
+  ctx.stroke();
+  ctx.lineWidth = 2.5;                                  // claw fingers
+  for (const [hx, hy, d] of [[-26, -74 - reach, -1], [27, -76 + reach, 1]])
+    for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + d * 3 + i * 3, hy - 6); ctx.stroke(); }
+
+  // head (tilted)
+  ctx.save(); ctx.translate(0, -82); ctx.rotate(sway * .03 + .12);
+  ctx.fillStyle = skin;
+  ctx.beginPath(); ctx.ellipse(0, 0, 12, 13, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(60,70,50,.35)';                  // sunken cheeks
+  ctx.beginPath(); ctx.ellipse(-7, 4, 3, 4, 0, 0, 7); ctx.ellipse(7, 4, 3, 4, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#2a2a22';                            // messy hair
+  ctx.beginPath(); ctx.moveTo(-12, -4); ctx.lineTo(-9, -13); ctx.lineTo(-4, -9); ctx.lineTo(1, -14); ctx.lineTo(5, -9); ctx.lineTo(10, -12); ctx.lineTo(12, -4); ctx.quadraticCurveTo(0, -9, -12, -4); ctx.fill();
+  // glowing eyes
+  const glow = o.gold ? '#fff2a8' : '#c6ff4a', pulse = .75 + Math.sin(t * 5 + seed) * .25;
+  ctx.shadowColor = glow; ctx.shadowBlur = 10 * pulse;
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.ellipse(-5, -1, 3, 2.2, 0, 0, 7); ctx.ellipse(5, -1, 3, 2.2, 0, 0, 7); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#1a1010';                            // open mouth
+  ctx.beginPath(); ctx.ellipse(1, 7, 4, 2.5 + Math.abs(Math.sin(t * 4 + seed)) * 1.5, 0, 0, 7); ctx.fill();
+  ctx.restore();
+
+  if (o.hit) { ctx.globalAlpha = o.hit; ctx.fillStyle = '#fff'; ctx.fillRect(-30, -100, 60, 100); }
+  ctx.restore();
+}
+
 /* ---------- sprite drawing (canvas shapes + emoji) ---------- */
 const EMOJI = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 function emo(ctx, ch, x, y, size) { ctx.font = Math.round(size) + 'px ' + EMOJI; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ch, x, y); }
@@ -576,7 +824,7 @@ function drawLamp(ctx, x, y, w, h, left) {
 const HOUSE_STYLE = [{ wall: '#8b2a22', trim: '#efe9dc', roof: '#262a31' }, { wall: '#d2ad4f', trim: '#f6f1e4', roof: '#3b2b25' },
   { wall: '#4d6f93', trim: '#eef2f5', roof: '#22262d' }, { wall: '#e6e0d2', trim: '#7a4a2c', roof: '#3a2a2a' }];
 function drawHouse(ctx, x, y, w, h, s, house) {
-  const c = HOUSE_STYLE[s.style], waiting = house && !house.picked;
+  const c = HOUSE_STYLE[s.style], waiting = house && !house.picked && !house.dead;
   ctx.fillStyle = c.roof; ctx.fillRect(x + w * .68, y + h * .08, w * .08, h * .22);
   ctx.fillStyle = c.wall; ctx.fillRect(x, y + h * .38, w, h * .62);
   ctx.fillStyle = c.roof; ctx.beginPath(); ctx.moveTo(x - w * .04, y + h * .41); ctx.lineTo(x + w / 2, y + h * .02); ctx.lineTo(x + w * 1.04, y + h * .41); ctx.fill();
@@ -607,12 +855,23 @@ function drawBanner(ctx, x, y, w, h) {
   ctx.font = '400 ' + Math.round(h * .1) + 'px Bungee, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f5a524';
   ctx.fillText('FINISH · LAN OR DIE 🏁', x + w / 2, y + h * .1, w * .9);
 }
-function drawBoard(ctx, x, y, w, h, lines) {
-  ctx.fillStyle = '#3a3f47'; ctx.fillRect(x + w * .2, y + h * .5, w * .05, h * .5); ctx.fillRect(x + w * .75, y + h * .5, w * .05, h * .5);
-  ctx.fillStyle = '#1a2733'; ctx.fillRect(x, y, w, h * .55); ctx.strokeStyle = '#f5a524'; ctx.lineWidth = Math.max(1, w * .015); ctx.strokeRect(x, y, w, h * .55);
-  if (w < 40) return;
-  ctx.font = '400 ' + Math.round(h * .12) + 'px Bungee, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#f5c242';
-  lines.forEach((t, i) => ctx.fillText(t, x + w / 2, y + h * (.18 + i * .2), w * .9));
+function drawBoard(ctx, x, y, w, h, b) { // b = an entry from BILLBOARDS
+  const ph = h * .62, col = (b.hero && COLORS[b.hero]) || '#f5a524';
+  ctx.fillStyle = '#3a3f47'; ctx.fillRect(x + w * .2, y + ph, w * .04, h - ph); ctx.fillRect(x + w * .76, y + ph, w * .04, h - ph);
+  ctx.fillStyle = '#121b24'; ctx.fillRect(x, y, w, ph);
+  ctx.strokeStyle = col; ctx.lineWidth = Math.max(1, w * .012); ctx.strokeRect(x, y, w, ph);
+  if (w < 30) return;
+  ctx.fillStyle = 'rgba(255,224,150,.10)'; ctx.fillRect(x, y, w, ph * .12); // the lamp over the board
+  let tx = x + w * .05, tw = w * .9;
+  if (b.hero) {
+    const fs = ph * .82, fx = x + w * .03, fy = y + (ph - fs) / 2, av = LOD.charAvatar(CHAR[b.hero], 128);
+    ctx.fillStyle = col; ctx.fillRect(fx - fs * .03, fy - fs * .03, fs * 1.06, fs * 1.06);
+    if (av) ctx.drawImage(av, fx, fy, fs, fs); else emo(ctx, '😎', fx + fs / 2, fy + fs / 2, fs * .8);
+    tx = fx + fs * 1.1; tw = x + w * .97 - tx;
+  }
+  const n = b.lines.length, lh = ph * .82 / Math.max(n, 2), size = Math.round(Math.min(lh * .78, ph * .3));
+  ctx.font = '400 ' + size + 'px Bungee, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  b.lines.forEach((t, i) => { ctx.fillStyle = i === n - 1 && n > 1 ? col : '#ffffff'; ctx.fillText(t, tx + tw / 2, y + ph / 2 + (i - (n - 1) / 2) * lh, tw); });
 }
 function moosePath(ctx, x, y, w, h, dir, body, antler) { // side view in a 100x100 box, origin bottom-centre
   ctx.save(); ctx.translate(x + w / 2, y + h); ctx.scale(dir * w / 100, h / 100);
@@ -703,7 +962,7 @@ function renderRoad(ctx, t) {
   const base = findSeg(G.pos), basePct = (G.pos % SEG) / SEG;
   const pAbs = absZ(), pSeg = findSeg(pAbs), pPct = (pAbs % SEG) / SEG;
   const playerY = lerp(pSeg.p1.world.y, pSeg.p2.world.y, pPct);
-  drawBackground(ctx, playerY);
+  if (G.spaceVis) drawSpaceBg(ctx, t); else drawBackground(ctx, playerY);
   const fogD = CFG.FOG / LOD.perk('light'); // Wizcudi sees further in the dark
   let maxy = VH, x = 0, dx = -(base.curve * basePct);
   for (let n = 0; n < DDn; n++) {
@@ -713,7 +972,7 @@ function renderRoad(ctx, t) {
     project(seg.p2, G.px * RW - x - dx, playerY + CAM_H, G.pos - (looped ? L : 0));
     x += dx; dx += seg.curve;
     if (seg.p1.camera.z <= CD || seg.p2.screen.y >= seg.p1.screen.y || seg.p2.screen.y >= maxy) continue;
-    drawSegment(ctx, seg);
+    if (G.spaceVis) drawSpaceSegment(ctx, seg, t); else drawSegment(ctx, seg);
     maxy = seg.p1.screen.y;
   }
   // headlights on the road
@@ -748,12 +1007,17 @@ function drawStatic(ctx, seg, s, t) {
   const w = s.ww * sc * Kx, h = s.wh * sc * Kx; if (w < 1.2) return;
   const x = s.center ? sx - w / 2 : s.x < 0 ? sx - w : sx, y = sy - h;
   if (x > VW || x + w < 0) return;
+  if (G.spaceVis && (s.kind === 'tree' || s.kind === 'lamp' || s.kind === 'board' || s.kind === 'msign')) return; // no trees in space
   withClip(ctx, y, sy, seg.clip, seg.fog, () => {
     if (s.kind === 'tree') drawTree(ctx, x, y, w, h, s.v);
     else if (s.kind === 'lamp') drawLamp(ctx, x, y, w, h, s.x < 0);
     else if (s.kind === 'house') drawHouse(ctx, x, y, w, h, s, G.houses[s.i]);
     else if (s.kind === 'friend') {
       const hs = G.houses[s.i]; if (!hs || hs.picked) return;
+      if (hs.dead) { // what is left at the roadside
+        ctx.fillStyle = 'rgba(110,8,10,.85)'; ctx.beginPath(); ctx.ellipse(sx, sy - h * .02, w * .9, w * .22, 0, 0, 7); ctx.fill();
+        emo(ctx, '🪦', sx, sy - h * .25, h * .5); return;
+      }
       const picking = G.pick && G.pick.h === hs, k = picking ? clamp(G.pick.t, 0, 1) : 0;
       if (picking && k >= .98) return;
       // your own PNG (CFG.FRIEND_IMG) > the hero from the character select > pixel-art placeholder
@@ -775,7 +1039,7 @@ function drawStatic(ctx, seg, s, t) {
     else if (s.kind === 'shop') drawShop(ctx, x, y, w, h, s.shop);
     else if (s.kind === 'banner') drawBanner(ctx, x, y, w, h);
     else if (s.kind === 'msign') drawMooseSign(ctx, x, y, w, h);
-    else if (s.kind === 'board') drawBoard(ctx, x, y, w, h, s.text);
+    else if (s.kind === 'board') drawBoard(ctx, x, y, w, h, s.b);
   });
 }
 function drawObj(ctx, seg, o, t) {
@@ -784,10 +1048,12 @@ function drawObj(ctx, seg, o, t) {
   const w = o.ww * sc * Kx, h = o.wh * sc * Kx; if (w < 1) return;
   const x = sx - w / 2, y = sy - h; if (x > VW || x + w < 0) return;
   withClip(ctx, y, sy, seg.clip, seg.fog, () => {
+    if (G.spaceVis && (o.kind === 'car' || o.kind === 'truck' || o.kind === 'block' || o.kind === 'moose')) { const r = w * .55; drawAsteroid(ctx, sx, sy - r, r, t, o.seed * 10 % 17, false); return; }
+    if (G.spaceVis && o.kind === 'zombie') { const r = w * (o.type === 'g' ? .7 : .55); drawAsteroid(ctx, sx, sy - r * 1.2, r, t, (o.zs || 0) % 17 + .5, o.type === 'g'); return; }
     if (o.kind === 'car' || o.kind === 'truck') drawCar(ctx, x, y, w, h, o);
     else if (o.kind === 'zombie') {
       if (o.type === 'g') { ctx.fillStyle = 'rgba(245,194,66,' + (.3 + .2 * Math.sin(t * 8)) + ')'; ctx.beginPath(); ctx.arc(sx, y + h * .5, w * .7, 0, 7); ctx.fill(); }
-      emo(ctx, '🧟', sx + Math.sin(t * 6 + o.seed) * w * .06, y + h * .5, h * (o.type === 'r' ? .9 : 1));
+      drawZombie(ctx, sx, sy, h * (o.type === 'r' ? .9 : 1), t, { seed: o.zs | 0, gold: o.type === 'g', facing: o.vx < 0 ? -1 : 1 });
       if (o.type === 'g' && w > 8) emo(ctx, '✨', sx + w * .4, y + h * .1, h * .3);
     }
     else if (o.kind === 'moose') moosePath(ctx, x, y, w, h, o.dir, '#5a3a22', '#c9a46a');
@@ -809,7 +1075,11 @@ function drawWorld(ctx, G, t) {
     let x, y, size;
     if (f.toward) { x = c.x + f.dir * VW * .45 * k; y = c.y - c.w * .65 - Math.sin(Math.min(1, k) * Math.PI) * VH * .18 + k * k * VH * .45; size = 22 + 120 * k * k; }
     else { x = f.x0 + f.dir * VW * .25 * k; y = c.y - c.w * .5 - Math.sin(Math.min(1, k * 1.2) * Math.PI) * VH * .3; size = 30 * (1 - k * .7); }
-    ctx.save(); ctx.globalAlpha = clamp(1.3 - k, 0, 1); ctx.translate(x, y); ctx.rotate(f.dir * f.t * 7); emo(ctx, f.em, 0, 0, size); ctx.restore();
+    ctx.save(); ctx.globalAlpha = clamp(1.3 - k, 0, 1); ctx.translate(x, y); ctx.rotate(f.dir * f.t * 7);
+    if (f.zombie && G.spaceVis) drawAsteroid(ctx, 0, 0, size * .4, t, (f.zs || 0) % 17 + .5, f.gold);
+    else if (f.zombie) drawZombie(ctx, 0, size * .5, size * 1.2, t, { seed: f.zs, gold: f.gold, hit: clamp(1 - k * 2.5, 0, 1), facing: f.dir });
+    else emo(ctx, f.em, 0, 0, size);
+    ctx.restore();
   }
   // dark edges, lit centre
   const key = VW + 'x' + VH;
@@ -821,20 +1091,36 @@ function wrapText(ctx, text, maxW) {
   for (const w of words) { const tst = cur ? cur + ' ' + w : w; if (ctx.measureText(tst).width > maxW && cur) { lines.push(cur); cur = w; } else cur = tst; }
   if (cur) lines.push(cur); return lines;
 }
+function drawSpaceFx(ctx, t) { // neon speed lines and rainbow tint at the screen edges
+  const W = VW, H = VH, cx = W / 2, cyy = cy, sp = clamp(G.speed / CFG.MAX_SPEED, .3, 1.3), R = Math.hypot(W, H) * .5;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 28; i++) {
+    const a = i / 28 * Math.PI * 2 + i * .37, ph = ((t * 1.6 * sp + i * .13) % 1), r0 = R * (.6 + ph * .5), r1 = r0 + R * .18 * sp;
+    ctx.strokeStyle = 'hsla(' + ((t * 90 + i * 37) % 360) + ',100%,65%,' + (.55 * (1 - ph)) + ')'; ctx.lineWidth = 2 + ph * 3;
+    ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r0, cyy + Math.sin(a) * r0 * .7); ctx.lineTo(cx + Math.cos(a) * r1, cyy + Math.sin(a) * r1 * .7); ctx.stroke();
+  }
+  const hue = (t * 60) % 360, g1 = ctx.createLinearGradient(0, 0, W * .14, 0), g2 = ctx.createLinearGradient(W, 0, W * .86, 0);
+  g1.addColorStop(0, 'hsla(' + hue + ',100%,60%,.28)'); g1.addColorStop(1, 'hsla(' + hue + ',100%,60%,0)');
+  g2.addColorStop(0, 'hsla(' + ((hue + 160) % 360) + ',100%,60%,.28)'); g2.addColorStop(1, 'hsla(' + ((hue + 160) % 360) + ',100%,60%,0)');
+  ctx.fillStyle = g1; ctx.fillRect(0, 0, W * .14, H); ctx.fillStyle = g2; ctx.fillRect(W * .86, 0, W * .14, H);
+}
 function drawScreen(ctx, G, t) {
   const W = VW, H = VH;
+  if (G.splats.length) drawSplats(ctx);
+  if (G.spaceVis) drawSpaceFx(ctx, t);
+  if (G.trans) { ctx.fillStyle = 'rgba(8,2,20,' + clamp(1 - Math.abs(G.trans.t - .5) / .5, 0, 1) + ')'; ctx.fillRect(0, 0, W, H); } // fade into / out of space
   if (G.cat > 0) { // the cat on the dashboard
     const k = Math.min(1, (2.2 - G.cat) * 4, G.cat * 3);
     emo(ctx, '🐈', W / 2 + Math.sin(t * 5) * 20, H - H * .2 * k, H * .38);
     ctx.font = '400 22px Bungee, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.fillText('MEOW!', W / 2, H - H * .42 * k);
   }
-  if (G.mum > 0) { // Mum texts: the phone blocks part of the road
-    const pw = Math.min(250, W * .66), ph = 112, px = W / 2 - pw / 2, py = H * .24;
-    ctx.globalAlpha = Math.min(1, G.mum * 3, (3.5 - G.mum) * 6);
+  if (G.wife > 0) { // the wife texts: the phone blocks part of the road
+    const pw = Math.min(270, W * .66), ph = 112, px = W / 2 - pw / 2, py = H * .24;
+    ctx.globalAlpha = Math.min(1, G.wife * 3, (3.5 - G.wife) * 6);
     ctx.fillStyle = '#0a0a0a'; rr(ctx, px, py, pw, ph, 16); ctx.fill(); ctx.strokeStyle = '#2a3d4e'; ctx.lineWidth = 3; ctx.stroke();
-    ctx.font = '700 12px Barlow, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#93a7b6'; ctx.fillText('📱 Mum · now', px + 14, py + 18);
+    ctx.font = '700 12px Barlow, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#93a7b6'; ctx.fillText('📱 Wife ❤️ · now', px + 14, py + 18);
     ctx.font = '600 15px Barlow, sans-serif'; ctx.fillStyle = '#fff';
-    wrapText(ctx, G.mumMsg, pw - 28).slice(0, 3).forEach((l, i) => ctx.fillText(l, px + 14, py + 44 + i * 19));
+    wrapText(ctx, G.wifeMsg, pw - 28).slice(0, 3).forEach((l, i) => ctx.fillText(l, px + 14, py + 44 + i * 19));
     ctx.globalAlpha = 1;
   }
   if (G.banner) { // forgot someone at the finish line
@@ -871,20 +1157,22 @@ function hud(ctx, G) { // on top of the engine HUD (clock, score, combo)
   ctx.fillText('Picked up: ' + G.picked + '/4', W / 2, 46);
   G.houses.forEach((h, i) => {
     const x = W / 2 + (i - 1.5) * 22, y = 66;
-    ctx.globalAlpha = h.picked ? 1 : .3; ctx.fillStyle = COLORS[h.name] || '#3fa7ff'; ctx.beginPath(); ctx.arc(x, y, 8, 0, 7); ctx.fill();
-    ctx.fillStyle = '#0a1016'; ctx.font = '700 10px Barlow, sans-serif'; ctx.fillText(h.name.slice(0, 1), x, y + 1); ctx.globalAlpha = 1;
+    ctx.globalAlpha = h.picked || h.dead ? 1 : .3; ctx.fillStyle = h.dead ? '#e5484d' : COLORS[h.name] || '#3fa7ff'; ctx.beginPath(); ctx.arc(x, y, 8, 0, 7); ctx.fill();
+    ctx.fillStyle = '#0a1016'; ctx.font = '700 10px Barlow, sans-serif'; ctx.fillText(h.dead ? '✖' : h.name.slice(0, 1), x, y + 1); ctx.globalAlpha = 1;
   });
   // where to next
   const ps = pSegIdx();
   let hint = '';
   if (G.mode !== 'play') hint = '';
+  else if (G.dead.length) hint = '💀 ' + listNames(G.dead) + ' · this round does not count';
   else if (G.picked >= 4) hint = '🏁 Finish · ' + (((N - ps) * 1.1 / 1000).toFixed(1)) + ' km';
   else {
     let best = null, bd = 1e9;
-    for (const h of G.houses) if (!h.picked) { const d = (h.n - ps + N) % N; if (d < bd) { bd = d; best = h; } }
+    for (const h of G.houses) if (!h.picked && !h.dead) { const d = (h.n - ps + N) % N; if (d < bd) { bd = d; best = h; } }
     if (best && bd < 140) hint = '🏠 ' + best.name + ' · ' + Math.round(bd * 1.1) + ' m' + (bd < 30 && Math.floor(G.t * 4) % 2 ? '  SLOW DOWN!' : '');
   }
   if (hint) { ctx.font = '700 14px Barlow, sans-serif'; ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3; ctx.strokeText(hint, W / 2, 90); ctx.fillText(hint, W / 2, 90); }
+  if (G.space > 0) { ctx.textAlign = 'center'; ctx.font = '400 13px Bungee, Impact, sans-serif'; ctx.fillStyle = 'hsl(' + ((G.t * 120) % 360) + ',100%,70%)'; ctx.fillText('🌌 SPACE TRIP · ' + Math.ceil(G.space) + ' s', W / 2, 112); }
   ctx.textAlign = 'right'; ctx.font = '400 12px Bungee, Impact, sans-serif'; ctx.fillStyle = '#93a7b6';
   ctx.fillText(Math.round(G.speed / CFG.MAX_SPEED * 180) + ' km/h', W - pad, G.mult > 1 ? 64 : 46);
 }
@@ -902,12 +1190,19 @@ function onFinish(G) {
 }
 function result(G) {
   const c = k => Math.round((G.cats[k] || {}).pts || 0), s = G.stats, win = G.why === 'done', over = G.why === 'overload';
-  const miss = G.houses.filter(h => !h.picked).map(h => h.name);
+  const miss = G.houses.filter(h => !h.picked && !h.dead).map(h => h.name), dead = G.dead.length > 0;
   const rows = [['Zombies (' + s.kills + ')', c('zombies')], ['Driving', c('drive')], ['Friends picked up (' + G.picked + '/4)', c('friends')]];
   if (c('gear')) rows.push(['Gear recovered (' + G.recovered + ')', c('gear')]);
   if (c('bonus')) rows.push(['Bonus moments', c('bonus')]);
   if (c('egg')) rows.push(['Easter egg 🥚', c('egg')]);
+  if (G.missed) rows.push(['Drove past a friend (' + G.missed + '×)', c('missed')]);
   const bonus = win ? [['Everybody picked up', CFG.VICTORY], ['Time bonus (' + mmss(G.t) + ')', Math.max(0, Math.round((LOD.M.maxTime - G.t) * CFG.TIME_BONUS_PER_S))], ['Gear left (' + G.lives + '/' + CFG.LIVES + ')', G.lives * CFG.LIFE_BONUS]] : [];
+  if (dead) return {
+    head: 'You ran over ' + listNames(G.dead) + '!', noSubmit: true, rows, bonus: [],
+    lead: 'Friends don\'t flatten friends. This round does not count and nothing is sent to the board. Try again.',
+    stats: { win: false, overload: over, kills: s.kills, mooseHit: s.mooseHit, mooseSeen: s.mooseSeen, picked: G.picked, lives: G.lives, time: Math.round(G.t), ranOver: G.dead.length },
+    line: 'Ran over ' + listNames(G.dead) + '. Does not count.'
+  };
   return {
     head: win ? 'Everybody is in!' : over ? 'OVERLOAD!' : 'No LAN without equipment!',
     lead: win ? 'Four friends, ' + G.lives + ' pieces of gear and a trunk that finally stays shut. Grocery store and Systembolaget, here we come.'
@@ -927,6 +1222,7 @@ const BRIEF_TIPS = [
   ['Zombies 🧟', 'on the road = points. Hit them in a row for a combo. ✨ Golden zombies are worth a lot.'],
   ['10 pieces of gear = 10 lives.', 'Cars, 🚧 roadblocks and moose 🦌 knock one out of the trunk. It lands on the road: grab it next lap to get it back.'],
   ['Pickups:', '🍺 beer boosts your abilities, ⚡ gives speed.'],
+  ['Don\'t drive past', 'a waiting friend: −' + fmt(CFG.MISS_PENALTY) + ' every time. And don\'t run them over: that round never counts.'],
   ['Forgot someone?', 'The finish is between the grocery store and Systembolaget. Cross it without everyone and you drive another lap.'],
   ['3:00', 'The road gets busier and faster. Final minute = chaos. At 3:00: OVERLOAD.']
 ];
@@ -969,5 +1265,5 @@ LOD.mission({
   intensity: G => G.speed / CFG.MAX_SPEED * .45 + (G.lives <= 3 ? .3 : 0)
 });
 
-window.__m2 = { get G() { return G; }, CFG, HOUSES, N, SEG, PZ, tryStop, nearHouse, crossFinish, crash, spawnMoose, spawnZombies, get DD() { return DD; } }; // test hooks
+window.__m2 = { get G() { return G; }, CFG, HOUSES, N, SEG, PZ, tryStop, nearHouse, crossFinish, crash, spawnMoose, spawnZombies, spawnCar, addSplat, startSpace, openJrohn, runOver, finishPick, get DD() { return DD; } }; // test hooks
 })();
