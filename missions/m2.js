@@ -51,6 +51,7 @@ const CFG = {
   CAM_HEIGHT: 1300,          // 1000 = as before, higher = further out (smaller car, steeper view, more road ahead)
   MISS_PENALTY: 2000,        // driving past a friend's house without picking them up
   WIFE_BONUS: 1500,          // no crash while the wife's text is on screen
+  WIFE_FIRST: [8, 14],       // seconds into the round for her first text (then every 45–65 s)
   SPLATS_MAX: 6, SPLAT_TIME: 1.8, // blood on the screen when you hit a zombie: at most 6 at once, fades in 1.8 s
   SPACE_TIME: 30,            // seconds of Jrohn's space trip
   SPACE_AGAIN: [25, 40],     // playing AS Jrohn: seconds between trips
@@ -230,7 +231,7 @@ function init(g) {
     pos: 0, speed: 0, px: 0, lap: 1, ramp: LOD.ramp({ every: CFG.LEVEL_EVERY }), objs: [], flyers: [],
     houses: HOUSES.map((h, i) => Object.assign({ i, name: friends[i] || 'Jonas', picked: false }, h)), picked: 0,
     trunk: 0, inv: 0, pick: null, banner: null, steerVis: 0, hold: 0, braking: false, boost: 0, sky: 0, hill: 0, tree: 0, keyWas: false,
-    zT: 2, bT: CFG.BLOCK_EVERY, mT: CFG.MOOSE_EVERY, iT: 5, goldT: rand(25, 40), wifeT: rand(35, 55), weakT: rand(12, 18),
+    zT: 2, bT: CFG.BLOCK_EVERY, mT: CFG.MOOSE_EVERY, iT: 5, goldT: rand(25, 40), wifeT: rand(CFG.WIFE_FIRST[0], CFG.WIFE_FIRST[1]), weakT: rand(12, 18),
     wife: 0, wifeMsg: '', wifeOk: true, splats: [], space: 0, spaceVis: false, trans: null, spaceNext: 0, missed: 0, dead: [], pants: 0, cat: 0, lost: 0, recovered: 0, eggsGot: 0, humT: 0, credits: 0, car: { x: 0, y: 0, w: 0 },
     stats: { kills: 0, gold: 0, crashes: 0, mooseHit: 0, mooseSeen: 0, beers: 0 }
   });
@@ -413,12 +414,17 @@ function drawSplats(ctx) {
 }
 
 /* ---------- Jrohn's space trip ---------- */
+const jrCss = document.createElement('style'); // must fit a phone held sideways with the browser bars showing
+jrCss.textContent = '#m2-jrohn .inner{align-items:center;text-align:center;justify-content:center;gap:12px}#m2-jrohn canvas{width:88px;height:88px}' +
+  '#m2-jrohn h2{margin:0}#m2-jrohn .jr-btns{display:flex;gap:12px;width:100%;max-width:360px}#m2-jrohn .jr-btns .btn{flex:1;min-width:0}' +
+  '@media (max-height:440px){#m2-jrohn{padding-block:10px}#m2-jrohn .inner{gap:8px}#m2-jrohn canvas{width:52px;height:52px}#m2-jrohn h2{font-size:20px}#m2-jrohn .eyebrow{display:none}}';
+document.head.appendChild(jrCss);
 LOD.ui.panel('m2-jrohn',
-  '<div class="inner" style="align-items:center;text-align:center;justify-content:center;gap:14px">' +
-  '<canvas id="jr-av" width="120" height="120" style="width:96px;height:96px"></canvas>' +
+  '<div class="inner">' +
+  '<canvas id="jr-av" width="120" height="120"></canvas>' +
   '<div class="eyebrow">Jrohn · back seat</div>' +
-  '<h2 style="margin:0">"Hey man, wanna try something?"</h2>' +
-  '<div class="row" style="justify-content:center"><button id="jr-yes" class="btn">Yes</button><button id="jr-no" class="btn ghost">No</button></div></div>', { nofocus: true });
+  '<h2>"Hey man, wanna try something?"</h2>' +
+  '<div class="jr-btns"><button id="jr-yes" class="btn">Yes</button><button id="jr-no" class="btn ghost">No</button></div></div>', { nofocus: true });
 document.getElementById('jr-yes').addEventListener('click', () => answerJrohn(true));
 document.getElementById('jr-no').addEventListener('click', () => answerJrohn(false));
 function openJrohn() {

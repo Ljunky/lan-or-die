@@ -859,7 +859,24 @@ function lockLandscape() {
   try { if (TG && TG.lockOrientation && (!TG.isVersionAtLeast || TG.isVersionAtLeast('8.0'))) TG.lockOrientation(); } catch (e) {} // Telegram locks the current one
   try { const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => {}); } catch (e) {}
 }
+let fsByUs = false; // browser fullscreen we asked for (not inside Telegram, which has its own)
+function enterFullscreen() { // must run inside a tap (the brief's Play button)
+  if (TG) return;
+  const d = document, el = d.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req || d.fullscreenElement || d.webkitFullscreenElement) return;
+  try {
+    const p = req.call(el, { navigationUI: 'hide' });
+    fsByUs = true;
+    if (p && p.then) p.then(() => { try { const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => {}); } catch (e) {} }).catch(() => { fsByUs = false; });
+  } catch (e) { fsByUs = false; }
+}
+function exitFullscreen() {
+  if (!fsByUs) return; fsByUs = false;
+  const d = document;
+  try { if (d.fullscreenElement && d.exitFullscreen) d.exitFullscreen().catch(() => {}); else if (d.webkitFullscreenElement && d.webkitExitFullscreen) d.webkitExitFullscreen(); } catch (e) {}
+}
 function unlockOrientation() {
+  exitFullscreen();
   if (!oriLocked) return; oriLocked = false;
   try { if (TG && TG.unlockOrientation && (!TG.isVersionAtLeast || TG.isVersionAtLeast('8.0'))) TG.unlockOrientation(); } catch (e) {}
   try { const o = screen.orientation; if (o && o.unlock) o.unlock(); } catch (e) {}
@@ -871,7 +888,7 @@ function checkRotate() { // runs every frame: cheap, and catches every mode chan
   if (warn && G.mode === 'play') { G.mode = 'pause'; rotPaused = true; J = null; fireHeld = false; music.duck(true); }
   else if (!warn && rotPaused) { rotPaused = false; if (G && G.mode === 'pause' && $('#scr-pause').hidden) resume(); }
   if (inGame && !isPortrait()) lockLandscape();
-  else if (!inGame && oriLocked) unlockOrientation();
+  else if (!inGame && G.mode !== 'ending' && (oriLocked || fsByUs)) unlockOrientation(); // keep it through the end animation
 }
 
 /* ---------- backend: Google Apps Script (swap this block for Supabase later) ---------- */
@@ -1297,6 +1314,7 @@ function showBrief() {
   show('scr-brief');
 }
 function beginPlay() {
+  if (M && M.landscape) enterFullscreen(); // phone browsers: hide the address bar (Android; iPhone Safari has no fullscreen for pages)
   newGame(); G.mode = 'play'; hideAll(); inGameUI(true); camUpdate(0, true); last = performance.now();
   music.duck(false); music.play('game'); music.intensity(0);
   const p = myPerks(); if (p) after(1.2, () => abilityCallout(p.intro));
