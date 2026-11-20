@@ -79,7 +79,7 @@ Total = `G.score` + sum of `bonus`, capped at `cap`.
 - **Helpers:** `clamp, rand, pick, fmt, mmss, esc, today()`.
 
 ## How to ask another model
-> "Here is MODEL-BRIEF.md and missions/m1.js as an example. Write missions/m2.js for 'The Wife Boss' (boss fight: dodge her attacks, smooth-talk at the right moment to fill a 'promise debt' bar). Follow the template and the rules. Don't change engine.js. If you need something the engine doesn't have, list it separately."
+> "Here is CLAUDE.md and missions/m1.js as an example. Write missions/m2.js for 'The Wife Boss' (boss fight: dodge her attacks, smooth-talk at the right moment to fill a 'promise debt' bar). Follow the template and the rules. Don't change engine.js. If you need something the engine doesn't have, list it separately."
 
 Good tasks for other models: new mission files, balancing numbers in `CFG`, new bonus moments, intro/outro texts, badge ideas, bug hunting in one mission.
 Avoid: rewriting `engine.js` or `index.html`. Changes there break all missions.
