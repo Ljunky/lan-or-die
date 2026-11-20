@@ -78,6 +78,9 @@ Total = `G.score` + sum of `bonus`, capped at `cap`.
 - **Audio:** `LOD.tone(...)`, `LOD.noise(...)`, `LOD.music.play('game')`, `LOD.music.intensity(0..1)`. A mission may also define `intensity: G => 0..1`.
 - **Helpers:** `clamp, rand, pick, fmt, mmss, esc, today()`.
 
+## Tests
+Browser tests (Playwright) live in `tests/`: run `bash tests/run.sh` from the repo root after any change to `engine.js` or `index.html`, and before every pull request. Every line must say `PASS` and it must end with `ALL PASSED`. A new mission gets its own `tests/mN.js` (see `tests/README.md`).
+
 ## How to ask another model
 > "Here is CLAUDE.md and missions/m1.js as an example. Write missions/m2.js for 'The Wife Boss' (boss fight: dodge her attacks, smooth-talk at the right moment to fill a 'promise debt' bar). Follow the template and the rules. Don't change engine.js. If you need something the engine doesn't have, list it separately."
 
