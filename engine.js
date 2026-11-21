@@ -783,7 +783,7 @@ const LOD = window.LOD;
 
 /* ===================== CONFIG ===================== */
 const CFG = LOD.CFG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbx8imnqNUNMxuI79n1L60uKUz3SHgQUSMOw-iBh4xzu7zb9SZXvmw_65GUxi3dkp13_/exec', // Apps Script /exec. Empty = this phone only.
+  API_URL: 'https://script.google.com/macros/s/AKfycbx4jv-A4XiKnsfB4CPw6EsyVdUoqcaiyG1b9CbMZi6IiRpZbTNBHHM7yog4UYEsNwO-/exec', // Apps Script /exec. Empty = this phone only.
   TZ: 'Europe/Stockholm',  // "today", mission days and the 23:59 deadline
   MAX_TIME: 180,           // default round limit in seconds -> OVERLOAD
   LAN_DATE: '2026-11-28',
