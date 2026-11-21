@@ -1475,22 +1475,25 @@ async function opening() {
   for (const l of OP.thoughts) await say(l, { who: '💭 ' + me, auto: false });
   hideBox(); G.scene = 'map'; G.strangerT = OP.strangerAfter;
 }
-function updStranger(dt) {
+function updStranger(dt) { // when he shows up you stop; he walks straight to you (max a few seconds), then you choose
   if (G.starter || G.strangerT == null) return;
   if (!stranger) {
-    if ((G.strangerT -= dt) > 0) return;
-    const off = [[6, 0], [-6, 0], [0, 5], [0, -5], [4, 4]].map(([x, y]) => [G.p.x + x * T, G.p.y + y * T]).find(([x, y]) => walkable(x, y)) || [G.p.x + 6 * T, G.p.y];
-    stranger = { x: off[0], y: off[1], dir: 0, step: 0, a: 0 };
+    if (G.scene !== 'map' || (G.strangerT -= dt) > 0) return;
+    const off = [[5, 0], [-5, 0], [0, 4], [0, -4], [3, 3]].map(([x, y]) => [G.p.x + x * T, G.p.y + y * T]).find(([x, y]) => walkable(x, y)) || [G.p.x + 5 * T, G.p.y];
+    stranger = { x: off[0], y: off[1], dir: 0, step: 0, a: 0, walkT: 0 };
+    G.scene = 'talk'; G.v.x = G.v.y = 0; G.walk = 0; LOD.input.clear(); hideBox(); LOD.haptic('light');
+    G.dir = Math.abs(stranger.x - G.p.x) > Math.abs(stranger.y - G.p.y) ? (stranger.x < G.p.x ? 2 : 3) : (stranger.y < G.p.y ? 1 : 0);
   }
   if (stranger.leave) { stranger.x += 30 * dt * stranger.leave; stranger.a = Math.max(0, stranger.a - dt * .7); stranger.step += dt; if (stranger.a <= 0) stranger = null; return; }
   stranger.a = Math.min(1, stranger.a + dt * 1.5);
+  if (stranger.talking) return;
   const dx = G.p.x - stranger.x, dy = G.p.y - stranger.y, d = Math.hypot(dx, dy);
-  if (d < 22) { if (G.scene === 'map') strangerTalk(); return; }
-  const sp = Math.max(36, d * .9) * dt; stranger.x += dx / d * sp; stranger.y += dy / d * sp; stranger.step += dt;
+  if (d < 20 || (stranger.walkT += dt) > 5) { stranger.talking = true; stranger.step = 0; strangerTalk(); return; }
+  const sp = 55 * dt; stranger.x += dx / d * sp; stranger.y += dy / d * sp; stranger.step += dt;
   stranger.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
 }
 async function strangerTalk() {
-  G.scene = 'talk'; G.v.x = G.v.y = 0; LOD.input.clear(); stranger.dir = G.p.y < stranger.y ? 1 : 0;
+  G.scene = 'talk'; G.v.x = G.v.y = 0; LOD.input.clear(); if (stranger) stranger.dir = G.p.y < stranger.y ? 1 : 0;
   await say2(OP.stranger.name, OP.lines[0]);
   const s = await chooseStarter();
   G.party = [mk(s, CFG.START_LV)]; G.caught[s] = 1; G.seen[s] = 1; G.starter = s; SFX.catch(); LOD.haptic('success');
