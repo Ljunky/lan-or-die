@@ -679,7 +679,7 @@ async function throwIt(id) {
   SFX.whoosh();
   const hitP = it.hit != null ? it.hit : 1, hit = Math.random() < hitP;
   const tx = spots.fx + (hit ? 0 : (Math.random() < .5 ? -1 : 1) * 30 * spots.sc / 3), ty = spots.fy - 20 * spots.sc;
-  await layer.arc(spots.mx, spots.my - 30 * spots.sc, tx, ty, { h: weapon ? 10 : 70 * spots.sc / 3, dur: weapon ? .2 : .55, draw: (c, x, y, k, r) => { c.save(); c.translate(x, y); c.rotate(weapon ? 0 : r); c.font = (18 * spots.sc / 3 + 8) + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(weapon ? '💉' : it.em, 0, 0); c.restore(); } });
+  await layer.arc(spots.mx, spots.my - 30 * spots.sc, tx, ty, { h: weapon ? 10 : 34 * spots.sc, dur: weapon ? .25 : .8, draw: (c, x, y, k, r) => { c.save(); c.translate(x, y); c.rotate(weapon ? 0 : r); c.font = (14 * spots.sc + 6) + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(weapon ? '💉' : it.em, 0, 0); c.restore(); } });
   layer.burst(tx, ty, { n: 14, color: ['#fff', '#ffd23a', '#9fd3ea'], speed: 140, size: 3 });
   if (!hit) {
     FX.addTrauma(.1);
@@ -935,7 +935,8 @@ async function blackoutTo(why) {
 /* ---------- starting the different fights ---------- */
 function encTable(z) {
   const reveal = EF.has(G.me, 'reveal'), attract = EF.all(G.me, 'attract').map(f => f.value);
-  return (z.enc || []).filter(([sp]) => SP[sp] && rel(SP[sp]) && (!SP[sp].needs || (SP[sp].needs === 'reveal' && reveal)) && !SP[sp].trapOnly)
+  const extra = EF.all(G.me, 'spawnTable').flatMap(f => f.value || []); // spawnTable effect: extra creatures join every table while it lasts
+  return (z.enc || []).concat(extra).filter(([sp]) => SP[sp] && rel(SP[sp]) && (!SP[sp].needs || (SP[sp].needs === 'reveal' && reveal)) && !SP[sp].trapOnly)
     .map(([sp, w]) => [sp, w * (attract.includes(SP[sp].type) ? 4 : 1) * (SP[sp].needs ? 2 : 1)]);
 }
 function wildFor(z, rare) {
@@ -1301,14 +1302,14 @@ function drawBattle(ctx, t) {
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   // one pixel density for the whole scene: both sides use the same integer scale
   const sc = Math.max(2, Math.min(5, Math.floor(Math.min(W * .4, ah * .45) / 48)));
-  const fx = Math.round(W * .7), fy = Math.round(top + ah * .5), mx = Math.round(W * .3), my = Math.round(top + ah * .96);
+  const fx = Math.round(W * .7), fy = Math.round(top + ah * .46), mx = Math.round(W * .3), my = Math.round(top + ah * .97);
   Object.assign(spots, { fx, fy, mx, my, sc });
   const [sx, sy] = FX.shake(t, 12); ctx.save(); ctx.translate(sx, sy);
   ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(fx, fy, 26 * sc, 6 * sc, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(mx, my, 26 * sc, 6 * sc, 0, 0, 7); ctx.fill();
   const foe = curFoe(), me = active();
   if (foe && !(B.bagT > 0)) {
     const a = foe.alpha == null ? 1 : foe.alpha;
-    if (a > .01) drawCreature(ctx, foe.sp, fx - (foe.off || 0) * 18, fy + (foe.yoff || 0) * 30 * sc, sc, { t, flash: foe.flash, squash: foe.sq, alpha: a, flipX: false, seed: 1.3 });
+    if (a > .01) drawCreature(ctx, foe.sp, fx - (foe.off || 0) * 18, fy + (foe.yoff || 0) * 30 * sc, sc, { t, flash: foe.flash, squash: foe.sq, alpha: foe.hp <= 0 ? a * .8 : a, rot: foe.hp <= 0 && !B.personKO ? .35 : 0, idle: foe.hp > 0, flipX: false, seed: 1.3 });
     if (foe.sp === 'dev' && (B.glitchT > 0 || Math.random() < .05)) glitch(ctx, fx - 24 * sc, fy - 48 * sc, 48 * sc, 48 * sc);
     if (EF.has(foe, 'sleep')) LOD.em('💤', fx + 18 * sc, fy - 44 * sc + Math.sin(t * 3) * 4, 18);
     if (EF.has(foe, 'stun')) for (let i = 0; i < 3; i++) LOD.em('⭐', fx + Math.cos(t * 4 + i * 2.1) * 14 * sc, fy - 46 * sc + Math.sin(t * 4 + i * 2.1) * 4, 12);
@@ -1321,7 +1322,7 @@ function drawBattle(ctx, t) {
   if (B.kind === 'boss' || B.kind === 'trainer') { const s = B.kind === 'boss' ? battleDoll('h_' + B.boss, HERO[B.boss].look) : battleDoll('n_' + B.npc, npcDef(B.npc).look); if (s && !B.personKO) PX.drawSprite(ctx, s, 'idle', t, W - 30, top + 52, { scale: 1, idle: true }); }
   if (foe && !foe.partner) infoBox(ctx, 10, top + 4, Math.min(W * .56, 240), foe, false);
   if (foe && foe.partner) partnerBox(ctx, 10, top + 4, Math.min(W * .62, 250), foe);
-  if (me) infoBox(ctx, W - Math.min(W * .56, 240) - 10, top + ah * .52, Math.min(W * .56, 240), me, true);
+  if (me) infoBox(ctx, W - Math.min(W * .56, 240) - 10, top + ah * .56, Math.min(W * .56, 240), me, true);
   if (B.flashT > 0) { ctx.fillStyle = 'rgba(255,255,255,' + Math.min(1, B.flashT * 1.6) + ')'; ctx.fillRect(0, 0, W, H); }
   if (B.glitchT > 0) glitch(ctx, 0, 0, W, H * .7);
   const tags = [];
@@ -1329,7 +1330,7 @@ function drawBattle(ctx, t) {
   if (EF.has(G.me, 'speed')) tags.push('❄️ ×' + gameSpeed().toFixed(1));
   if (B.yes) tags.push('YES! ' + B.yes); if (B.pants) tags.push('👖 DEF−2'); if (B.conf) tags.push('🌀 ' + B.conf);
   if (B.swap) tags.push('🔁 ATK/DEF'); if (B.reversed) tags.push('⚠️ CHART REVERSED'); if (B.lure > 1) tags.push('🧲 ×' + B.lure.toFixed(1));
-  if (tags.length) { ctx.font = '700 12px Barlow, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; let x = 12; const y = top + ah * .52 + 64; for (const s of tags) { const w = ctx.measureText(s).width + 10; if (x + w > W * .5) break; ctx.fillStyle = 'rgba(10,16,22,.7)'; LOD.rrect(x, y - 9, w, 18, 6); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(s, x + 5, y); x += w + 4; } }
+  if (tags.length) { ctx.font = '700 12px Barlow, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; let x = 12; const y = top + ah * .56 + 70; for (const s of tags) { const w = ctx.measureText(s).width + 10; if (x + w > W * .5) break; ctx.fillStyle = 'rgba(10,16,22,.7)'; LOD.rrect(x, y - 9, w, 18, 6); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(s, x + 5, y); x += w + 4; } }
   if (B.introT > 0) drawIntro(ctx, W, H, t);
 }
 /* fight intro: the opponent's portrait PNG (assets/portraits/<id>.png) slides in, or the sprite */
@@ -1471,7 +1472,7 @@ async function tutorial() {
 let tap = null, devTile = null, devTileT = 0, holdTimer = 0;
 LOD.cv.addEventListener('pointerdown', e => {
   tap = { x: e.clientX, y: e.clientY, t: performance.now() };
-  if (LOD.dev && LOD.M === DEF && G && G.scene === 'map') { clearTimeout(holdTimer); holdTimer = setTimeout(() => { if (!tap) return; const r = LOD.cv.getBoundingClientRect(), v = LOD.view, wx = LOD.cam.x + (tap.x - r.left - v.W / 2) / v.scale, wy = LOD.cam.y + (tap.y - r.top - v.H / 2) / v.scale; devTile = [Math.floor(wx / T), Math.floor(wy / T)]; devTileT = 4; console.log('[m3] tile', devTile); try { navigator.clipboard.writeText('[' + devTile.join(', ') + ']'); } catch (err) {} }, 650); }
+  if (LOD.dev && LOD.M === DEF && G && G.scene === 'map') { clearTimeout(holdTimer); holdTimer = setTimeout(() => { if (!tap) return; const r = LOD.cv.getBoundingClientRect(), v = LOD.view, wx = LOD.cam.x + (tap.x - r.left - v.W / 2) / v.scale, wy = LOD.cam.y + (tap.y - r.top - v.H / 2) / v.scale; devTile = [Math.floor(wx / T), Math.floor(wy / T)]; devTileT = 4; console.log('[m3] tile', devTile); try { navigator.clipboard.writeText('[' + devTile.join(', ') + ']').catch(() => {}); } catch (err) {} }, 650); }
 });
 LOD.cv.addEventListener('pointerup', e => {
   clearTimeout(holdTimer);
@@ -1594,6 +1595,6 @@ const DEF = {
   }
 };
 LOD.mission(DEF);
-window.__m3 = { set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
-  CFG, SP, MAP, ZONES, D, S, tile, zoneAt, tc, mk, goals, startWild, startBoss, startPartner, startDev, startTrainer, startNpcFight, interact, bagMenu, walkable, useItem, give, saveState, loadState, MIGRATE, EF, FX, layer, spots, npcList: () => npcList, gameSpeed };
+window.__m3 = { get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
+  CFG, SP, MAP, ZONES, D, S, tile, zoneAt, tc, mk, goals, startWild, startBoss, startPartner, startDev, startTrainer, startNpcFight, interact, bagMenu, walkable, useItem, give, saveState, loadState, MIGRATE, EF, FX, layer, spots, npcList: () => npcList, gameSpeed, encTable, knockout, catchChance, completion: () => S.completion() };
 })();

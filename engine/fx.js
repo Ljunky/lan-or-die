@@ -109,7 +109,8 @@ fx.layer = (max = 240) => {
       }
     },
     clear() { live.length = nums.length = 0; for (const a of arcs) a.res(); arcs.length = 0; },
-    get count() { return live.length; }
+    get count() { return live.length; },
+    get flying() { return arcs.length; }
   };
   return L;
 };

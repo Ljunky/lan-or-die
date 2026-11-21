@@ -280,7 +280,7 @@ npcs: {
   trainer2: { name: 'Kettlebell Kim', role: 'trainer', at: [44, 11], canDie: true, catchable: true, likes: 'protein', epitaph: 'Swung too hard.',
     look: { skin: '#f0c8a8', hair: '#1a1a1a', style: 'bob', top: '#3ddc84', legs: '#111' }, party: [['golem', 9], ['crow', 8]], release: 'mon',
     lines: { pool: ['WOD of the day: catch 20 creatures, for time.'] } },
-  aiLjunky: { name: 'AI-Ljunky', role: 'trainer', at: [41, 11], canDie: true, catchable: true, likes: 'bitcoin', epitaph: 'SEGMENTATION FAULT (core dumped).',
+  aiLjunky: { name: 'AI-Ljunky', role: 'trainer', at: [44, 12], canDie: true, catchable: true, likes: 'bitcoin', epitaph: 'SEGMENTATION FAULT (core dumped).',
     look: { skin: '#b8c4d0', hair: '#3dff8a', style: 'short', top: '#2a0a3a', legs: '#111', glasses: 1, prop: 'bow' }, party: [['wraith', 18], ['snake', 19], ['frog', 19], ['mummy', 20]], partyFallback: ['ghost', 18], release: 'tue', requires: 'ljunkyDone', robot: true,
     lines: { pool: ['HELLO. I AM LJUNKY. VERSION 2.0. NOW WITH 40 % MORE DIP.', 'ERROR: FEELINGS.EXE NOT FOUND. FIGHT? Y/N', 'I HAVE TRAINED ON 10,000 HOURS OF LJUNKY EXPLAINING CRYPTO. YOU CANNOT WIN.'] },
     win: 'REBOOTING… I… LOVE… THIS… GYM.' }

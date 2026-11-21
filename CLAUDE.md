@@ -22,7 +22,8 @@ A mobile zombie mini-game for 5 friends (Löken, Wizcudi, Jrohn, BigWman, Ljunky
 - Engine handles ranking badges (Legendary/Epic/Rare/Common/Participated), the 👑 Sidequest King (longest round), the scoreboard and the date lock. Missions don't touch these.
 - No copyrighted characters.
 - M2 zombies are drawn in canvas with `drawZombie()` (pale skin, glowing eyes, torn clothes, reaching arms; gold variant for bonus).
-- M3 (portrait RPG, `missions/m3.js`): tune `CFG` at the top; creatures in `SP`, moves in `MOVES`, drinks in `DRINKS`, heroes/boss lines in `HERO`/`BOSS_LINES`, partners in `PARTNERS`, NPC lines in `NPC_LINES`/`NONSENSE`. The map is built from rectangles in the MAP block; zones and encounter tables in `ZONES`.
+- M3 (portrait RPG, `missions/m3.js` + `missions/m3-systems.js`): **all content is data** in `data/m3-data.js` (creatures, moves, items, NPCs, heroes, wives, zones, gym, graves, dealer, apps, tuning). Add content there without code; see `DATA.md`. Entries have `release: 'mon'|'tue'|'wed'`. Creature art = 48x48 PNGs in `assets/creatures/`, fight-intro portraits in `assets/portraits/<id>.png`.
+- Generic engine kit `engine/*.js` (`window.PX`: sprites, fx, effects, data) knows nothing about LAN OR DIE. Only M3 uses it; M1/M2 never touch it. `?fx=off` turns off shake/particles/hit-stop.
 - M2 (landscape): edit `CFG` (CAM_HEIGHT zoom, SPACE_TIME, MISS_PENALTY…), `BILLBOARDS` (hero face + lines) and `WIFE` (texts) at the top of `missions/m2.js`. Running over a friend voids the round (`noSubmit`); Jrohn's space trip turns cars/zombies into asteroids.
 
 ## Mission lifecycle
@@ -68,7 +69,7 @@ Total = `G.score` + sum of `bonus`, capped at `cap`.
 
 ## Engine API (`window.LOD`) – the parts missions use
 - **State:** `LOD.G` (round state), `LOD.M` (current mission), `LOD.player` (name), `LOD.fighter` (character), `LOD.view {W,H,scale}`, `LOD.cam`.
-- **Save missions (M3):** `noTimer: true` (no OVERLOAD, the clock is total playtime), `save: true` (engine keeps `saveState(G)` in `lod.save.m<id>.<player>` every 10 s and on pause; `loadState(G, data)` after `init`; `start(G, continued)`; brief shows Continue / New game), `submitOnSave: true` (sends a new best at most once a minute and on leaving). `perkText: {heroId: {intro, weakText}}` rewords the hero ability for a mission.
+- **Save missions (M3):** `noTimer: true` (no OVERLOAD, the clock is total playtime), `save: true` (engine keeps `saveState(G)` in `lod.save.m<id>.<player>` every 10 s and on pause; `loadState(G, data)` after `init`; `start(G, continued)`; brief shows Continue / New game), `submitOnSave: true` (sends a new best at most once a minute and on leaving). `perkText: {heroId: {intro, weakText}}` rewords the hero ability for a mission. `briefPerks: false` hides the ability/weakness text on the brief and the start callout; `briefClass: 'x'` adds a CSS class to the brief screen.
 - **Layout:** `landscape: true` on a mission = landscape only (portrait pauses and shows a tilt-your-phone overlay). Pause button is top-left; in `hud()` add `LOD.view.hudLeftY` to y for anything in the left column. `result()` may return `noSubmit: true` to void a round (no score sent).
 - **Input:** `LOD.input.move()`, `LOD.input.fire` (bool), `LOD.weapon()` → `{id, kind:'gun'|'melee'|'spray', rate, range, dmg, noise, silenced}`. The mission does hit detection itself.
 - **Score:** `LOD.addScore(pts, category)`, `LOD.combo()` (1–5×), `LOD.comboBreak()`.
