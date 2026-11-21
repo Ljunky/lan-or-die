@@ -157,11 +157,11 @@ const at = (p, x, y) => E(p, ([x, y]) => { const m = window.__m3, [px, py] = m.t
   await drive(p, ['Finish off', '^⚔️ Fight', 'Freezer|Foam|Body|Pickle']);
   g = await E(p, () => window.__m3.G.graves.map(q => q.sp + q.n));
   ok(g.includes('peng1'), 'finished off -> a grave (' + g.join() + ')');
-  await at(p, 6, 19); await p.waitForTimeout(150);
+  await E(p, () => { const m = window.__m3; for (const sp of ['h_loken', 'w_anna', 'n_pirate', 'bat']) m.S.addGrave(m.mk(sp, 5)); });
+  await at(p, 6, 17); await p.waitForTimeout(300); await p.screenshot({ path: OUT + '/M3P_cemetery.png' });
   const spot = await E(p, () => { const i = window.__m3.G.graves.findIndex(q => q.sp === 'peng'); return window.__m3.S.graveSpot(i); });
   await at(p, spot[0], spot[1] + 1); await p.waitForTimeout(200);
   await E(p, () => { window.__m3.give('frostMk1'); });
-  await p.screenshot({ path: OUT + '/M3P_cemetery.png' });
   ok(await E(p, () => window.__m3.G.near && window.__m3.G.near.kind === 'grave'), 'the grave is tappable in the cemetery');
   await E(p, () => { window.__m3.interact(); }); await p.waitForTimeout(150);
   t = await btnText(p);
