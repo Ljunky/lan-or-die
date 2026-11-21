@@ -359,6 +359,14 @@ dealer: {
   empty: 'Come back later. Supply chain issues.'
 },
 
+/* ---------- small pixel sprites (char grids, see PX.palette: o navy, c cream, g/G/d greys, k black, w white …) ---------- */
+sprites: {
+  tomb: { grid: [
+    '...oooooo...', '..oGGGGGGo..', '.oGGwwwwGGo.', '.oGGGGGGGGo.', '.oGgGGGGgGo.', '.oGGggggGGo.', '.oGGGGGGGGo.', '.oGgggggggo.', '.oGGGGGGGGo.',
+    '.oGGGGGGGGo.', 'oogggggggggoo'.slice(0, 12), 'oeeEeeeeEeeo', '.oooooooooo.'] },
+  minicat: { grid: [['o..o....', 'owwo....', 'owbwo..o', 'owwwwoow', '.owwwwwo', '.owowowo', '..o.o.o.'], ['o..o....', 'owwo....', 'owbwo...', 'owwwwooo', '.owwwwwo', '.owowowo', '..o.o.o.']], fps: 2, anims: { idle: [0, 0, 0, 1] } }
+},
+
 /* ---------- the paper doll: rect layers per view, in a 12 x 20 box (feet at the bottom). [x, y, w, h, colourKey]
    colour keys: skin hair top top2 legs shoes arm cap cap2 beard (or any #hex). ---------- */
 dollParts: (() => {

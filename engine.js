@@ -1350,13 +1350,14 @@ function showBrief() {
   $('#brief-card').hidden = !b.card;
   const p = myPerks(), e = egg(), tips = (b.tips || []).slice();
   const pt = (p && M.perkText && M.perkText[fid()]) || p; // a mission can reword the ability/weakness for its own rules
-  if (p) { tips.push(['⭐ ' + p.label + ':', pt.intro]); tips.push(['⚠️ ' + p.weakLabel + ':', pt.weakText]); }
+  if (p && M.briefPerks !== false) { tips.push(['⭐ ' + p.label + ':', pt.intro]); tips.push(['⚠️ ' + p.weakLabel + ':', pt.weakText]); } // briefPerks: false = a mission hides the ability text
   if (e && M.eggs) tips.push(['🥚 Easter egg:', 'find 3 ' + e.what + ' ' + e.em + ' hidden in the level and hold still on each. +' + fmt(CFG.EGG_BONUS) + '.']);
   $('#brief-tips').innerHTML = tips.map((t, i) => '<li><b>' + (i + 1) + '</b><span><strong>' + esc(t[0]) + '</strong> ' + esc(t[1]) + '</span></li>').join('');
   const n = $('#brief-note');
   n.textContent = counts(M) ? 'LIVE. Your best score counts until ' + untilText(M) + '.' : 'Practice. This mission counted on ' + daysText(M) + '. Scores are not saved to the board.';
   n.className = 'note' + (counts(M) ? ' live' : '');
   briefSave();
+  $('#scr-brief').className = 'screen' + (M.briefClass ? ' ' + M.briefClass : ''); // briefClass: a mission can style its own start screen
   show('scr-brief');
 }
 function beginPlay() {
@@ -1366,7 +1367,7 @@ function beginPlay() {
   if (sv) { G.t = sv.t || 0; if (M.loadState) M.loadState(G, sv.data); }
   camUpdate(0, true); last = performance.now();
   music.duck(false); music.play('game'); music.intensity(0);
-  const p = myPerks(); if (p) after(1.2, () => abilityCallout(((M.perkText && M.perkText[fid()]) || p).intro));
+  const p = myPerks(); if (p && M.briefPerks !== false) after(1.2, () => abilityCallout(((M.perkText && M.perkText[fid()]) || p).intro));
   if (M.start) M.start(G, !!sv);
 }
 function resume() { G.mode = 'play'; hideAll(); $('#btn-pause').hidden = false; music.duck(false); last = performance.now(); }

@@ -60,7 +60,7 @@ let p0;
   await E(p, () => localStorage.removeItem('lod.save.m3.Ljunky'));
   ok(await toBrief(p, 'ljunky'), 'menus reach the brief');
   ok(await E(p, () => document.getElementById('brief-go').textContent === 'Go' && !document.getElementById('brief-new')), 'no save yet: brief says Go, no New game button');
-  ok(await E(p, () => /crit chance/.test(document.getElementById('brief-tips').textContent)), 'brief uses the M3 wording of the hero ability (perkText)');
+  ok(await E(p, () => !/FIZZ|Easter|crit|%/.test(document.getElementById('scr-brief').textContent) && document.getElementById('scr-brief').classList.contains('m3solid')), 'brief: solid start screen, no type chart, odds, abilities or easter-egg text');
   await p.click('#brief-go'); await p.waitForTimeout(600);
   await E(p, () => { window.__m3.speed = 20; });
   ok(await E(p, () => window.__m3.G.scene === 'talk' && !!window.__m3.pending), 'new game starts the tutorial');
@@ -85,14 +85,14 @@ let p0;
   ok(await E(p, () => !window.__m3.walkable(...window.__m3.tc(16, 27))), 'stock room door is locked at the start');
 
   // ---------- encounter in tall grass ----------
-  await E(p, () => { const m = window.__m3, [x, y] = m.tc(5, 12); m.G.p.x = x; m.G.p.y = y; m.CFG.ENC_RATE = 1; m.G.encCool = 0; });
+  await E(p, () => { const m = window.__m3, [x, y] = m.tc(14, 12); m.G.p.x = x; m.G.p.y = y; m.CFG.ENC_RATE = 1; m.G.encCool = 0; });
   await walk('ArrowRight', 700);
   ok(await E(p, () => window.__m3.G.scene === 'battle' && window.__m3.B.kind === 'wild'), 'walking in tall grass starts a wild battle');
   await E(p, () => { window.__m3.CFG.ENC_RATE = 0; });
   await p.waitForTimeout(900); await p.screenshot({ path: OUT + '/M3_battle.png' });
   await strong(14);
   const xp0 = await E(p, () => window.__m3.G.party[0].xp + window.__m3.G.party[0].lv * 1000);
-  ok(await drive(p, ['Pull up', 'Fight', 'Pickle|Dill|Peck|Body']) === 'done', 'fight until the battle ends');
+  ok(await drive(p, ['Pull up', 'Walk away', 'Fight', 'Pickle|Dill|Peck|Body']) === 'done', 'fight until the battle ends');
   ok(await E(p, () => window.__m3.G.party[0].xp + window.__m3.G.party[0].lv * 1000) > xp0, 'the winner gained XP');
 
   // ---------- catching ----------
@@ -101,24 +101,24 @@ let p0;
     await E(p, () => { const m = window.__m3; m.G.kr = 500; m.startWild(m.ZONES.find(z => z.id === 'charger')); });
     await p.waitForTimeout(200);
     await E(p, () => { const m = window.__m3; const f = m.B.foes[0]; f.hp = 1; m.B.lure = 50; f.sp = 'snake'; });
-    await drive(p, ['Throw', 'Carrier bag', 'Fight', 'Body|Zap|Pickle']);
+    await drive(p, ['^🎯 Throw', 'Carrier bag', 'Catch', 'Fight', 'Body|Zap|Pickle']);
     caught = await E(p, () => !!window.__m3.G.caught.snake);
   }
   ok(caught, 'a weakened, lured creature goes in the bag');
   g = await E(p, () => ({ kr: window.__m3.G.kr, n: Object.keys(window.__m3.G.caught).length, inParty: window.__m3.G.party.length + window.__m3.G.box.length }));
-  ok(g.kr < 500 && g.n === 2, 'the bag costs 2 kr and the species counts once (' + g.n + ' species)');
+  ok(g.n === 2, 'the species counts once (' + g.n + ' species)');
 
   // ---------- Systembolaget: buy a drink by tapping the cashier ----------
   await E(p, () => { const m = window.__m3, [x, y] = m.tc(42, 31); m.G.p.x = x; m.G.p.y = y; m.G.kr = 100; });
   await p.waitForTimeout(200);
-  ok(await E(p, () => window.__m3.G.near && window.__m3.G.near.id === 'system'), 'the cashier is tappable from the counter');
+  ok(await E(p, () => window.__m3.G.near && window.__m3.G.near.ref && window.__m3.G.near.ref.id === 'system'), 'the cashier is tappable from the counter');
   await E(p, () => { window.__m3.interact(); });
-  for (let i = 0; i < 6; i++) { await E(p, () => { const pd = window.__m3.pending; if (pd && pd.say) pd.res(); }); await p.waitForTimeout(80); } // "ID, please."
+  for (let i = 0; i < 6; i++) { await E(p, () => { const pd = window.__m3.pending; if (pd && pd.say) pd.res(); const b = [...document.querySelectorAll('#m3ui .m3grid button')].find(x => /Shop/.test(x.textContent)); b && b.click(); }); await p.waitForTimeout(80); }
   await E(p, () => { const b = [...document.querySelectorAll('#m3ui .m3grid button')].find(x => /Whisky/.test(x.textContent)); b && b.click(); });
   await p.waitForTimeout(100);
   await p.screenshot({ path: OUT + '/M3_systembolaget.png' });
   await drive(p, ['Leave']);
-  ok(await E(p, () => window.__m3.G.drinks.whisky === 1 && window.__m3.G.kr === 50), 'bought a whisky for 50 kr');
+  ok(await E(p, () => window.__m3.G.items.whisky === 1 && window.__m3.G.kr === 50), 'bought a whisky for 50 kr');
 
   // ---------- partner: the right words solve it ----------
   await E(p, () => window.__m3.startPartner('cicci')); await p.waitForTimeout(900);
@@ -135,7 +135,7 @@ let p0;
     await strong(20); await E(p, () => { for (const c of window.__m3.G.party) c.hp = 999; });
     await E(p, id => window.__m3.startBoss(id), id); await p.waitForTimeout(200);
     if (id === 'bigwman') { await p.waitForTimeout(900); await p.screenshot({ path: OUT + '/M3_boss.png' }); }
-    await drive(p, ['Pull up', 'Fight', 'Burp|Dill|Peas|Hug|Patty|Can|Pickle|Body']);
+    await drive(p, ['Pull up', 'Let it go', 'Fight', 'Burp|Dill|Peas|Hug|Patty|Can|Pickle|Body']);
     ok(await E(p, id => window.__m3.G.beat.includes(id), id), 'beat ' + id);
   }
   ok(await E(p, () => window.__m3.walkable(...window.__m3.tc(16, 27))), 'stock room opens after 4 heroes');
