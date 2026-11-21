@@ -30,6 +30,7 @@ LOD.mission({
   noTimer: true,            // valfri: ingen maxTime/OVERLOAD, klockan visar total speltid (M3)
   briefPerks: false,        // valfri: dölj förmåga/svaghet i briefen och callouten vid start (M3)
   briefClass: 'm3solid',    // valfri: extra CSS-klass på brief-skärmen (M3)
+  briefTitle: 'Wake up.',   // valfri: ersätter rubriken "Your objective" (M3)
   save: true,               // valfri: sparar per spelare i localStorage 'lod.save.m<id>.<spelare>' var 10:e s, vid paus och när fliken döljs.
                             //   Missionen ger datat: saveState(G) -> objekt, loadState(G, data) efter init, start(G, continued). Briefen får Continue / New game.
   perkText: { loken: { intro, weakText } }, // valfri: egen text för hjältens förmåga/svaghet i briefen och startrutan

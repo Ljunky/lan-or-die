@@ -422,7 +422,8 @@ const canAct = c => !(EF.has(c, 'sleep') || EF.has(c, 'stun') || EF.has(c, 'lose
 function lunge(side) { const c = side === 'me' ? active() : curFoe(); if (!c) return; FX.tween(c, { off: 1 }, .12, 'outQuad', () => FX.tween(c, { off: 0 }, .22, 'outBack')); }
 
 async function startBattle(o) {
-  if (B || !G.party.some(c => c.hp > 0)) return;
+  if (B) return;
+  if (!G.party.some(c => c.hp > 0)) { if (!G.party.length) LOD.toast(OP.noFight, 1.8); return; }
   G.scene = 'battle'; LOD.input.clear(); layer.clear();
   const z = zoneAt(G.p.x, G.p.y);
   B = Object.assign({ kind: 'wild', foes: [], fi: 0, me: G.party.findIndex(c => c.hp > 0), turn: 0, ult: false, lure: 1, atm: false, yes: 0, pants: false,
@@ -918,17 +919,17 @@ async function endBattle() {
   if (r === 'heart') await blackoutTo('heart');
   if (dev) await devWon();
 }
-async function blackoutTo(why) {
+async function blackoutTo(why) { // every line moves on by itself (a tap skips): it must never look stuck
+  const RS = D.raw.respawn, toGrave = why === 'heart' && cemeteryOpen();
+  await FX.fade(1, .7);
   G.scene = 'talk';
-  const toGrave = why === 'heart' && cemeteryOpen();
-  if (why === 'heart') { await FX.fade(1, .5); await say('Your heart goes BA-DUM… BA… DUM………', { auto: false }); }
-  else await say('All your creatures fainted…', { auto: false });
+  await say(why === 'heart' ? RS.heart : RS.lose, { auto: true, t: 1.8 });
   const lost = Math.floor(G.kr * .2); G.kr -= lost;
   for (const c of G.party) c.hp = maxHp(c);
-  [G.p.x, G.p.y] = toGrave ? tc(6, 19) : tc(40, 41); G.dir = toGrave ? 0 : 1;
+  [G.p.x, G.p.y] = toGrave ? tc(6, 19) : tc(...RS.at); G.dir = 0; G.v.x = G.v.y = 0;
   LOD.cam.x = G.p.x; LOD.cam.y = G.p.y;
-  await FX.fade(0, .6);
-  await say(toGrave ? 'You wake up at the cemetery gate. Someone already measured you for a stone. You dropped ' + lost + ' kr.' : 'You wake up at Apotek Hjärtat. The pharmacist patched everyone up. You dropped ' + lost + ' kr.', { auto: false });
+  await FX.fade(0, .9);
+  await say(PX.data.fmt(toGrave ? RS.wakeGrave : RS.wakeVan, { lost }), { auto: true, t: 3.2 });
   hideBox(); G.scene = 'map';
 }
 
@@ -1026,7 +1027,7 @@ function updMap(dt) {
   }
   // encounters
   const ch = tile(Math.floor(G.p.x / T), Math.floor((G.p.y - 2) / T));
-  if (ENC_TILES.has(ch) && z.enc && moved > 0) {
+  if (ENC_TILES.has(ch) && z.enc && moved > 0 && G.party.length) {
     G.stepD += moved;
     while (G.stepD >= T) {
       G.stepD -= T; G.encCool--;
@@ -1281,6 +1282,7 @@ function drawWorld(ctx, G, t) {
   }
   for (const id of HERO_IDS) if (heroVisible(id)) { const [x, y] = tc(...HERO[id].at); list.push({ y: y + 6, f: () => { drawPerson(ctx, HERO[id].look, x, y + 6, 0, 0, t, { seed: id.length }); if (!G.beat.includes(id)) bubble(ctx, x, y - 18, '!', '#e3000f', t); else LOD.em('✅', x + 7, y - 14, 7); } }); }
   for (const id in PARTNERS) if (partnerVisible(id)) { const [x, y] = tc(...PARTNERS[id].at); list.push({ y: y + 6, f: () => { drawPerson(ctx, PARTNERS[id].look, x, y + 6, 0, 0, t); if (!G.solved.includes(id)) bubble(ctx, x, y - 18, '?', '#e05cc4', t); } }); }
+  if (stranger) list.push({ y: stranger.y, f: () => drawPerson(ctx, OP.stranger.look, stranger.x, stranger.y, stranger.dir, stranger.step ? 1 : 0, t, { alpha: stranger.a }) });
   if (G.beat.length >= 4 && !G.dev) { const [x, y] = tc(16, 24); list.push({ y: y + 6, f: () => drawPerson(ctx, DEV_LOOK, x, y + 6, 0, 0, t, { glitch: 1 }) }); }
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
   if (G.near && G.scene === 'map') { const n = G.near; ctx.fillStyle = '#fbf6e8'; ctx.strokeStyle = '#1F2A44'; ctx.lineWidth = 1; LOD.rrect(n.x - 6, n.y - 38 + Math.sin(t * 6) * 1.5, 12, 9, 3); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#1F2A44'; ctx.font = '700 7px Barlow, sans-serif'; ctx.fillText('TAP', n.x, n.y - 33.5 + Math.sin(t * 6) * 1.5); }
@@ -1373,7 +1375,7 @@ function partnerBox(ctx, x, y, w, foe) {
 }
 
 function hud(ctx, G) {
-  if (!G.started) return;
+  if (!G.started || wakeT > 0) return;
   const { W } = LOD.view, y0 = 22 + LOD.view.hudLeftY;
   if (G.scene !== 'battle') {
     ctx.font = '700 13px Barlow, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
@@ -1395,6 +1397,13 @@ function drawScreen(ctx, G, t) {
   else if (G.blurT > 0) { ctx.fillStyle = 'rgba(200,120,255,' + (.08 + Math.sin(t * 2) * .04) + ')'; ctx.fillRect(0, 0, LOD.view.W, LOD.view.H); }
   if (G.mirrorT > 0 && G.scene !== 'battle') { ctx.fillStyle = 'rgba(224,92,196,.1)'; ctx.fillRect(0, 0, LOD.view.W, LOD.view.H); }
   FX.drawScreen(ctx, LOD.view.W, LOD.view.H, t);
+  if (wakeT > 0 || (G.scene === 'talk' && !G.started)) drawLids(ctx, wakeT > 0 ? lidOpen(1 - wakeT / OP.blink) : 0);
+}
+function drawLids(ctx, o) { // waking up: two black eyelids, a dark haze that lifts
+  const { W, H } = LOD.view, h = (1 - o) * H / 2 + 2;
+  ctx.fillStyle = 'rgba(0,0,0,' + (.65 * (1 - o)) + ')'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, h); ctx.fillRect(0, H - h, W, h);
+  for (let i = 0; i < 18; i++) { ctx.fillStyle = 'rgba(0,0,0,' + (.5 - i / 36) + ')'; ctx.fillRect(0, h + i * 2, W, 2); ctx.fillRect(0, H - h - (i + 1) * 2, W, 2); }
 }
 
 /* ===================== SCORE: goals, each counted once ===================== */
@@ -1451,22 +1460,83 @@ function loadState(G, d) {
   S.afterLoad();
   initPeople();
 }
-async function tutorial() {
-  G.scene = 'talk';
-  const pir = NPCS.pirate.name;
-  await say('You wake up in the van. Your head is pounding.', { auto: false });
-  await say('Everything looks… pixelated. Something rustles between the cars.', { auto: false });
-  await say2(pir, "Arr! Ye've been spiked, matey. ICA Maxi be a creature world now.");
-  await say2(pir, "It's dangerous to shop alone. Take one o' these.");
-  const st = ['frog', 'cuke', 'peng'];
-  const s = await ask('Choose your first creature.', st.map(sp => ({ label: SP[sp].name, img: creatureIcon(sp), ty: SP[sp].type, sub: SP[sp].desc, value: sp })), { one: true, who: pir });
+/* ===================== THE OPENING: wake up, walk around, the stranger, choose a starter ===================== */
+const OP = D.raw.opening;
+let wakeT = 0, stranger = null;
+const lidOpen = u => { // how open the eyes are, u = 0..1 through the blink
+  const K = [[0, 0], [.16, .3], [.26, 0], [.42, .55], [.52, .08], [.78, 1], [1, 1]];
+  for (let i = 1; i < K.length; i++) if (u <= K[i][0]) { const [a, va] = K[i - 1], [b, vb] = K[i]; return va + (vb - va) * (u - a) / (b - a); }
+  return 1;
+};
+async function opening() {
+  G.scene = 'talk'; wakeT = OP.blink;
+  await sleep(OP.blink);
+  const me = (HERO[heroId()] || {}).name || 'You';
+  for (const l of OP.thoughts) await say(l, { who: '💭 ' + me, auto: false });
+  hideBox(); G.scene = 'map'; G.strangerT = OP.strangerAfter;
+}
+function updStranger(dt) {
+  if (G.starter || G.strangerT == null) return;
+  if (!stranger) {
+    if ((G.strangerT -= dt) > 0) return;
+    const off = [[6, 0], [-6, 0], [0, 5], [0, -5], [4, 4]].map(([x, y]) => [G.p.x + x * T, G.p.y + y * T]).find(([x, y]) => walkable(x, y)) || [G.p.x + 6 * T, G.p.y];
+    stranger = { x: off[0], y: off[1], dir: 0, step: 0, a: 0 };
+  }
+  if (stranger.leave) { stranger.x += 30 * dt * stranger.leave; stranger.a = Math.max(0, stranger.a - dt * .7); stranger.step += dt; if (stranger.a <= 0) stranger = null; return; }
+  stranger.a = Math.min(1, stranger.a + dt * 1.5);
+  const dx = G.p.x - stranger.x, dy = G.p.y - stranger.y, d = Math.hypot(dx, dy);
+  if (d < 22) { if (G.scene === 'map') strangerTalk(); return; }
+  const sp = Math.max(36, d * .9) * dt; stranger.x += dx / d * sp; stranger.y += dy / d * sp; stranger.step += dt;
+  stranger.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
+}
+async function strangerTalk() {
+  G.scene = 'talk'; G.v.x = G.v.y = 0; LOD.input.clear(); stranger.dir = G.p.y < stranger.y ? 1 : 0;
+  await say2(OP.stranger.name, OP.lines[0]);
+  const s = await chooseStarter();
   G.party = [mk(s, CFG.START_LV)]; G.caught[s] = 1; G.seen[s] = 1; G.starter = s; SFX.catch(); LOD.haptic('success');
-  await say(SP[s].name + ' joined your party!', { auto: false });
-  await say2(pir, 'And take these. Me shopping list fell out o\' yer pocket, too. Arr.');
-  give('folkol', 2); give('fizztab', 1); give('bag', 5);
+  if (stranger) { stranger.leave = G.p.x < stranger.x ? 1 : -1; stranger.dir = stranger.leave > 0 ? 3 : 2; }
+  await say(PX.data.fmt(OP.joined, { name: SP[s].name }), { auto: false });
   G.lvlPts = partyLevelPts();
   hideBox(); G.scene = 'map';
 }
+/* starter claims: first come, first served across the five players */
+const CLAIM_KEY = 'lod.claims.m3';
+const liveClaims = () => LOD.status(DEF) === 'live' && !LOD.dev && !!LOD.CFG.API_URL;
+let claimsApi = false;
+async function fetchJSON(url, opt = {}, ms = 4000) {
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, Object.assign({ signal: ctl.signal }, opt)); return await r.json(); } finally { clearTimeout(tm); }
+}
+async function loadClaims() {
+  claimsApi = false;
+  if (!liveClaims()) return LOD.store.get(CLAIM_KEY, {});
+  try { // the server only answers with "claims" once the Apps Script supports it (see backend/claims.gs)
+    const u = LOD.CFG.API_URL, j = await fetchJSON(u + (u.includes('?') ? '&' : '?') + 'claims=' + DEF.id + '&t=' + Date.now());
+    if (j && j.claims && typeof j.claims === 'object') { claimsApi = true; LOD.store.set(CLAIM_KEY + '.live', j.claims); return j.claims; }
+  } catch (e) {}
+  return LOD.store.get(CLAIM_KEY + '.live', {});
+}
+async function claimStarter(sp) {
+  const me = LOD.player;
+  if (claimsApi) {
+    try { const j = await fetchJSON(LOD.CFG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'claim', mission: DEF.id, name: me, pick: sp, ts: Date.now() }) }); if (j && j.ok === false && j.taken) return false; } catch (e) {}
+    return true;
+  }
+  if (!liveClaims()) { const c = LOD.store.get(CLAIM_KEY, {}); if (Object.keys(c).some(n => n !== me && c[n] === sp)) return false; c[me] = sp; LOD.store.set(CLAIM_KEY, c); }
+  return true;
+}
+async function chooseStarter() {
+  for (;;) {
+    ui.box.hidden = false; boxText('…', OP.stranger.name); ui.grid.innerHTML = '';
+    const claims = await loadClaims(), me = LOD.player, mine = claims[me] && OP.starters.includes(claims[me]) ? claims[me] : null;
+    let avail = mine ? [mine] : OP.starters.filter(sp => !Object.keys(claims).some(n => n !== me && claims[n] === sp));
+    if (!avail.length) avail = OP.starters.slice();
+    const s = await ask(OP.lines[1], avail.map(sp => ({ label: SP[sp].name, img: creatureIcon(sp), ty: SP[sp].type, value: sp })), { one: avail.length < 3, who: OP.stranger.name });
+    if (await claimStarter(s)) return s;
+    await say2(OP.stranger.name, OP.tooSlow);
+  }
+}
+if (LOD.dev && new URLSearchParams(location.search).get('claims') === 'reset') { try { localStorage.removeItem(CLAIM_KEY); } catch (e) {} }
 
 /* ===================== INPUT: tap = talk / next. ?dev: long-press shows + copies the tile ===================== */
 let tap = null, devTile = null, devTileT = 0, holdTimer = 0;
@@ -1506,21 +1576,6 @@ const DEF = {
   id: 3, title: 'Bad Trip at Maxi', unlock: '2026-11-23', until: '2026-11-25', cap: 300000,
   world: { w: MW * T, h: MH * T }, eggs: false, noFire: true, noTimer: true, save: true, submitOnSave: true, briefPerks: false, briefClass: 'm3solid',
   viewScale: (W, H) => Math.min(W / (CFG.VIEW_TILES * T), H / (16 * T)),
-  intro: ({ player }) => ({
-    kind: 'chat', title: 'LAN SQUAD 🎮', sub: 'Löken, Wizcudi, Jrohn, BigWman, Ljunky', button: 'Wake up 🥴',
-    lines: [
-      { at: 'Fri 21:47 · pre-LAN beer' },
-      { from: 'Löken', text: 'Pre-LAN beer at mine! Stick together, boys!' },
-      { from: 'BigWman', text: 'I made a spreadsheet of who owes for the beer. YES!' },
-      { from: 'Jrohn', text: 'Has anyone seen my shirt?' },
-      { from: 'Wizcudi', text: 'Who left the kitchen light on?!' },
-      { from: 'Ljunky', text: 'I mixed the drinks tonight. Special recipe 😇' },
-      { at: 'Sat 07:12' },
-      { from: 'You', text: 'why am i in the van. why is the van at ICA Maxi' },
-      { from: 'You', text: 'why is everything… pixels' },
-      { sfx: 'zombie', text: '*something rustles in the parking lot*', shake: true }
-    ]
-  }),
   outro: (G) => G.why === 'done' ? {
     kind: 'chat', title: 'LAN SQUAD 🎮', sub: 'Löken, Wizcudi, Jrohn, BigWman, Ljunky', tbc: 'The LAN is on 28 Nov. Bring the shopping list.',
     lines: [
@@ -1531,10 +1586,8 @@ const DEF = {
       { from: 'Jrohn', text: 'Did anyone find my shirt in there?' }
     ]
   } : null,
-  brief: {
-    card: '<p>Someone spiked your drink at the pre-LAN beer. You wake up in the van outside <b>ICA Maxi Åkersberga</b>, and nothing looks right anymore.</p><p>Find out who did it.</p>',
-    tips: [['Move:', 'drag anywhere.'], ['Talk / act:', 'tap.'], ['🎒:', 'your bag.']]
-  },
+  briefTitle: 'Wake up.',
+  brief: { card: '', tips: [['Move:', 'drag anywhere.'], ['Talk / act:', 'tap.'], ['🎒:', 'your bag.']] },
   badges: [
     { em: '🧪', name: 'Debugged the Dev', t: s => s.dev },
     { em: '🛒', name: 'Full Cart', t: s => s.items >= 8 },
@@ -1548,7 +1601,7 @@ const DEF = {
   intensity: G => G.scene === 'battle' ? (B && B.kind !== 'wild' ? .9 : .5) : .12,
 
   init(G_) {
-    G = G_; FLOW++; waits.length = 0; B = null; pending = null; FX.reset(); layer.clear();
+    G = G_; FLOW++; waits.length = 0; B = null; pending = null; FX.reset(); layer.clear(); stranger = null; wakeT = 0;
     buildUI(); hideBox();
     if (!mapCv) mapCv = renderMap();
     const [x, y] = tc(4, 62);
@@ -1563,8 +1616,9 @@ const DEF = {
   saveState, loadState,
   start(G, cont) {
     G.started = true; G.zoneT = 2.5;
-    if (cont && G.party.length) LOD.toast('Welcome back 💾', 2);
-    else tutorial();
+    if (cont && (G.starter || G.party.length)) LOD.toast('Welcome back 💾', 2);
+    else if (cont) { G.strangerT = 2; } // saved before choosing a starter: he comes back
+    else { for (const k in OP.startItems) give(k, OP.startItems[k]); opening(); }
   },
   update(G, dt) {
     const real = FX.step(dt);
@@ -1572,6 +1626,7 @@ const DEF = {
     tickWaits(real * (B ? clamp(gameSpeed(), .5, 3) : 1));
     layer.update(dt);
     if (devTileT > 0 && (devTileT -= dt) <= 0) devTile = null;
+    if (wakeT > 0) wakeT = Math.max(0, wakeT - dt * TEST_SPEED);
     if (!G.started) return;
     EF.tick(G.me, dt, { onHeart: heartAttack });
     if (G.blurT > 0) G.blurT -= dt; if (G.mirrorT > 0) G.mirrorT -= dt; if (G.zoneT > 0) G.zoneT -= dt; if (G.fishT > 0) G.fishT -= dt;
@@ -1579,6 +1634,7 @@ const DEF = {
     S.tick(dt);
     if (heartPending && G.scene === 'map') { G.scene = 'talk'; heartAttackFlow(); }
     if (G.scene === 'map') updMap(real * gameSpeed());
+    if (G.scene === 'map' || stranger) updStranger(real);
     if (Object.keys(G.caught).filter(isCreature).length >= 15) G.flags.loyalReady = 1;
     G.score = goals().total;
   },
@@ -1595,6 +1651,6 @@ const DEF = {
   }
 };
 LOD.mission(DEF);
-window.__m3 = { get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
+window.__m3 = { summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
   CFG, SP, MAP, ZONES, D, S, tile, zoneAt, tc, mk, goals, startWild, startBoss, startPartner, startDev, startTrainer, startNpcFight, interact, bagMenu, walkable, useItem, give, saveState, loadState, MIGRATE, EF, FX, layer, spots, npcList: () => npcList, gameSpeed, encTable, knockout, catchChance, completion: () => S.completion() };
 })();

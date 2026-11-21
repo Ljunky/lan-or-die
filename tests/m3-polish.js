@@ -36,7 +36,7 @@ async function play(p, hero = 'bigwman') { // fresh game, starter chosen, on the
   await E(p, () => localStorage.removeItem('lod.save.m3.Ljunky'));
   await toBrief(p, hero); await p.click('#brief-go'); await p.waitForTimeout(400);
   await E(p, () => { window.__m3.speed = 25; });
-  await drive(p, ['Folköl Frog']);
+  await pickStarter(p, 'Folköl Frog');
   await E(p, () => { const m = window.__m3; m.G.party = ['frog', 'cuke', 'peng', 'bear'].map(s => m.mk(s, 18)); m.G.kr = 5000; });
 }
 async function drive(p, prefer, max = 500) {
@@ -68,6 +68,22 @@ async function until(p, re, max = 200) {
 const btnText = p => E(p, () => [...document.querySelectorAll('#m3ui .m3grid button')].map(b => b.textContent).join(' | '));
 const at = (p, x, y) => E(p, ([x, y]) => { const m = window.__m3, [px, py] = m.tc(x, y); m.G.p.x = px; m.G.p.y = py; window.__lod.LOD.cam.x = px; window.__lod.LOD.cam.y = py; }, [x, y]);
 
+// the opening: blink, thoughts, then the stranger walks up and you pick a starter
+async function pickStarter(p, name) {
+  for (let i = 0; i < 300; i++) {
+    const st = await p.evaluate(name => {
+      const m = window.__m3, G = m.G, pd = m.pending;
+      if (G.starter) return 'done';
+      if (pd && pd.say) { pd.res(); return 'say'; }
+      const b = [...document.querySelectorAll('#m3ui .m3grid button')].find(x => new RegExp(name).test(x.textContent)); if (b) { b.click(); return 'pick'; }
+      if (G.scene === 'map' && !m.stranger) m.summon();
+      return 'wait';
+    }, name);
+    if (st === 'done') { await p.evaluate(() => { const pd = window.__m3.pending; if (pd && pd.say) pd.res(); }); await p.waitForTimeout(100); await p.evaluate(() => { const pd = window.__m3.pending; if (pd && pd.say) pd.res(); }); return true; }
+    await p.waitForTimeout(40);
+  }
+  return false;
+}
 (async () => {
   const b = await chromium.launch();
 
@@ -84,12 +100,12 @@ const at = (p, x, y) => E(p, ([x, y]) => { const m = window.__m3, [px, py] = m.t
   const brief = await E(p, () => { const s = document.getElementById('scr-brief'), inner = s.querySelector('.inner'); return { txt: s.textContent, cls: s.className, bg: getComputedStyle(inner).backgroundColor }; });
   ok(/m3solid/.test(brief.cls) && brief.bg === 'rgb(251, 246, 232)', 'start screen: solid cream panel (' + brief.bg + ')');
   ok(!/FIZZ|GRUB|Easter|egg|catch|%|crit|Weakness|ability/i.test(brief.txt), 'start screen: no type chart, odds, easter egg or hints');
-  ok(/spiked/.test(brief.txt) && /drag/.test(brief.txt), 'start screen: story hook + controls');
+  ok(!/spiked/.test(brief.txt) && /Wake up/.test(brief.txt) && /drag/.test(brief.txt), 'start screen: "Wake up." + controls only, no story spoilers');
   await p.screenshot({ path: OUT + '/M3P_start.png' });
 
   // ---------- discovery ----------
   await p.click('#brief-go'); await p.waitForTimeout(300);
-  await E(p, () => { window.__m3.speed = 25; }); await drive(p, ['Folköl Frog']);
+  await E(p, () => { window.__m3.speed = 25; }); await pickStarter(p, 'Folköl Frog');
   await E(p, () => { window.__m3.give('snus', 2); window.__m3.bagMenu(); });
   await until(p, '^🍺 Use');
   await p.waitForTimeout(100);
@@ -127,6 +143,65 @@ const at = (p, x, y) => E(p, ([x, y]) => { const m = window.__m3, [px, py] = m.t
   ok(await E(p, () => Array.isArray(window.__m3.devTile) && Math.abs(window.__m3.devTile[0] - 12) <= 2 && Math.abs(window.__m3.devTile[1] - 59) <= 2), 'dev: long-press shows the tile (' + JSON.stringify(await E(p, () => window.__m3.devTile)) + ')');
   ok(p.errs.length === 0, 'no page errors (start/phone)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
   await p.close();
+
+  // ---------- losing a fight: no taps needed, you wake up in the van ----------
+  p = await open(b); await play(p);
+  await E(p, () => { const m = window.__m3; m.G.party = [m.mk('frog', 2)]; m.startWild(m.ZONES.find(z => z.id === 'parking')); });
+  await p.waitForTimeout(300);
+  await E(p, () => { const m = window.__m3, f = m.B.foes[0]; f.lv = 40; f.hp = 9999; f.sp = 'golem'; });
+  let lost = false;
+  for (let i = 0; i < 400 && !lost; i++) { // only press Fight; never tap through text
+    lost = await E(p, () => { const m = window.__m3; if (/fainted|black|wake/.test(document.querySelector('#m3ui .m3txt').textContent) && !m.B) return true; const b = [...document.querySelectorAll('#m3ui .m3grid button')].find(x => /^⚔️ Fight|Foam|Body/.test(x.textContent)); if (b) b.click(); return !m.B && m.G.scene === 'map'; });
+    await p.waitForTimeout(50);
+  }
+  for (let i = 0; i < 100 && !(await E(p, () => window.__m3.G.scene === 'map' && !window.__m3.B)); i++) await p.waitForTimeout(50);
+  g = await E(p, () => { const G = window.__m3.G; return { scene: G.scene, x: Math.floor(G.p.x / 16), y: Math.floor(G.p.y / 16), hp: G.party[0].hp > 0 }; });
+  ok(g.scene === 'map' && g.x === 4 && g.y === 62 && g.hp, 'losing a fight ends it by itself: black out, wake up in the van, healed (' + JSON.stringify(g) + ')');
+  await p.close();
+
+  // ---------- starter pool: first player picks from 5, the next from 4… (practice = kept on this phone) ----------
+  p = await open(b, '?dev=all&date=2026-11-25&claims=reset');
+  const starterOpts = async (name, hero, pick) => {
+    await E(p, n => { window.__lod.setName(n); localStorage.removeItem('lod.save.m3.' + n); }, name);
+    await toBrief(p, hero); await p.click('#brief-go'); await p.waitForTimeout(300); await E(p, () => { window.__m3.speed = 25; });
+    let opts = null;
+    for (let i = 0; i < 300 && !opts; i++) {
+      opts = await E(p, () => { const m = window.__m3, pd = m.pending; if (pd && pd.say) { pd.res(); return null; } const bs = [...document.querySelectorAll('#m3ui .m3grid button')]; if (bs.length) return bs.map(x => x.textContent); if (m.G.scene === 'map' && !m.stranger) m.summon(); return null; });
+      await p.waitForTimeout(40);
+    }
+    if (name === 'Ljunky') await p.screenshot({ path: OUT + '/M3P_stranger.png' });
+    await pickStarter(p, pick); await E(p, () => document.getElementById('btn-pause').click()); await p.waitForTimeout(100); await E(p, () => document.getElementById('quit').click()); await p.waitForTimeout(200);
+    return opts || [];
+  };
+  let o1 = await starterOpts('Ljunky', 'ljunky', 'Folköl Frog');
+  ok(o1.length === 5, 'first player chooses from 5 (' + o1.map(x => x.split(/[A-Z]{3,}/)[0]).join(', ') + ')');
+  let o2 = await starterOpts('Löken', 'loken', 'Cucumber Dragon');
+  ok(o2.length === 4 && !o2.some(x => /Folköl/.test(x)), 'second player gets the 4 that are left');
+  let o3 = await starterOpts('BigWman', 'bigwman', 'Freezer Penguin');
+  ok(o3.length === 3 && !o3.some(x => /Folköl|Cucumber/.test(x)), 'third player gets 3');
+  let o4 = await starterOpts('Ljunky', 'ljunky', 'Folköl Frog');
+  ok(o4.length === 1 && /Folköl/.test(o4[0]), 'a New game keeps your own pick');
+  ok(p.errs.length === 0, 'no page errors (starter pool)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
+  await p.close();
+
+  // ---------- starter pool on a LIVE day: the server decides (mocked), an old server is never sent a claim ----------
+  for (const mode of ['new', 'old']) {
+    const posts = [];
+    p = await open(b, '?', { route: async q => q.route(/script\.google\.com/, (route, req) => {
+      if (req.method() === 'POST') { const j = JSON.parse(req.postData()); posts.push(j); return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(j.action === 'claim' ? { ok: true } : { ok: true, rows: [] }) }); }
+      const claims = /claims=3/.test(req.url()) && mode === 'new' ? { claims: { 'Löken': 'cuke', 'Wizcudi': 'snake' } } : {};
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(Object.assign({ rows: [] }, claims)) });
+    }) });
+    await E(p, () => { const M = window.__lod.LOD.missions.find(m => m.id === 3); M.unlock = window.__lod.LOD.today(); M.until = M.unlock; window.__lod.setName('Jrohn'); localStorage.removeItem('lod.save.m3.Jrohn'); });
+    await toBrief(p, 'jrohn'); await p.click('#brief-go'); await p.waitForTimeout(300); await E(p, () => { window.__m3.speed = 25; });
+    let opts = null;
+    for (let i = 0; i < 300 && !opts; i++) { opts = await E(p, () => { const m = window.__m3, pd = m.pending; if (pd && pd.say) { pd.res(); return null; } const bs = [...document.querySelectorAll('#m3ui .m3grid button')]; if (bs.length) return bs.map(x => x.textContent); if (m.G.scene === 'map' && !m.stranger) m.summon(); return null; }); await p.waitForTimeout(40); }
+    await pickStarter(p, 'Freezer Penguin');
+    const claimPosts = posts.filter(x => x.action === 'claim');
+    if (mode === 'new') ok(opts.length === 3 && !opts.some(x => /Cucumber|Charging/.test(x)) && claimPosts.length === 1 && claimPosts[0].pick === 'peng' && claimPosts[0].name === 'Jrohn', 'live: server claims hide the taken ones, the pick is sent (' + opts.length + ' offered)');
+    else ok(opts.length === 5 && claimPosts.length === 0, 'live with the old Apps Script: all 5 offered, no claim is ever posted');
+    await p.close();
+  }
 
   // ---------- full fight: throw (arc screenshot) + knockout -> catch ----------
   p = await open(b); await play(p);

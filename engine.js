@@ -1346,6 +1346,7 @@ function renderStory() {
 function showBrief() {
   const b = M.brief || {};
   $('#brief-eyebrow').textContent = missionLabel(M);
+  $('#scr-brief h2').textContent = M.briefTitle || 'Your objective'; // briefTitle: a mission can rename the brief heading
   $('#brief-card').innerHTML = b.card || '';
   $('#brief-card').hidden = !b.card;
   const p = myPerks(), e = egg(), tips = (b.tips || []).slice();

@@ -52,6 +52,22 @@ async function drive(p, prefer, until = 'map', max = 400) {
 const strong = lv => E(p0, lv => { const m = window.__m3, G = m.G; G.party = ['frog', 'cuke', 'peng', 'bear'].map(s => m.mk(s, lv)); }, lv);
 let p0;
 
+// the opening: blink, thoughts, then the stranger walks up and you pick a starter
+async function pickStarter(p, name) {
+  for (let i = 0; i < 300; i++) {
+    const st = await p.evaluate(name => {
+      const m = window.__m3, G = m.G, pd = m.pending;
+      if (G.starter) return 'done';
+      if (pd && pd.say) { pd.res(); return 'say'; }
+      const b = [...document.querySelectorAll('#m3ui .m3grid button')].find(x => new RegExp(name).test(x.textContent)); if (b) { b.click(); return 'pick'; }
+      if (G.scene === 'map' && !m.stranger) m.summon();
+      return 'wait';
+    }, name);
+    if (st === 'done') { await p.evaluate(() => { const pd = window.__m3.pending; if (pd && pd.say) pd.res(); }); await p.waitForTimeout(100); await p.evaluate(() => { const pd = window.__m3.pending; if (pd && pd.say) pd.res(); }); return true; }
+    await p.waitForTimeout(40);
+  }
+  return false;
+}
 (async () => {
   const b = await chromium.launch();
 
@@ -63,8 +79,9 @@ let p0;
   ok(await E(p, () => !/FIZZ|Easter|crit|%/.test(document.getElementById('scr-brief').textContent) && document.getElementById('scr-brief').classList.contains('m3solid')), 'brief: solid start screen, no type chart, odds, abilities or easter-egg text');
   await p.click('#brief-go'); await p.waitForTimeout(600);
   await E(p, () => { window.__m3.speed = 20; });
-  ok(await E(p, () => window.__m3.G.scene === 'talk' && !!window.__m3.pending), 'new game starts the tutorial');
-  await drive(p, ['Cucumber Dragon']);
+  ok(await E(p, () => window.__m3.G.scene === 'talk' && window.__m3.wakeT > 0 && !document.getElementById('scr-brief').textContent.includes('spiked')), 'new game opens with the wake-up (eyes blinking), no story text on the brief');
+  await p.screenshot({ path: OUT + '/M3_wake.png' });
+  ok(await pickStarter(p, 'Cucumber Dragon'), 'the stranger walks up and you choose a starter');
   let g = await E(p, () => { const G = window.__m3.G; return { party: G.party.map(c => c.sp + c.lv), caught: Object.keys(G.caught), score: G.score }; });
   ok(g.party.join() === 'cuke5' && g.caught.join() === 'cuke', 'starter chosen: ' + g.party.join());
   ok(g.score === 2500 + 500, 'score = 1 species + party levels (' + g.score + ')');
@@ -184,7 +201,7 @@ let p0;
   await toBrief(q, 'bigwman');
   await q.click('#brief-go'); await q.waitForTimeout(500);
   await E(q, () => { window.__m3.speed = 20; });
-  await drive(q, ['Freezer']);
+  await pickStarter(q, 'Freezer');
   await E(q, () => { window.__lod.G.saveT = 9.9; }); await q.waitForTimeout(400);
   ok(posts.length === 1 && posts[0].mission === 3 && posts[0].score === 3000 && posts[0].name === 'BigWman', 'autosave sends the new best (' + JSON.stringify(posts[0] || {}) + ')');
   await E(q, () => { window.__lod.G.saveT = 9.9; }); await q.waitForTimeout(400);

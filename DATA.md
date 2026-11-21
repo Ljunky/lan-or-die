@@ -138,6 +138,14 @@ apps.tinder:      { name: 'Tinder', icon: '🔥', lines: ['It\'s a match! With {
 ```
 App line variables: `{steps}`, `{price}`, `{name}`, `{kr}`, `{debt}`.
 
+## Opening and blackout
+```js
+opening: { blink: 4.2, thoughts: ['Zombies everywhere!', …], strangerAfter: 12, stranger: { name: '???', look: {…} },
+  lines: ['You have been chosen.', 'Now it is your time to choose.'], starters: ['frog', 'cuke', 'peng', 'snake', 'crow'], startItems: { folkol: 2, … } }
+respawn: { at: [4, 62], lose: 'Everything goes black…', wakeVan: 'You wake up in the van… {lost} kr lighter.', … }
+```
+**Starter pool:** on a LIVE day each player claims one starter on the server, first come first served (needs `backend/claims.gs` in the Apps Script). In practice or `?dev=all` the claims are kept on the phone, so you can test by switching names. `?dev=all&claims=reset` clears them.
+
 ## Small pixel sprites
 ```js
 sprites: { coin: { grid: ['..yy..', '.yYYy.', 'yYwYYy', '.yYYy.', '..yy..'] } }   // one char per pixel, keys = PX.palette

@@ -359,6 +359,30 @@ dealer: {
   empty: 'Come back later. Supply chain issues.'
 },
 
+/* ---------- the opening: you wake up in the van, walk around, a stranger lets you choose a starter ----------
+   starters: the pool. In a LIVE round each player claims one on the server (first come, first served), so the
+   first player chooses from 5, the second from 4… In practice/dev the claims are kept on this phone (?dev=all&claims=reset clears them). */
+opening: {
+  blink: 4.2,                                   // seconds of eyelids opening and closing
+  thoughts: ['Zombies everywhere!', 'Did Löken run me over?', "No… that can't be. I have all my limbs intact.", 'But damn, my tummy hurts.'],
+  strangerAfter: 12,                            // seconds of walking around before he shows up
+  stranger: { name: '???', look: { skin: '#d8d0c8', hair: '#2a0a3a', style: 'hat', top: '#2a0a3a', top2: '#3dff8a', topStyle: 'blazer', legs: '#111', shoes: '#111', glasses: 1, big: 1 } },
+  lines: ['You have been chosen.', 'Now it is your time to choose.'],
+  starters: ['frog', 'cuke', 'peng', 'snake', 'crow'],
+  joined: '{name} joined your party!',
+  tooSlow: '…',                                 // said when someone else grabbed the same one a second earlier
+  noFight: 'You have nothing to fight with.',
+  startItems: { folkol: 2, fizztab: 1, bag: 5 }
+},
+/* ---------- when everything faints (lose) or your heart gives up (heart) ---------- */
+respawn: {
+  at: [4, 62],
+  lose: 'Everything goes black…',
+  heart: 'Your heart goes BA-DUM… BA… DUM………',
+  wakeVan: 'You wake up in the van. Again. Someone patched your creatures up and left a receipt from Apotek Hjärtat. You are {lost} kr lighter.',
+  wakeGrave: 'You wake up at the cemetery gate. Someone already measured you for a stone. You are {lost} kr lighter.'
+},
+
 /* ---------- small pixel sprites (char grids, see PX.palette: o navy, c cream, g/G/d greys, k black, w white …) ---------- */
 sprites: {
   tomb: { grid: [
