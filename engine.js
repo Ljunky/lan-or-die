@@ -1174,7 +1174,7 @@ function drawHUD() {
     em('🍺', hx, ly, 16); ctx.textAlign = 'left'; ctx.font = '400 12px Bungee, Impact, sans-serif'; ctx.fillStyle = '#f5c242'; ctx.fillText('×' + G.beer.n, hx + 10, ly + 2);
     ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(hx - 8, ly + 11, 34, 3); ctx.fillStyle = '#f5c242'; ctx.fillRect(hx - 8, ly + 11, 34 * G.beer.t / CFG.BEER_TIME, 3);
   }
-  ctx.textAlign = 'center'; ctx.fillStyle = G.t > M.maxTime - 30 ? '#e5484d' : '#e8eef3'; ctx.font = '400 18px Bungee, Impact, sans-serif';
+  ctx.textAlign = 'center'; ctx.fillStyle = !M.noTimer && G.t > M.maxTime - 30 ? '#e5484d' : '#e8eef3'; ctx.font = '400 18px Bungee, Impact, sans-serif';
   ctx.fillText(M.timerText ? M.timerText(G) : mmss(G.t), W / 2, 22);
   ctx.textAlign = 'right'; ctx.font = '400 18px Bungee, Impact, sans-serif'; ctx.fillStyle = '#f5a524'; ctx.fillText(fmt(G.score), W - pad, 22);
   if (G.mult > 1) { ctx.font = '400 15px Bungee, Impact, sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText('x' + G.mult + ' COMBO', W - pad, 44); }
@@ -1217,11 +1217,12 @@ function update(dt) {
     return;
   }
   G.t += dt;
-  if (G.t >= M.maxTime) { G.t = M.maxTime; finish(M.overloadWin ? M.overloadWin(G) : true, 'overload'); return; } // the 3:00 rule
+  if (!M.noTimer && G.t >= M.maxTime) { G.t = M.maxTime; finish(M.overloadWin ? M.overloadWin(G) : true, 'overload'); return; } // the 3:00 rule
   if (G.beer.n) { G.beer.t -= dt; if (G.beer.t <= 0) { G.beer.n = 0; toast('The beer wore off 🍺', 1.6); } }
   if (G.shieldT > 0) { G.shieldT -= dt; if (G.shieldT <= 0) pop(LOD.G.p ? G.p.x : 0, LOD.G.p ? G.p.y - 30 : 0, '🛡️ READY', '#f5c242'); }
-  if (!G.finalMin && G.t >= M.maxTime - 60) { G.finalMin = true; toast('⚠️ FINAL MINUTE! More zombies, more loot!', 3); haptic('heavy'); if (M.onFinalMinute) M.onFinalMinute(G); }
-  const base = G.finalMin ? .82 + .18 * (G.t - (M.maxTime - 60)) / 60 : .7 * G.t / Math.max(1, M.maxTime - 60);
+  if (M.save && (G.saveT = (G.saveT || 0) + dt) >= 10) { G.saveT = 0; saveNow(); autoSubmit(false); } // save: true
+  if (!M.noTimer && !G.finalMin && G.t >= M.maxTime - 60) { G.finalMin = true; toast('⚠️ FINAL MINUTE! More zombies, more loot!', 3); haptic('heavy'); if (M.onFinalMinute) M.onFinalMinute(G); }
+  const base = M.noTimer ? 0 : G.finalMin ? .82 + .18 * (G.t - (M.maxTime - 60)) / 60 : .7 * G.t / Math.max(1, M.maxTime - 60);
   music.intensity(Math.max(base, M.intensity ? M.intensity(G) : 0));
   M.update(G, dt);
   if (G.mode !== 'play') return;
@@ -1264,6 +1265,49 @@ function inGameUI(on) {
   if (fireUI) renderWeapons(); else fireHeld = false;
 }
 
+/* ---------- save: true / noTimer: true / submitOnSave: true (opt-in mission flags, see ENGINE.md) ----------
+   save: G is kept per player and mission in localStorage every 10 s, on pause and when the tab hides.
+     The mission gives the data: saveState(G) -> plain object, loadState(G, data) after init. start(G, continued).
+   submitOnSave: the current total is sent when it beats this player's best, at most once a minute (and on leaving). */
+const saveKey = () => 'lod.save.m' + M.id + '.' + playerName;
+const bestKey = () => 'lod.best.m' + M.id + '.' + playerName;
+const savedGame = () => (M && M.save && playerName ? store.get(saveKey(), null) : null);
+let freshStart = false, lastSub = 0, newArm = 0;
+function saveNow() {
+  if (!M || !M.save || !G || !playerName || !(G.mode === 'play' || G.mode === 'pause')) return;
+  try { store.set(saveKey(), { t: G.t, ts: Date.now(), data: M.saveState ? M.saveState(G) : null }); } catch (e) { console.error(e); }
+}
+function liveTotal() {
+  let r = {}; try { r = M.result(G) || {}; } catch (e) {}
+  return clamp(Math.round(G.score + (r.bonus || []).reduce((a, b) => a + b[1], 0)), 0, M.cap);
+}
+function autoSubmit(leaving) {
+  if (!M || !M.submitOnSave || !G || !playerName || !counts(M) || !(G.mode === 'play' || G.mode === 'pause')) return;
+  if (!leaving && Date.now() - lastSub < 60000) return;
+  const total = liveTotal(); if (total <= store.get(bestKey(), 0)) return;
+  lastSub = Date.now(); store.set(bestKey(), total);
+  const time = Math.round(G.t), list = store.get('lod.scores', []), fc = fighter || LOD.getCharacter();
+  list.push({ name: playerName, char: fc ? fc.name : '', m: M.id, score: total, time, badge: '💾 Autosave', ts: Date.now() }); store.set('lod.scores', list.slice(-300));
+  submit({ name: playerName, mission: M.id, score: total, time, ts: Date.now() });
+}
+function leaveSave() { if (M && M.save) { saveNow(); autoSubmit(true); } }
+function briefSave() { // Continue / New game on the brief of a save mission
+  const go = $('#brief-go'); let nb = $('#brief-new');
+  const sv = savedGame();
+  go.textContent = sv ? 'Continue' : 'Go';
+  if (!sv) { if (nb) nb.remove(); return; }
+  if (!nb) { nb = document.createElement('button'); nb.id = 'brief-new'; nb.className = 'btn ghost'; go.after(nb); nb.addEventListener('click', newGameClick); }
+  nb.textContent = 'New game'; nb.classList.remove('danger'); newArm = 0;
+  $('#brief-note').textContent += ' Saved game: ' + mmss(sv.t || 0) + ' played.';
+}
+function newGameClick() {
+  const nb = $('#brief-new');
+  if (Date.now() - newArm > 3000) { newArm = Date.now(); nb.textContent = 'Tap again: erase the save'; nb.classList.add('danger'); return; }
+  try { localStorage.removeItem(saveKey()); } catch (e) {}
+  freshStart = true; beginPlay();
+}
+window.addEventListener('pagehide', () => { if (G && (G.mode === 'play' || G.mode === 'pause')) leaveSave(); });
+
 /* ---------- flow: title -> fighter -> story -> brief -> play -> result ---------- */
 function goTitle() {
   if (M) newGame(); inGameUI(false); music.duck(false); music.play('title');
@@ -1305,27 +1349,33 @@ function showBrief() {
   $('#brief-card').innerHTML = b.card || '';
   $('#brief-card').hidden = !b.card;
   const p = myPerks(), e = egg(), tips = (b.tips || []).slice();
-  if (p) { tips.push(['⭐ ' + p.label + ':', p.intro]); tips.push(['⚠️ ' + p.weakLabel + ':', p.weakText]); }
+  const pt = (p && M.perkText && M.perkText[fid()]) || p; // a mission can reword the ability/weakness for its own rules
+  if (p) { tips.push(['⭐ ' + p.label + ':', pt.intro]); tips.push(['⚠️ ' + p.weakLabel + ':', pt.weakText]); }
   if (e && M.eggs) tips.push(['🥚 Easter egg:', 'find 3 ' + e.what + ' ' + e.em + ' hidden in the level and hold still on each. +' + fmt(CFG.EGG_BONUS) + '.']);
   $('#brief-tips').innerHTML = tips.map((t, i) => '<li><b>' + (i + 1) + '</b><span><strong>' + esc(t[0]) + '</strong> ' + esc(t[1]) + '</span></li>').join('');
   const n = $('#brief-note');
   n.textContent = counts(M) ? 'LIVE. Your best score counts until ' + untilText(M) + '.' : 'Practice. This mission counted on ' + daysText(M) + '. Scores are not saved to the board.';
   n.className = 'note' + (counts(M) ? ' live' : '');
+  briefSave();
   show('scr-brief');
 }
 function beginPlay() {
   if (M && M.landscape) enterFullscreen(); // phone browsers: hide the address bar (Android; iPhone Safari has no fullscreen for pages)
-  newGame(); G.mode = 'play'; hideAll(); inGameUI(true); camUpdate(0, true); last = performance.now();
+  newGame(); G.mode = 'play'; hideAll(); inGameUI(true);
+  const sv = M.save && !freshStart ? savedGame() : null; freshStart = false; lastSub = 0;
+  if (sv) { G.t = sv.t || 0; if (M.loadState) M.loadState(G, sv.data); }
+  camUpdate(0, true); last = performance.now();
   music.duck(false); music.play('game'); music.intensity(0);
-  const p = myPerks(); if (p) after(1.2, () => abilityCallout(p.intro));
-  if (M.start) M.start(G);
+  const p = myPerks(); if (p) after(1.2, () => abilityCallout(((M.perkText && M.perkText[fid()]) || p).intro));
+  if (M.start) M.start(G, !!sv);
 }
 function resume() { G.mode = 'play'; hideAll(); $('#btn-pause').hidden = false; music.duck(false); last = performance.now(); }
-function pauseGame() { if (!G || G.mode !== 'play') return; G.mode = 'pause'; J = null; fireHeld = false; music.duck(true); show('scr-pause'); }
+function pauseGame() { if (!G || G.mode !== 'play') return; leaveSave(); G.mode = 'pause'; J = null; fireHeld = false; music.duck(true); show('scr-pause'); }
 function resumeGame() { if (!G || G.mode !== 'pause') return; resume(); }
 
 function finish(win, why) {
   if (!G || G.mode !== 'play') return;
+  if (M.save) saveNow();
   G.mode = 'ending'; G.win = !!win; G.why = why || (win ? 'done' : 'down'); G.endT = win ? .9 : 1.2;
   if (G.why === 'overload') { G.shake = 12; G.endT = 1.4; }
   J = null; fireHeld = false; inGameUI(false); music.play(null);
@@ -1379,6 +1429,7 @@ function showResult() {
   show('scr-result');
   if (fc && LOD.playPose && G.why !== 'down') LOD.playPose(fc, stage, { hold: true });
   if (!counted) return;
+  if (M.submitOnSave) store.set(bestKey(), Math.max(total, store.get(bestKey(), 0)));
   submit({ name: playerName, mission: M.id, score: total, time, ts: Date.now() }).then(res => {
     const m = $('#save-msg'); if (!m) return;
     m.textContent = res.ok ? (res.best ? 'Saved to the group board. New personal best 🔥' : 'Saved to the group board.')

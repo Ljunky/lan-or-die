@@ -27,6 +27,11 @@ LOD.mission({
   cap: 300000,              // poängtak (håll lika med Code.gs)
   maxTime: 180,             // valfri, default CFG.MAX_TIME -> OVERLOAD
   landscape: true,          // valfri: spelas liggande. Stående telefon = paus + #rotate-warning, Telegram låser orienteringen
+  noTimer: true,            // valfri: ingen maxTime/OVERLOAD, klockan visar total speltid (M3)
+  save: true,               // valfri: sparar per spelare i localStorage 'lod.save.m<id>.<spelare>' var 10:e s, vid paus och när fliken döljs.
+                            //   Missionen ger datat: saveState(G) -> objekt, loadState(G, data) efter init, start(G, continued). Briefen får Continue / New game.
+  perkText: { loken: { intro, weakText } }, // valfri: egen text för hjältens förmåga/svaghet i briefen och startrutan
+  submitOnSave: true,       // valfri: skickar aktuell total när den slår spelarens bästa, max en gång per minut + när man lämnar
   world: { w: 1600, h: 1000 },
   intro: ({ player, fighter }) => ({ kind: 'chat', title, sub, button, lines: [{ at }, { from, text }, { sfx: 'zombie', text, shake }] }), // valfri, mobilchatt före briefen ('You' = spelaren)
   outro: (G, { player }) => spec | null,      // valfri, t.ex. { kind: 'call', music: 'game', tbc: 'text', lines } när man klarar banan
