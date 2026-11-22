@@ -18,13 +18,13 @@ small{color:#9fb0bf}
 <div class="row">
   <label>Background tolerance <input id="tol" type="range" min="5" max="120" value="42"><b id="tolv">42</b></label>
   <label>Background colour <input id="bg" type="text" placeholder="auto (edge colour), or #ffffff"></label>
-  <label><input id="snap" type="checkbox" checked> palette</label><label><input id="outline" type="checkbox" checked> outline</label><label><input id="flip" type="checkbox"> mirror</label><label><input id="nobg" type="checkbox"> keep existing transparency</label>
+  <label>palette <select id="snap"><option value="auto" selected>auto (pixel art only)</option><option value="1">always</option><option value="0">never</option></select></label><label><input id="outline" type="checkbox" checked> outline</label><label><input id="flip" type="checkbox"> mirror</label><label><input id="nobg" type="checkbox"> keep existing transparency</label>
 </div>
 <div id="out"></div>
 <script src="../engine/sprites.js"></script><script src="art-core.js"></script>
 <script>
 const $ = s => document.querySelector(s), items = [];
-const opts = () => ({ tol: +$('#tol').value, bg: $('#bg').value.trim() || undefined, snap: $('#snap').checked, outline: $('#outline').checked, flip: $('#flip').checked, noBg: $('#nobg').checked });
+const opts = () => ({ tol: +$('#tol').value, bg: $('#bg').value.trim() || undefined, snap: $('#snap').value === 'auto' ? 'auto' : $('#snap').value === '1', outline: $('#outline').checked, flip: $('#flip').checked, noBg: $('#nobg').checked });
 function render() {
   $('#out').innerHTML = ''; $('#tolv').textContent = $('#tol').value;
   items.forEach((it, i) => {

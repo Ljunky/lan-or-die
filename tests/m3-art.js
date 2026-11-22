@@ -122,7 +122,7 @@ const fs = require('fs'), os = require('os'), path = require('path'), { spawnSyn
   fs.writeFileSync(path.join(tmp, 'in', 'badgerCub.png'), Buffer.from(png.split(',')[1], 'base64'));
   fs.writeFileSync(path.join(tmp, 'in', 'nope.png'), Buffer.from(png.split(',')[1], 'base64'));
   const run = (...a) => spawnSync('node', [path.join(__dirname, '..', 'tools', 'import-art.js'), ...a], { encoding: 'utf8' });
-  let r = run(path.join(tmp, 'in', 'badgerCub.png'), '--out', outDir);
+  let r = run(path.join(tmp, 'in', 'badgerCub.png'), '--out', outDir, '--snap');
   ok(r.status === 0 && /ok\s+badgerCub\.png/.test(r.stdout) && fs.existsSync(path.join(outDir, 'badgerCub.png')), 'import-art.js: a picture becomes <id>.png (' + (r.stdout || r.stderr).split('\n')[0].slice(0, 130) + ')');
   const back = await pg.evaluate(async url => { const img = new Image(); img.src = url; await img.decode(); const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, c.width, c.height).data;
     const pal = new Set(Object.values(PX.palette).filter(Boolean).map(h => parseInt(h.slice(1, 3), 16) + ',' + parseInt(h.slice(3, 5), 16) + ',' + parseInt(h.slice(5, 7), 16))); let opaque = 0, offPal = 0, navy = 0, semi = 0, bottom = 0, top = 0, minx = 99, maxx = 0;
@@ -133,10 +133,17 @@ const fs = require('fs'), os = require('os'), path = require('path'), { spawnSyn
   ok(back.offPal === 0 && back.semi === 0, 'every pixel is a palette colour and fully opaque or fully transparent');
   ok(back.navy > 60, 'there is a navy outline (' + back.navy + ' navy pixels)');
   ok(back.bottom > 0 && back.top === 0 && back.minx >= 0 && back.maxx <= 47 && Math.abs((back.minx + back.maxx) / 2 - 23.5) <= 2, 'cropped, scaled to fit, bottom-centred in the square');
+  r = run(path.join(tmp, 'in', 'badgerCub.png'), '--out', path.join(tmp, 'auto'));
+  const auto = await pg.evaluate(async url => { const img = new Image(); img.src = url; await img.decode(); const c = document.createElement('canvas'); c.width = 48; c.height = 48; const x = c.getContext('2d'); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, 48, 48).data, cols = new Set(); for (let i = 0; i < d.length; i += 4) if (d[i + 3]) cols.add(d[i] + ',' + d[i + 1] + ',' + d[i + 2]); return cols.size; }, 'data:image/png;base64,' + fs.readFileSync(path.join(tmp, 'auto', 'badgerCub.png')).toString('base64'));
+  ok(/original colours kept/.test(r.stdout) && auto > 12, 'by default a large smooth picture keeps its own colours, no palette snap (' + auto + ' colours)');
+  const tiny = await pg.evaluate(() => { const c = document.createElement('canvas'); c.width = 24; c.height = 24; const x = c.getContext('2d'); x.fillStyle = '#d8312f'; x.fillRect(4, 4, 16, 16); x.fillStyle = '#ffd23a'; x.fillRect(8, 8, 6, 6); return c.toDataURL('image/png'); });
+  fs.writeFileSync(path.join(tmp, 'in', 'rat.png'), Buffer.from(tiny.split(',')[1], 'base64'));
+  r = run(path.join(tmp, 'in', 'rat.png'), '--out', path.join(tmp, 'auto'));
+  ok(/palette snapped/.test(r.stdout), 'a small picture with few colours is treated as pixel art and snapped to the palette');
   r = run(path.join(tmp, 'in', 'nope.png'), '--out', outDir);
   ok(r.status !== 0 && /not a creature id/.test(r.stdout) && !fs.existsSync(path.join(outDir, 'nope.png')), 'an id that is not in data/m3-data.js is refused (use --force)');
   r = run(path.join(tmp, 'in'), '--out', outDir, '--no-outline', '--no-snap');
-  ok(/1 written/.test(r.stdout) && /skipped/.test(r.stdout), 'a folder imports every file named after a creature and skips the rest');
+  ok(/2 written/.test(r.stdout) && /skipped/.test(r.stdout), 'a folder imports every file named after a creature and skips the rest');
 
   // ===== the game picks the file up by itself: no art: line =====
   const art = fs.readFileSync(path.join(outDir, 'badgerCub.png'));

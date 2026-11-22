@@ -7,7 +7,8 @@
    options:  --tol 42         how far from the background colour a pixel may be and still count as background (higher = removes more)
              --bg #ffffff     the background colour, if it is not the one along the edge
              --no-bg          do not remove a background (the picture already has transparency)
-             --no-snap        keep the original colours (still cropped, scaled and outlined)
+             --snap           snap to the game palette (24 colours). Default: only when the picture already looks like pixel art (small, few colours)
+             --no-snap        always keep the original colours (still cropped, scaled and outlined). The default for photos and AI pictures
              --no-outline     no navy outline
              --flip           mirror the picture (the game never flips a creature: it is drawn as you drew it)
              --force          allow an id that is not in data/m3-data.js
@@ -27,7 +28,7 @@ const src = pos[0], jobs = [];
 if (fs.statSync(src).isDirectory()) for (const f of fs.readdirSync(src).sort()) { const e = path.extname(f).toLowerCase(); if (MIME[e]) jobs.push({ file: path.join(src, f), id: path.basename(f, e) }); }
 else jobs.push({ file: src, id: pos[1] || path.basename(src, path.extname(src)) });
 const outDir = path.resolve(val('--out') || path.join(root, 'assets/creatures')); fs.mkdirSync(outDir, { recursive: true });
-const opts = { tol: val('--tol') != null ? +val('--tol') : 42, bg: val('--bg') || undefined, noBg: flag('--no-bg'), snap: !flag('--no-snap'), outline: !flag('--no-outline'), flip: flag('--flip') };
+const opts = { tol: val('--tol') != null ? +val('--tol') : 42, bg: val('--bg') || undefined, noBg: flag('--no-bg'), snap: flag('--snap') ? true : flag('--no-snap') ? false : 'auto', outline: !flag('--no-outline'), flip: flag('--flip') };
 
 (async () => {
   const b = await chromium.launch(), page = await b.newPage();

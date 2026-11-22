@@ -3,7 +3,7 @@
    Needs engine/sprites.js first (PX.sprites.quantize does the palette snap and the outline, the same code the game uses).
    opts: { size: 48, margin: 1 (px kept free for the outline), tol: 42 (how different from the background a pixel must be to stay),
            bg: '#rrggbb' (default: the most common colour along the image border), noBg: keep the image as it is (it already has transparency),
-           snap: true (palette), outline: true, flip: false, feather: true (soft edges are cut hard before the snap) } */
+           snap: 'auto' (palette: only when the picture already looks like pixel art; true / false to force), outline: true, flip: false, feather: true (soft edges are cut hard before the snap) } */
 (() => {
 const canvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 const hex = h => { h = String(h || '').replace('#', ''); if (h.length === 3) h = h.split('').map(x => x + x).join(''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; };
@@ -39,11 +39,19 @@ function addOutline(cv) { // the navy outline only, colours untouched (--no-snap
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (solid[i]) continue; if ((x > 0 && solid[i - 1]) || (x < w - 1 && solid[i + 1]) || (y > 0 && solid[i - w]) || (y < h - 1 && solid[i + w])) { d[i * 4] = 0x1F; d[i * 4 + 1] = 0x2A; d[i * 4 + 2] = 0x44; d[i * 4 + 3] = 255; } }
   c.putImageData(im, 0, 0);
 }
+/* pixel art = small and few colours. Photos, AI pictures and smooth drawings are not: snapping those to 24 colours turns fur into mush */
+function looksPixelArt(img) {
+  if (Math.max(img.width, img.height) > 160) return false;
+  const c = canvas(img.width, img.height), x = c.getContext('2d'); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, c.width, c.height).data, cols = new Set();
+  for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 40) { cols.add((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]); if (cols.size > 64) return false; }
+  return true;
+}
 function process(img, opts = {}) {
-  const o = Object.assign({ size: 48, margin: 1, tol: 42, snap: true, outline: true, flip: false, feather: true }, opts), N = o.size;
+  const o = Object.assign({ size: 48, margin: 1, tol: 42, snap: 'auto', outline: true, flip: false, feather: true }, opts), N = o.size;
   // 1. the picture at its own size (very large photos are first brought down to ~1000 px: speed)
   const k0 = Math.min(1, 1000 / Math.max(img.width, img.height)), src = canvas(Math.max(1, Math.round(img.width * k0)), Math.max(1, Math.round(img.height * k0)));
   const sc = src.getContext('2d'); sc.imageSmoothingQuality = 'high'; sc.drawImage(img, 0, 0, src.width, src.height);
+  if (o.snap === 'auto' || o.snap == null) o.snap = looksPixelArt(img);
   const rb = removeBackground(src, o), box = bounds(src);
   if (!box) throw new Error('nothing is left after removing the background: try a lower --tol, or --bg #rrggbb');
   // 2. crop, scale to fit (keeping the proportions), bottom-centre in the square
@@ -59,8 +67,8 @@ function process(img, opts = {}) {
   // 4. the palette and the navy outline, exactly as the game's own sprites get them
   if (o.snap && window.PX && PX.sprites) PX.sprites.quantize(out, { outline: o.outline });
   else if (o.outline) addOutline(out);
-  out.__info = rb.info + '; cropped ' + box.w + '×' + box.h + ' → ' + tw + '×' + th;
+  out.__info = (o.snap ? 'palette snapped' : 'original colours kept') + '; ' + rb.info + '; cropped ' + box.w + '×' + box.h + ' → ' + tw + '×' + th;
   return out;
 }
-window.ArtCore = { process, removeBackground, bounds };
+window.ArtCore = { looksPixelArt, process, removeBackground, bounds };
 })();
