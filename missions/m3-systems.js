@@ -192,7 +192,9 @@ function dealerStock() {
 const valueOf = c => Math.max(1, Math.round((DL.rates[SP[c.sp].rarity] || 1) * (1 + c.lv * DL.levelBonus)));
 async function dealer(n) {
   const g = G(), who = n.d.name;
-  await K.say2(who, pick(DL.hello));
+  if (K.PPL.refuses('dealer')) { await K.say2(who, 'We are done. Go away.'); return; }
+  const tk = await K.PPL.talk('dealer', { name: who, fallback: pick(DL.hello) });
+  if (tk.fight) { K.hideBox(); K.startNpcFight && K.startNpcFight('dealer'); return; }
   for (;;) {
     const stock = dealerStock();
     const opts = [{ label: '🤝 Trade a creature', value: 'trade', cls: 'hot', dis: !(g.party.length + g.box.length > 1) }]

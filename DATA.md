@@ -138,6 +138,88 @@ apps.tinder:      { name: 'Tinder', icon: '🔥', lines: ['It\'s a match! With {
 ```
 App line variables: `{steps}`, `{price}`, `{name}`, `{kr}`, `{debt}`.
 
+## Dialogue: people with personality, memory and relationships
+
+Everything a person says is in `data/m3-data.js` → `dialogue`, one entry per person id (an NPC id, a hero id or a wife id). Personalities and knowledge are separate sections. No code needed.
+
+```js
+personalities: { grumpy: { voice: 'complains, hates small talk', shareRel: 2,       // shareRel = how much they must like you before they tell you things
+                           hunt: 'I have been waiting for you.',                    // said when they come after you (−4 or worse)
+                           tones: { kind: 0, rude: 1, funny: -1, bribe: 1, honest: 2, lie: -2, flirt: -2 } } },   // tone of your reply → relationship change
+
+knowledge: { types: { name: 'How the types work', text: 'FIZZ › GRUB › …' },                  // shown in 📓 Notes once learned
+             'house:jrohn': { name: "Jrohn's house", text: 'A shaman cave.', listed: true, release: 'wed' } },   // listed: true = shows as ??? until learned
+
+dialogue: {
+  berit: { personality: 'grumpy',
+    friends: ['pelle', 'cicci'],                       // people who know each other (see below)
+    help: { relMin: 4, give: { bag: 3 }, text: 'Take a few bags. On the house.' },   // once per real day when she likes you
+    hunt: 'You again. I have had ENOUGH.',            // optional, overrides the personality's hunt line
+    talk: [                                            // the best matching line that has not been used yet is said
+      { if: { met: 0 }, text: 'Unexpected item in bagging area. Unexpected YOU.',
+        replies: [ { label: 'Just browsing.', tone: 'kind', text: 'Browse faster.' },
+                   { label: 'Bags are a scam.', tone: 'honest', text: '…Correct.', set: { berit_ally: true } },
+                   { label: 'Pay her 20 kr', take: { }, kr: -20, rel: 2, text: 'Hm. Fine.' } ] },
+      { if: { metMin: 2 }, tell: 'wife:cicci', text: 'Cicci cried over a package once. Ask her about the budget.' },
+      { if: { hero: 'bigwman', killed: 'pelle' }, text: 'You. You killed Pelle. And you are BigWman.' },
+      { if: { last: 'honest', returning: true }, text: 'You told me the truth yesterday. I remember.' },
+      { text: 'Still here? The queue is behind you.' }          // no "if" = always possible, the weakest match
+    ] }
+}
+```
+
+**Which line is said:** every line whose `if` matches is a candidate. The line that matches the most conditions wins. Lines already used are skipped until all matching lines have been used; then the pool starts over. Release-gated lines use `release` / `requires` like everything else.
+
+**Conditions** (`if`, all must match):
+| key | matches when |
+|---|---|
+| `hero: 'loken'` / `['loken','jrohn']`, `notHero` | you play that hero |
+| `met: 0`, `metMin: 2`, `metMax: 3` | how many times you have talked to this person |
+| `returning: true` | you talked before, but on an earlier real day |
+| `last: 'honest'`, `lastNot` | their memory of your last answer (a reply `id`, or the label if it has none) |
+| `relMin: 2`, `relMax: -1` | their relationship to you (−5…+5) |
+| `flag: 'x'`, `notFlag` | a flag is set (`killed:berit`, `caught:berit`, `grudge:pelle`, `know:types`, and your own `set` flags) |
+| `know: 'types'`, `notKnow` | you have learned that |
+| `killed: 'pelle'`, `caught: 'pelle'` | you killed / caught that person (or creature id) |
+| `beat: 'loken'`, `solved: 'cicci'` | you beat that hero / solved that wife |
+| `debtMin: 2` | your promise debt |
+| `state: 'drunk'` (`drunk`, `high`, `blurred`, `sober`) | what you are on |
+| `carry: 'walter'` | you carry that creature or item |
+| `night: true`, `hour: [22, 4]` | the real clock (hour ranges can wrap past midnight) |
+| `day: 'tue'`, `from: 'tue'`, `until: 'wed'` | the release day |
+| `zone: 'lawn'` | where you stand |
+
+An unknown key never matches (and the validator warns). **Effects** (on a line or a reply): `rel: +1` (or a `tone`: the personality decides), `set: { flag: true }`, `give: { item: n }`, `take: { item: n }` (the reply is greyed out if you lack it), `kr: -20`, `debt: 1`, `tell: 'knowledgeId'` (they teach you something; only if they trust you: relationship ≥ their `shareRel`, unless the line has its own `relMin`), `fight: true` (a reply that starts a fight). Reply `if` hides replies. Text can use `{hero}`, `{name}`, `{last}` (your last answer), `{debt}`, `{met}`, `{kr}`.
+
+**Relationship (−5…+5):** friends get up to 25 % off (♥ on the price), enemies at −3 refuse to trade, friends at +4 give gifts (`help`), enemies at −4 walk up to you and fight (after the fight it cools to −2). Picking a fight costs −2.
+
+**Friends:** `friends: ['pelle']` works both ways. Kill someone: their friends −3, their friends' friends −1, and flags `killed:<id>` / `grudge:<friend>` are set. Catch someone: friends −1. Lines can read those flags.
+
+**The first meeting with a hero** uses `bossLines` (one line per hero you play), so nothing is written twice.
+
+### The wives
+```js
+cicci: { personality: 'dry', friends: ['berit', 'bigwman'],
+  talk: [ { if: { met: 0, hero: 'bigwman' }, text: 'There you are. I counted the boxes.' }, … ],       // what she says when you walk up, per hero
+  after: [ { text: 'We are good. For now.' } ],                                                          // when she is solved
+  wife: { reacts: { bigwman: { mul: 1.5, turns: 1 }, loken: { mul: .7, turns: 0 }, … },                 // per hero: how hard she hits, extra turns to survive
+    lines: [                                                    // what you can say. right = the conditions under which this line is THE right one
+      { text: 'A budget. In writing.', right: { hero: 'bigwman', last: 'wrong' } },
+      { text: 'Berit will not sign for any more packages.', right: { killed: 'berit' } },
+      { text: 'I cancelled the packages.', right: { hero: 'bigwman' } },
+      { text: "It's an investment, technically." } ] } }      // no right = always wrong
+```
+Each time you open the menu, the most specific matching `right` line is the right one, plus three random wrong lines (4 in total). So the answer changes with who you play, what you carry, what you did, how much you owe and what happened last time. A wrong answer makes her angrier and costs a survived turn (8 turns in total, `+turns` per hero). Promise debt makes her hit harder. Once someone has told you `wife:<id>`, the right line carries a 💡. `wife.reacts`/`talk` keys use the hero id you play.
+
+### Knowledge
+`tell: 'types'` puts it in 📓 Notes ("told by X, MON"). Things can require it: `requires: 'know:ring'` on an item, zone, NPC or line (not in `?dev=all`, which shows everything). The move list shows what is strong only after `types` is known.
+
+### Filler shoppers
+`fillers.voices: { grumpy: [ 'line', { if: { night: true }, text: '…' } ], … }` – every random shopper gets one personality and a slice of that personality's lines. No two shoppers share a line.
+
+### Check
+The browser console warns about unknown conditions, unknown knowledge/item ids, unknown people and unknown personalities (`[PX.data]`).
+
 ## Balance, Kenny the Fence, Inkasso-Ingvar
 ```js
 tuning: { XP_BASE: 8, XP_SQ: 1.3,   // XP for the next level = XP_BASE + XP_SQ × level²   (LV_MAX: 50)

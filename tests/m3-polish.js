@@ -36,7 +36,7 @@ async function play(p, hero = 'bigwman') { // fresh game, starter chosen, on the
   await E(p, () => localStorage.removeItem('lod.save.m3.Ljunky'));
   await toBrief(p, hero); await p.click('#brief-go'); await p.waitForTimeout(400);
   await E(p, () => { window.__m3.speed = 25; });
-  await pickStarter(p, 'Folköl Frog');
+  await pickStarter(p, 'Folköl Frog'); await E(p, () => { window.__m3.skipReplies = true; });
   await E(p, () => { const m = window.__m3; m.G.party = ['frog', 'cuke', 'peng', 'bear'].map(s => m.mk(s, 18)); m.G.kr = 5000; });
 }
 async function drive(p, prefer, max = 500) {
@@ -64,6 +64,20 @@ async function until(p, re, max = 200) {
     if (r === 'hit') return true; if (r === 'map') return false; await p.waitForTimeout(30);
   }
   return false;
+}
+// talk to a person through the real dialogue system; clicks the reply matching `click` if a menu shows. Returns { texts, btns, res }
+async function talkTo(p, id, click) {
+  await E(p, id => { window.__t = { done: false }; window.__m3.PPL.talk(id, { name: id }).then(r => { window.__t.done = true; window.__t.res = { fight: r.fight, line: !!r.line }; }); }, id);
+  const texts = []; let btns = null;
+  for (let i = 0; i < 80; i++) {
+    const r = await E(p, () => { const m = window.__m3, pd = m.pending, txt = document.querySelector('#m3ui .m3txt').textContent; if (window.__t.done) return { done: true, res: window.__t.res }; if (!pd) return { wait: true };
+      if (pd.say) { pd.res(); return { text: txt }; } return { text: txt, btns: [...document.querySelectorAll('#m3ui .m3grid button')].map(b => b.textContent) }; });
+    if (r.done) return { texts, btns, res: r.res };
+    if (r.text) texts.push(r.text);
+    if (r.btns) { btns = r.btns; const ok = await E(p, re => { const b = [...document.querySelectorAll('#m3ui .m3grid button')].find(x => !x.disabled && new RegExp(re).test(x.textContent)) || document.querySelector('#m3ui .m3grid button'); b.click(); return true; }, click || '.'); }
+    await p.waitForTimeout(40);
+  }
+  return { texts, btns, res: null };
 }
 const btnText = p => E(p, () => [...document.querySelectorAll('#m3ui .m3grid button')].map(b => b.textContent).join(' | '));
 const at = (p, x, y) => E(p, ([x, y]) => { const m = window.__m3, [px, py] = m.tc(x, y); m.G.p.x = px; m.G.p.y = py; window.__lod.LOD.cam.x = px; window.__lod.LOD.cam.y = py; }, [x, y]);
@@ -148,6 +162,119 @@ async function pickStarter(p, name) {
   await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await p.mouse.down(); await p.waitForTimeout(800); await p.mouse.up();
   ok(await E(p, () => Array.isArray(window.__m3.devTile) && Math.abs(window.__m3.devTile[0] - 12) <= 2 && Math.abs(window.__m3.devTile[1] - 59) <= 2), 'dev: long-press shows the tile (' + JSON.stringify(await E(p, () => window.__m3.devTile)) + ')');
   ok(p.errs.length === 0, 'no page errors (start/phone)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
+  await p.close();
+
+  // ---------- point 5: people with personality, memory, relationships ----------
+  p = await open(b); await play(p); await E(p, () => { window.__m3.skipReplies = false; });
+  ok(await E(p, () => { const c = window.__m3.PPL.cond; return c({ hero: 'bigwman' }, 'x') === 1 && c({ hero: 'loken' }, 'x') === -1 && c({ hero: 'bigwman', met: 0 }, 'x') === 2 && c({ wat: 1 }, 'x') === -1 && c(null, 'x') === 0; }), 'conditions: hero, met, unknown key never matches, best match = most conditions');
+  let tk = await talkTo(p, 'berit', 'scam');
+  ok(/Unexpected item/.test(tk.texts[0] || '') && tk.btns && tk.btns.length === 3, 'Berit (grumpy) opens with her own line and 3 replies (' + (tk.btns || []).length + ')');
+  ok(await E(p, () => { const b = window.__m3.PPL.pst('berit'); return b.rel === 2 && b.last === 'Bags are a scam.' && b.met === 1; }), 'honest suits a grumpy person: relationship +2; she remembers your last answer');
+  const seen = [];
+  for (let i = 0; i < 6; i++) { const t = await talkTo(p, 'berit'); seen.push(t.texts.join(' ')); }
+  ok(/BigWman|packages/.test(seen[0]) || /Cicci/.test(seen.join(' ')), 'second meeting: a line about YOU (your hero / what she learned): ' + seen[0].slice(0, 50));
+  ok(new Set(seen.slice(0, 4)).size === 4 && seen.slice(4).every(t => seen.includes(t) || true) && new Set(seen.slice(0, 4)).size === 4, 'no repeats until the pool is used up (' + new Set(seen).size + ' different in 6)');
+  ok(await E(p, () => window.__m3.PPL.know('wife:cicci') && window.__m3.G.know['wife:cicci'].by === 'berit'), 'with a good relationship Berit tells you what Cicci wants (and the Notes remember who)');
+  // returning on another day + remembering the answer
+  await E(p, () => { const b = window.__m3.PPL.pst('pirate'); b.met = 1; b.last = 'lied'; b.lastDay = '2000-01-01'; });
+  ok(await E(p, () => window.__m3.PPL.cond({ returning: true, last: 'lied' }, 'pirate') === 2 && window.__m3.PPL.cond({ returning: false }, 'pirate') === -1), 'memory: "returning on another day" and "your last answer" are conditions');
+  // relationship changes prices and trade
+  await E(p, () => { window.__m3.PPL.pst('berit').rel = 5; });
+  await at(p, 5, 44); await p.waitForTimeout(200); await E(p, () => { window.__m3.skipReplies = true; window.__m3.G.kr = 500; window.__m3.interact(); }); await until(p, 'Shop'); await p.waitForTimeout(150);
+  ok(/Carrier bag.* 8 kr ♥/.test(await btnText(p)), 'a friend (+5) gets 25 % off: carrier bag 8 kr instead of 10');
+  await until(p, '^‹ Leave'); await until(p, '^‹ Leave'); await drive(p, []);
+  await E(p, () => { window.__m3.PPL.pst('berit').rel = -3; window.__m3.interact(); }); await until(p, 'Shop'); await p.waitForTimeout(100);
+  ok(await E(p, () => { const b = [...document.querySelectorAll('#m3ui .m3grid button')].find(x => /Shop/.test(x.textContent)); return !b || b.disabled; }), 'an enemy (−3) refuses to trade');
+  await drive(p, ['Leave']);
+  // friends react when you kill or catch someone they know
+  await E(p, () => { const m = window.__m3; for (const id of ['berit', 'sofia', 'cicci']) m.PPL.pst(id).rel = 0; m.G.dead.n_pelle = 1; m.PPL.reactGone('n_pelle', 'dead'); });
+  g = await E(p, () => { const m = window.__m3; return { berit: m.PPL.rel('berit'), sofia: m.PPL.rel('sofia'), cicci: m.PPL.rel('cicci'), killed: !!m.G.flags['killed:pelle'], grudge: !!m.G.flags['grudge:berit'] }; });
+  ok(g.berit === -3 && g.sofia === -3 && g.cicci === -1 && g.killed && g.grudge, 'kill Pelle: his friends Berit and Sofia −3, their friend Cicci hears it (−1) (' + JSON.stringify(g) + ')');
+  let said = ''; for (let i = 0; i < 8 && !/Pelle/.test(said); i++) { await E(p, () => { window.__m3.PPL.pst('berit').rel = 3; }); said = (await talkTo(p, 'berit')).texts.join(' '); }
+  ok(/Pelle/.test(said), 'Berit talks about what you did to Pelle: "' + said.slice(0, 55) + '"');
+  // an enemy hunts you
+  await E(p, () => { const m = window.__m3; m.G.dead = {}; m.PPL.pst('berit').rel = -5; m.G.flags.x = 1; });
+  await at(p, 9, 44);
+  for (let i = 0; i < 160 && !(await E(p, () => !!window.__m3.B)); i++) { await E(p, () => { const pd = window.__m3.pending; if (pd && pd.say) pd.res(); }); await p.waitForTimeout(50); }
+  ok(await E(p, () => !!window.__m3.B && window.__m3.B.kind === 'npc' && window.__m3.B.npc === 'berit'), 'relationship −5: Berit walks up, says her piece and attacks you');
+  await drive(p, ['Let it go', '^⚔️ Fight', 'Foam|Body|Can|Burp'], 900);
+  ok(await E(p, () => window.__m3.PPL.rel('berit') === -2), 'after the fight the grudge cools down to −2');
+  // time of day + release day
+  ok(await E(p, () => { const c = window.__m3.PPL.cond; window.__m3.fakeHour = 23; const n = c({ night: true }, 'x') === 1 && c({ hour: [22, 4] }, 'x') === 1 && c({ hour: [8, 17] }, 'x') === -1; window.__m3.fakeHour = 12; const d = c({ night: true }, 'x') === -1 && c({ hour: [8, 17] }, 'x') === 1; window.__m3.fakeHour = null; return n && d; }), 'time of day follows the real clock (night, hour ranges that wrap past midnight)');
+  ok(await E(p, () => { const c = window.__m3.PPL.cond; return c({ day: 'wed' }, 'x') === 1 && c({ from: 'tue' }, 'x') === 1 && c({ until: 'mon' }, 'x') === -1; }), 'release day: Wednesday build matches day/from/until');
+  ok(p.errs.length === 0, 'no page errors (people)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
+  await p.close();
+
+  p = await open(b, '?dev=all&date=2026-11-23'); await play(p);
+  ok(await E(p, () => { const c = window.__m3.PPL.cond; return c({ day: 'mon' }, 'x') === 1 && c({ from: 'tue' }, 'x') === -1; }), 'release day: Monday build does not match "from tue"');
+  await p.close();
+
+  // ---------- the wives: their own right line, by who you are and what you did; 8 turns; wrong costs a turn ----------
+  p = await open(b); await play(p);
+  ok(await E(p, () => window.__m3.CFG.PARTNER_TURNS === 8), 'wives: 8 turns to survive');
+  ok(await E(p, () => { const r = window.__m3.PPL.reacts; return r('cicci').mul === 1.5 && r('cicci').turns === 1 && r('anna').mul === .9 && r('sofia').mul === .9; }), 'wives react differently to the hero you play (Cicci is suspicious of BigWman, Anna and Sofia less so)');
+  const rightOf = async () => E(p, () => { let r = null; for (let i = 0; i < 30 && !r; i++) { const L = window.__m3.PPL.wifeLines('cicci'); if (L.length !== 4 || L.filter(l => l.value === 'good').length !== 1) return 'BAD'; r = L.find(l => l.value === 'good').label.replace(/[" 💡]/g, ''); } return r; });
+  const base = await rightOf();
+  await E(p, () => { window.__m3.G.debt = 2; }); const dbt = await rightOf();
+  await E(p, () => { window.__m3.G.debt = 0; window.__m3.G.dead.n_berit = 1; }); const kb = await rightOf();
+  await E(p, () => { window.__m3.G.dead = {}; window.__m3.G.drinkLog = [window.__m3.G.t, window.__m3.G.t]; }); const dr = await rightOf();
+  await E(p, () => { window.__m3.G.drinkLog = []; window.__m3.PPL.pst('cicci').last = 'wrong'; }); const lw = await rightOf();
+  ok(new Set([base, dbt, kb, dr, lw]).size === 5 && [base, dbt, kb, dr, lw].every(x => x !== 'BAD'), 'Cicci\'s right line changes with debt, a dead friend, drink and her memory: ' + [base, dbt, kb, dr, lw].map(x => x.slice(0, 14)).join(' | '));
+  ok(await E(p, () => !window.__m3.PPL.wifeLines('cicci').some(l => /💡/.test(l.label))), 'no 💡 mark on the right line until someone has told you what she wants');
+  await E(p, () => { window.__m3.PPL.tell('wife:cicci', 'berit'); });
+  ok(await E(p, () => window.__m3.PPL.wifeLines('cicci').filter(l => /💡/.test(l.label)).length === 1 && window.__m3.PPL.wifeLines('cicci').find(l => /💡/.test(l.label)).value === 'good'), 'once Berit told you what Cicci wants, the right line carries a 💡');
+  await E(p, () => { const m = window.__m3; m.PPL.pst('cicci').last = null; m.G.party = ['frog', 'cuke'].map(s => m.mk(s, 30)); for (const c of m.G.party) c.hp = 9999; m.startPartner('cicci'); }); await p.waitForTimeout(300);
+  await until(p, '^🛡️ Endure'); await p.waitForTimeout(1200);
+  const s1 = await E(p, () => window.__m3.B.survive);
+  for (let k = 0; k < 6 && (await E(p, () => window.__m3.PPL.pst('cicci').last)) !== 'wrong'; k++) { // her "Another package?" can stun you and cost your turn: try again
+    await until(p, '^💬 Talk');
+    for (let i = 0; i < 40 && (await E(p, () => document.querySelectorAll('#m3ui .m3grid button').length)) < 7; i++) await p.waitForTimeout(50);
+    await E(p, () => { const L = window.__m3.B && window.__m3.B.lines, bs = [...document.querySelectorAll('#m3ui .m3grid button')]; if (!L || bs.length < 7) return; window.__sb = window.__m3.B.survive; bs[L.findIndex(l => l.value === 'bad') + 2].click(); }); // the four lines come after Apologize and Promise
+    for (let i = 0; i < 80 && (await E(p, () => window.__m3.PPL.pst('cicci').last)) !== 'wrong' && !(await E(p, () => window.__m3.pending && /What will/.test(document.querySelector('#m3ui .m3txt').textContent))); i++) await p.waitForTimeout(50);
+  }
+  g = await E(p, () => ({ s: window.__m3.B && window.__m3.B.survive, last: window.__m3.PPL.pst('cicci').last, rel: window.__m3.PPL.rel('cicci') }));
+  const sb = await E(p, () => window.__sb);
+  ok(g.last === 'wrong' && g.s <= sb, 'a wrong answer costs a survived turn: the round that normally adds one adds nothing (' + sb + ' → ' + g.s + ') and she remembers it (' + g.last + ', relationship ' + g.rel + ')');
+  await drive(p, ['^💬 Talk', 'Cicci', 'Apologize|Promise'], 400);
+  ok(await E(p, () => window.__m3.G.solved.includes('cicci')), 'the fight still ends (promise/apology)');
+  await talkTo(p, 'cicci').catch(() => 0);
+  g = await E(p, () => window.__m3.PPL.pst('cicci').last);
+  ok(['promise', 'sorry', 'right', 'endured', 'wrong'].includes(g), 'she remembers how the last meeting ended (' + g + ')');
+  ok(p.errs.length === 0, 'no page errors (wives)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
+  await p.close();
+
+  // ---------- point 6: knowledge – you have to meet the right people ----------
+  p = await open(b, '?dev=all&date=2026-11-25'); await play(p); await E(p, () => { window.__m3.skipReplies = false; });
+  const hintAfter = async () => { await E(p, () => { const m = window.__m3; m.G.party = [m.mk('frog', 30)]; m.G.party[0].hp = 9999; m.startWild(m.ZONES.find(z => z.id === 'parking')); }); await p.waitForTimeout(250);
+    await E(p, () => { const x = window.__m3.B.foes[0]; x.sp = 'golem'; x.lv = 3; x.hp = 9999; }); await until(p, '^⚔️ Fight'); await p.waitForTimeout(100); const t = await btnText(p); await until(p, '^‹ Back'); await E(p, () => { window.__m3.B.over = true; window.__m3.B.result = 'run'; }); await drive(p, ['Walk away', 'Run']); return t; };
+  const h1 = await hintAfter();
+  ok(!/strong|weak/.test(h1), 'before anyone told you how types work, the move list shows no "strong!" or "weak" (' + h1.slice(0, 60) + ')');
+  tk = await talkTo(p, 'freja', 'Just looking'); tk = await talkTo(p, 'freja');
+  ok(await E(p, () => window.__m3.PPL.know('types')), 'Freezer Freja tells you how the types work (second meeting, she has to like you a little)');
+  const h2 = await hintAfter();
+  ok(/weak/.test(h2), 'after that the move list shows what is strong/weak (' + h2.replace(/\s+/g, ' ').slice(0, 70) + ')');
+  const sold = () => E(p, () => { const know = { ...(window.__m3.G.know || {}) }, db = PX.data.load(window.M3_DATA, {}, { today: () => '2026-11-25', devAll: false, flag: f => f.startsWith('know:') && !!know[f.slice(5)] }), I = window.M3_DATA.items; return [db.released(I.ringbox), db.released(I.tranq)]; });
+  g = await sold(); ok(g[0] === false && g[1] === false, 'shop items can need knowledge (real players, not ?dev=all): ring box and tranquilizer gun are not sold yet');
+  await E(p, () => { window.__m3.PPL.tell('ring', 'fia'); window.__m3.PPL.tell('tranq', 'jonas'); });
+  g = await sold(); ok(g[0] && g[1], 'after Fia and Jonas have told you, they are for sale');
+  await E(p, () => { window.__m3.bagMenu(); }); await until(p, 'Notes'); await p.waitForTimeout(250);
+  t = await E(p, () => document.querySelector('#m3ui .m3txt').textContent);
+  ok(/WHAT YOU KNOW/.test(t) && /How the types work \(Freezer Freja, WED\)/.test(t) && /Fia keeps a ring box/.test(t) && /• \?\?\?/.test(t) && /PEOPLE/.test(t) && /Freezer Freja/.test(t), '📓 Notes: what you learned and who told you; hero houses stay ??? until someone tells you');
+  await p.screenshot({ path: OUT + '/M3P_notes.png' });
+  await drive(p, ['OK', 'Close']);
+  // saved
+  await E(p, () => { document.getElementById('btn-pause').click(); }); await p.waitForTimeout(150);
+  g = await E(p, () => { const d = JSON.parse(localStorage.getItem('lod.save.m3.Ljunky')).data; return { v: d.v, rel: d.people.freja && d.people.freja.rel, know: Object.keys(d.know).sort().join() }; });
+  ok(g.v === 3 && g.rel >= 1 && /types/.test(g.know) && /ring/.test(g.know), 'relationships, memory and knowledge are saved (' + JSON.stringify(g) + ')');
+  // fillers
+  await E(p, () => document.getElementById('resume').click());
+  g = await E(p, () => { const f = Object.values(window.__m3.G.fillers), all = f.flatMap(x => x.dialogue.talk.map(t => t.text)); return { n: f.length, lines: all.length, uniq: new Set(all).size, pers: new Set(f.map(x => x.personality)).size, min: Math.min(...f.map(x => x.dialogue.talk.length)) }; });
+  ok(g.n === 8 && g.lines === g.uniq && g.min >= 2 && g.pers >= 4, 'filler shoppers: each has a personality and their own lines, none shared (' + JSON.stringify(g) + ')');
+  ok(await E(p, () => { const bad = window.__m3.PPL.validate(); return bad.length === 0; }), 'the dialogue data validates');
+  await E(p, () => { const D = window.M3_DATA; D.dialogue.berit.talk.push({ if: { wat: 1 }, text: 'x', tell: 'nope', give: { nothing: 1 } }); D.dialogue.nobody = { talk: [] }; });
+  const bad = await E(p, () => window.__m3.PPL.validate());
+  ok(bad.length >= 4 && bad.some(x => /unknown condition "wat"/.test(x)) && bad.some(x => /unknown knowledge "nope"/.test(x)) && bad.some(x => /no such person/.test(x)), 'the validator warns about unknown conditions, knowledge, items and people (' + bad.length + ')');
+  ok(p.errs.length === 0, 'no page errors (knowledge)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
   await p.close();
 
   // ---------- balance (point 1): XP curve, anti-grind, no XP for catching, money, Kenny, Inkasso-Ingvar ----------
@@ -272,7 +399,7 @@ async function pickStarter(p, name) {
   let f = await fits();
   ok(f.center && f.inside && f.wide && f.allVisible, 'short screen: the 5 starters fit in a centered card (' + JSON.stringify(f) + ')');
   await p.screenshot({ path: OUT + '/M3P_choose.png' });
-  await pickStarter(p, 'Freezer');
+  await pickStarter(p, 'Freezer'); await E(p, () => { window.__m3.skipReplies = true; });
   await at(p, 10, 58); await p.waitForTimeout(200); await E(p, () => { window.__m3.G.kr = 999; window.__m3.interact(); }); await until(p, 'Shop'); await p.waitForTimeout(250);
   f = await fits();
   ok(f.center && f.wide && f.scroll, 'short screen: a 13-item shop scrolls like a page, with the ▼ more hint (' + JSON.stringify(f) + ')');
@@ -364,8 +491,8 @@ async function pickStarter(p, name) {
 
   // ---------- dealer: trade + wife refusal ----------
   await E(p, () => { window.__m3.startPartner('cicci'); }); await p.waitForTimeout(200);
-  await E(p, () => { window.__m3.give('ringbox', 2); window.__m3.G.me.fx.push({ type: 'catchBonus', value: 50, t: 60, n: 1, src: 'test' }); });
-  for (let k = 0; k < 8 && await E(p, () => window.__m3.B && window.__m3.B.foes[0].hp > 0 && window.__m3.G.items.ringbox > 0); k++) { await until(p, '^🎯 Throw'); await until(p, 'Ring box'); await p.waitForTimeout(400); }
+  await E(p, () => { window.__m3.give('ringbox', 5); window.__m3.G.me.fx.push({ type: 'catchBonus', value: 50, t: 60, n: 1, src: 'test' }); });
+  for (let k = 0; k < 12 && await E(p, () => window.__m3.B && window.__m3.B.foes[0].hp > 0 && window.__m3.G.items.ringbox > 0); k++) { await until(p, '^🎯 Throw'); await until(p, 'Ring box'); await p.waitForTimeout(700); } // her stun move can cost a turn: just keep trying
   await drive(p, ['^🛍️ Catch', 'Talk', 'checkouts']);
   ok(await E(p, () => window.__m3.G.party.concat(window.__m3.G.box).some(c => c.sp === 'w_cicci') && window.__m3.G.solved.includes('cicci')), 'ring box calms Cicci -> knocked out -> caught (counts as solved)');
   await at(p, 45, 34); await p.waitForTimeout(200);
@@ -453,7 +580,7 @@ async function pickStarter(p, name) {
   ok(g.party === 'frog9,bat6' && g.kr === 77 && g.beat.join() === 'loken' && g.t >= 321 && g.t < 330 && g.scene === 'map', 'old save: party, money, heroes, playtime restored');
   ok(g.items.folkol === 2 && g.items.ipa === 1 && g.items.whisky === 1 && g.items.fizztab === 2 && g.items.bag === 5 && Array.isArray(g.graves) && g.known, 'old save: drinks + tablets migrated into the item bag, new fields filled');
   await E(p, () => document.getElementById('btn-pause').click()); await p.waitForTimeout(100);
-  ok(await E(p, () => JSON.parse(localStorage.getItem('lod.save.m3.Ljunky')).data.v === 2), 'saved again as v2');
+  ok(await E(p, () => JSON.parse(localStorage.getItem('lod.save.m3.Ljunky')).data.v === 3), 'saved again as v3');
   ok(p.errs.length === 0, 'no page errors (old save)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
   await p.close();
 

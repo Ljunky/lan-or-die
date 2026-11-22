@@ -20,7 +20,7 @@ const SCHEMA = {
   zones: { req: ['name', 'r'], refs: { enc: 'creatures' } },
   apps: { req: ['name', 'icon', 'lines'] }
 };
-const D = PX.data.load(window.M3_DATA, SCHEMA, { today: LOD.today, devAll: LOD.dev, flag: f => !!(G && G.flags && G.flags[f]) });
+const D = PX.data.load(window.M3_DATA, SCHEMA, { today: LOD.today, devAll: LOD.dev, flag: f => !!(G && (f.startsWith('know:') ? G.know && G.know[f.slice(5)] : G.flags && G.flags[f])) });
 const CFG = D.raw.tuning, TY = D.raw.types, TYPES = TY.cycle, TCOL = TY.colors;
 const MOVES = D.raw.moves, HERO = D.raw.heroes, PARTNERS = D.raw.partners, ITEMS = D.raw.items, NPCS = D.raw.npcs, ZONE_DEFS = D.raw.zones;
 const HERO_IDS = Object.keys(HERO);
@@ -485,12 +485,12 @@ async function round() {
   if (B.conf > 0) B.conf--;
   for (const f of B.foes) for (const e of EF.turn(f)) if (e.type === 'sleep' && f.hp > 0) await say(cname(f) + ' woke up!');
   B.turn++;
-  if (B.kind === 'partner') { B.survive++; const need = partnerNeed(); if (B.survive >= need) { await say(PARTNERS[B.partner].name + ' sighs. "Fine. We will talk about this later."'); B.over = true; B.result = 'solved'; } }
+  if (B.kind === 'partner') { B.survive++; const need = partnerNeed(); if (B.survive >= need) { PPL.wifeAfter(B.partner, 'endured'); await say(PARTNERS[B.partner].name + ' sighs. "Fine. We will talk about this later."'); B.over = true; B.result = 'solved'; } }
 }
-const partnerNeed = () => CFG.PARTNER_TURNS + (PARTNERS[B.partner].guy === heroId() ? 1 : 0);
+const partnerNeed = () => CFG.PARTNER_TURNS + PPL.reacts(B.partner).turns;
 
 /* ---------- the player's choice: one tap per choice ---------- */
-const effHint = (mt, ft) => { const e = eff(mt, ft); return e === 1 || !known('eff:' + mt + '>' + ft) ? '' : e > 1 ? ' · strong!' : ' · weak'; };
+const effHint = (mt, ft) => { const e = eff(mt, ft); return e === 1 || !PPL.know('types') ? '' : e > 1 ? ' · strong!' : ' · weak'; }; // only once someone has told you how the types work
 const throwables = () => Object.keys(ITEMS).filter(id => has(id) && (ITEMS[id].kind === 'throwable' || (ITEMS[id].kind === 'drug' && (ITEMS[id].throw || ITEMS[id].lureMul))) && rel(ITEMS[id]));
 const usables = () => Object.keys(ITEMS).filter(id => has(id) && ITEMS[id].kind === 'drug' && ITEMS[id].use && rel(ITEMS[id]));
 async function chooseAction() {
@@ -529,10 +529,7 @@ async function chooseAction() {
     } else if (v === 'talk') {
       const P = PARTNERS[B.partner], g = P.guy === heroId() ? 0 : 1, C = D.raw.choices;
       const opts = ['sorry', 'promise'].map(k => ({ label: C[k].label, sub: C[k].note, unk: !known('choice:' + k), value: k }));
-      if (!B.lines) { // four lines, one right; the wrong ones are her other bad line and a random one from choices.wrong
-        const other = P.bad[1 - g], extra = pick((C.wrong || ['Have you lost weight?']).filter(x => x !== other));
-        B.lines = [{ label: '"' + P.good[g] + '"', value: 'good' }, { label: '"' + P.bad[g] + '"', value: 'bad' }, { label: '"' + other + '"', value: 'bad' }, { label: '"' + extra + '"', value: 'bad' }].sort(() => Math.random() - .5);
-      }
+      if (!B.lines) B.lines = PPL.wifeLines(B.partner) || [{ label: '"' + P.good[g] + '"', value: 'good' }, { label: '"' + P.bad[g] + '"', value: 'bad' }, { label: '"' + P.bad[1 - g] + '"', value: 'bad' }, { label: '"' + pick(C.wrong || ['Calm down.']) + '"', value: 'bad' }].sort(() => Math.random() - .5);
       const lines = B.lines;
       const a = await ask('Say what?', opts.concat(lines, [BACK()]));
       if (a) return { k: 'talk', a };
@@ -762,6 +759,7 @@ async function throwBag(ko) {
 }
 async function caught(foe) {
   const s = SP[foe.sp], c = { sp: foe.sp, lv: foe.lv, xp: 0, hp: Math.max(1, foe.hp) };
+  PPL.reactGone(foe.sp, 'caught');
   if (s.kind === 'creature') {
     const isNew = !G.caught[foe.sp]; G.caught[foe.sp] = 1;
     await say('Gotcha! ' + cname(foe) + ' was bagged!' + (isNew ? ' New species! +' + fmt(CFG.PTS.species) : ''));
@@ -800,7 +798,7 @@ async function finishOff(foe) {
   foe.flash = 1; FX.tween(foe, { flash: 0, alpha: 0, yoff: 1 }, .8, 'inQuad');
   layer.burst(spots.fx, spots.fy - 20 * spots.sc, { n: 20, color: ['#8a93a6', '#1F2A44', '#c9ced6'], speed: 90, gravity: -40, size: 4, life: 1 });
   await sleep(.6);
-  S.addGrave(foe);
+  S.addGrave(foe); PPL.reactGone(foe.sp, 'dead');
   await say('💀 ' + cname(foe) + ' is no more.' + (cemeteryOpen() ? ' A stone appears in the cemetery.' : ''));
   if (SP[foe.sp].kind !== 'creature') personGone(foe.sp, 'dead');
   if (B.kind !== 'boss' && B.kind !== 'trainer') await gainXp(foe, 1.2);
@@ -876,7 +874,7 @@ async function partnerTurn() {
   const m = pick(P.moves);
   await say(P.name + ': "' + m.n + '"'); lunge('foe');
   if (EF.has(foe, 'blind') && Math.random() < EF.sum(foe, 'blind')) { await say('She can\'t see you through the glitter. It misses.'); return; }
-  const mul = (guy ? 1.4 : 1) * (B.angry ? 2 : 1) * (B.endure ? .5 : 1) * (1 + CFG.WIFE_DEBT_ANGER * (G.debt || 0)) / stageMul(clamp(me.stg.def + statFx('def') - (B.pants ? 2 : 0), -6, 6));
+  const mul = PPL.reacts(B.partner).mul * (B.angry ? 2 : 1) * (B.endure ? .5 : 1) * (1 + CFG.WIFE_DEBT_ANGER * (G.debt || 0)) / stageMul(clamp(me.stg.def + statFx('def') - (B.pants ? 2 : 0), -6, 6));
   B.angry = 0;
   const hit = f => { const d = Math.max(1, Math.round(maxHp(me) * f * mul * rand(.85, 1.1))); hurt(me, d, 'me'); SFX.hit(); };
   if (m.fx === 'dmg') hit(.2);
@@ -895,6 +893,7 @@ async function partnerTurn() {
 async function partnerAnswer(a) {
   const P = PARTNERS[B.partner], me = active();
   if (a === 'sorry' || a === 'promise') learn('choice:' + a);
+  PPL.wifeAfter(B.partner, { sorry: 'sorry', promise: 'promise', good: 'right' }[a] || 'wrong');
   if (a === 'sorry') { hurt(me, Math.round(maxHp(me) * .22), 'me'); B.survive++; await say('You apologize. ' + P.name + ' softens a little.'); }
   else if (a === 'promise') { G.debt = (G.debt || 0) + 1; await say('You promise. Again. Promise debt: ' + G.debt + '.'); await say(P.name + ': "I am writing that down."'); B.over = true; B.result = 'solved'; }
   else if (a === 'good') { SFX.catch(); await say(P.name + ': "…Okay. That was actually the right thing to say."'); B.over = true; B.result = 'solved'; }
@@ -944,6 +943,7 @@ async function endBattle() {
     if (ids.length) { const id = pick(ids); take(id); LOD.callout('CAT CHAOS 🐈', 'The cats knocked a ' + ITEMS[id].name + ' out of the bag.', 'bad'); await say('🐈 The cats knock a ' + ITEMS[id].name + ' out of your bag. It rolls away.'); }
   }
   const partner = B.partner, dev = kind === 'dev' && r === 'win';
+  if (kind === 'npc' || kind === 'trainer') PPL.afterFight(B.npc, B.koResult === 'killed' ? 'dead' : 'ok');
   for (const c of G.party) { delete c.stg; delete c.stun; delete c.disp; delete c.flash; delete c.sq; delete c.off; delete c.yoff; delete c.alpha; c.fx = []; }
   B = null; layer.clear(); hideBox(); G.scene = 'map'; G.encCool = CFG.ENC_COOLDOWN; G.stepD = 0; LOD.input.clear();
   if (kind === 'partner' && PARTNERS[partner].kind === 'Psychic' && r === 'solved') { G.mirrorT = 5; LOD.toast('🌀 Your head spins. Left is right.', 2.5); }
@@ -1085,8 +1085,13 @@ function updMap(dt) {
     if (G.eggs[i]) return; const [x, y] = tc(e[0], e[1]);
     if (Math.hypot(x - G.p.x, y - G.p.y) < 12 && m.len < .1) { G.eggHold = (G.eggHold || 0) + dt; if (G.eggHold > 1) { G.eggs[i] = 1; G.eggHold = 0; const em = (LOD.egg() || {}).em || '🥚'; LOD.toast(em + ' ' + G.eggs.filter(Boolean).length + '/3', 2); LOD.tone(988, .1, 'square', .05); if (G.eggs.every(Boolean)) { LOD.eggFound(); if (rel(ITEMS.bitcoin)) give('bitcoin'); } } }
   });
+  // someone you made an enemy of (relationship −4 or worse) walks up to you and fights
+  for (const n of npcList) if (npcVisible(n) && PPL.hunting(n.id)) {
+    const dx = G.p.x - n.x, dy = G.p.y - n.y, d = Math.hypot(dx, dy);
+    if (d < 150) { n.chase = true; n.tx = n.x; n.ty = n.y; const sp = 40 * dt / Math.max(d, 1); n.x += dx * sp; n.y += dy * sp; n.step += dt; n.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0); if (d < 15) { G.v.x = G.v.y = 0; hunted(n); return; } } else n.chase = false;
+  } else n.chase = false;
   for (const n of npcList) {
-    if (!n.d.area) continue;
+    if (!n.d.area || n.chase) continue;
     const d = Math.hypot(n.tx - n.x, n.ty - n.y);
     if (d < 1) { n.step = 0; n.wait -= dt; if (n.wait <= 0) { const a = n.d.area; const [x, y] = tc(a[0] + (Math.random() * a[2] | 0), a[1] + (Math.random() * a[3] | 0)); if (walkable(x, y)) { n.tx = x; n.ty = y; } n.wait = rand(1.5, 4); } }
     else { const s = 22 * dt / d; n.x += (n.tx - n.x) * Math.min(1, s); n.y += (n.ty - n.y) * Math.min(1, s); n.dir = Math.abs(n.tx - n.x) > Math.abs(n.ty - n.y) ? (n.tx < n.x ? 2 : 3) : (n.ty < n.y ? 1 : 0); n.step += dt; }
@@ -1096,6 +1101,11 @@ function updMap(dt) {
 }
 const EGG_AT = [[9, 8], [18, 34], [46, 57]];
 
+async function hunted(n) {
+  G.scene = 'talk'; LOD.input.clear(); const e = PPL.entry(n.id) || {}, pe = D.raw.personalities[e.personality] || {};
+  await say2(n.d.name, e.hunt || pe.hunt || 'We are not done, you and I.');
+  hideBox(); startNpcFight(n.id);
+}
 /* ---------- tapping: talk / shop / fight ---------- */
 async function interact() {
   const o = G.near; if (!o || G.scene !== 'map') return;
@@ -1126,11 +1136,12 @@ async function npcTalk(n) {
   n.tx = n.x; n.ty = n.y; n.dir = G.p.y < n.y ? 1 : 0;
   if (d.role === 'dealer') return S.dealer(n);
   if (d.role === 'fence') return fence(n);
-  if (d.robot) await say(robotLine(), { who, auto: false }); else await say2(who, npcLine(d));
+  const tk = await PPL.talk(id, { name: who, fallback: npcLine(d) });
+  if (tk.fight) { hideBox(); startNpcFight(id); return; }
   for (;;) {
     const opts = [];
     if (d.heal) opts.push({ label: '❤️ Heal the party', value: 'heal', cls: 'hot' });
-    if (d.shop && d.shop.some(i => ITEMS[i] && rel(ITEMS[i]) && !ITEMS[i].notSold)) opts.push({ label: '🛒 Shop', value: 'shop', cls: d.heal ? '' : 'hot' });
+    if (d.shop && d.shop.some(i => ITEMS[i] && rel(ITEMS[i]) && !ITEMS[i].notSold)) opts.push({ label: '🛒 Shop', value: 'shop', cls: d.heal ? '' : 'hot', dis: PPL.refuses(id), sub: PPL.refuses(id) ? 'Refuses to trade with you' : '' });
     if (d.shop && d.shop.includes('tranq') && weaponOwned() && ITEMS[weaponOwned()].upgradesTo) opts.push({ label: '🔧 Upgrade the tranq gun', value: 'upgrade' });
     const challenge = !G.npcBeat[id] && (d.role === 'trainer' || (d.role === 'gym' && isGymBoss(id)));
     if (challenge) opts.push({ label: '⚔️ Challenge', value: 'trainer', cls: 'hot' });
@@ -1140,23 +1151,25 @@ async function npcTalk(n) {
     const a = await ask(who, opts, { who });
     if (!a) return;
     if (a === 'heal') { for (const c of G.party.concat(G.box)) c.hp = maxHp(c); [659, 784, 988, 1318].forEach((f, i) => LOD.tone(f, .12, 'triangle', .05, 0, i * .12)); await say2(who, 'Everyone is fully healed. Take care out there.'); }
-    else if (a === 'shop') await shop(d);
+    else if (a === 'shop') await shop(d, id);
     else if (a === 'upgrade') await upgradeTranq(who);
     else if (a === 'trainer') { hideBox(); startTrainer(id); return; }
-    else if (a === 'fight') { await say2(who, d.robot ? 'COMBAT MODE: ON.' : pick(['Oh, it\'s like that?', 'You want a piece of me?', 'Fine. FINE.'])); hideBox(); startNpcFight(id); return; }
+    else if (a === 'fight') { PPL.adjust(id, -2); await say2(who, d.robot ? 'COMBAT MODE: ON.' : pick(['Oh, it\'s like that?', 'You want a piece of me?', 'Fine. FINE.'])); hideBox(); startNpcFight(id); return; }
   }
 }
 /* Kenny the Fence: buys creatures for a few kronor */
-const fencePrice = c => Math.max(1, Math.round((D.raw.fence.rates[SP[c.sp].rarity] || 3) + c.lv * D.raw.fence.perLv));
+const fencePrice = (c, id) => Math.max(1, Math.round(((D.raw.fence.rates[SP[c.sp].rarity] || 3) + c.lv * D.raw.fence.perLv) * (id ? 2 - PPL.priceMul(id) : 1)));
 async function fence(n) {
   const d = n.d, who = d.name;
-  await say2(who, npcLine(d));
+  if (PPL.refuses(n.id)) { await say2(who, 'We are done. Go away.'); return; }
+  const tk = await PPL.talk(n.id, { name: who, fallback: npcLine(d) });
+  if (tk.fight) { hideBox(); startNpcFight(n.id); return; }
   for (;;) {
     const list = G.party.map(c => ({ c, arr: G.party })).concat(G.box.map(c => ({ c, arr: G.box }))).filter(o => isCreature(o.c.sp));
-    const a = await ask(who + ' · "' + pick(d.offer) + '"', list.map((o, k) => ({ label: cname(o.c) + ' Lv ' + o.c.lv + ' · ' + fencePrice(o.c) + ' kr', img: creatureIcon(o.c.sp), ty: typeOf(o.c),
+    const a = await ask(who + ' · "' + pick(d.offer) + '"', list.map((o, k) => ({ label: cname(o.c) + ' Lv ' + o.c.lv + ' · ' + fencePrice(o.c, n.id) + ' kr', img: creatureIcon(o.c.sp), ty: typeOf(o.c),
       sub: o.arr === G.box ? 'In the van' : 'In your party', value: k + 1, dis: o.arr === G.party && G.party.length <= 1 })).concat([BACK('‹ Leave')]), { one: true, who });
     if (!a) return;
-    const o = list[a - 1], kr = fencePrice(o.c);
+    const o = list[a - 1], kr = fencePrice(o.c, n.id);
     o.arr.splice(o.arr.indexOf(o.c), 1); G.kr += kr; SFX.buy();
     await say2(who, pick(d.thanks).replace('{kr}', kr));
   }
@@ -1173,13 +1186,13 @@ async function debtCollector() {
   startBattle({ kind: 'trainer', npc: DC.npc, foes: DC.team.map((sp, i) => mk(sp, top + DC.lvUp + i - 1)) });
 }
 const isGymBoss = id => heroId() === D.raw.gyms.box.boss && id === D.raw.gyms.box.bossIfSelf;
-async function shop(d) {
-  const who = d.name;
+async function shop(d, id) {
+  const who = d.name, pm = id ? PPL.priceMul(id) : 1, pr = i => Math.max(1, Math.round(ITEMS[i].price * pm));
   for (;;) {
     const ids = d.shop.filter(i => ITEMS[i] && rel(ITEMS[i]) && !ITEMS[i].notSold && !(ITEMS[i].kind === 'weapon' && weaponOwned()) && !(ITEMS[i].cosmetic && G.stache));
-    const a = await ask(who + ' · you have ' + G.kr + ' kr', ids.map(i => itemOpt(i, { label: ITEMS[i].em + ' ' + ITEMS[i].name + ' · ' + ITEMS[i].price + ' kr', dis: G.kr < ITEMS[i].price, sub: (known(i) ? ITEMS[i].learnedNote : '') + (has(i) && ITEMS[i].kind !== 'weapon' ? ' · have ' + G.items[i] : '') })).concat([BACK('‹ Leave')]), { who });
+    const a = await ask(who + ' · you have ' + G.kr + ' kr', ids.map(i => itemOpt(i, { label: ITEMS[i].em + ' ' + ITEMS[i].name + ' · ' + pr(i) + ' kr' + (pm < 1 ? ' ♥' : pm > 1 ? ' 💢' : ''), dis: G.kr < pr(i), sub: (known(i) ? ITEMS[i].learnedNote : '') + (has(i) && ITEMS[i].kind !== 'weapon' ? ' · have ' + G.items[i] : '') })).concat([BACK('‹ Leave')]), { who });
     if (!a) return;
-    G.kr -= ITEMS[a].price; SFX.buy();
+    G.kr -= pr(a); SFX.buy();
     if (ITEMS[a].cosmetic) { G.stache = 1; learnItem(a); await say2(who, '✂️ Snip snip. A magnificent moustache.'); return; }
     give(a);
   }
@@ -1193,7 +1206,7 @@ async function upgradeTranq(who) {
 async function bossTalk(id) {
   const h = HERO[id];
   if (G.beat.includes(id)) return say2(h.name, h.after);
-  await say2(h.name, (D.raw.bossLines[id] || {})[heroId()] || '…');
+  const tk = await PPL.talk(id, { name: h.name, fallback: '…' });
   const a = await ask('Fight ' + h.name + '?', [{ label: '⚔️ Fight!', value: 1, cls: 'hot' }, { label: 'Not yet', value: 0, cls: 'back' }]);
   if (a) { hideBox(); startBoss(id); }
 }
@@ -1214,8 +1227,8 @@ async function trainerWon(id, how) {
 }
 async function partnerTalk(id) {
   const P = PARTNERS[id], guy = P.guy === heroId();
-  if (G.solved.includes(id)) return say2(P.name, guy ? 'We are good. For now.' : 'Thanks. Tell him to text me back.');
-  await say2(P.name, guy ? 'THERE you are.' : 'Where is ' + HERO[P.guy].name + "? Don't you dare cover for him.");
+  if (G.solved.includes(id)) { await PPL.talk(id, { name: P.name, list: 'after', fallback: guy ? 'We are good. For now.' : 'Thanks. Tell him to text me back.' }); return; }
+  await PPL.talk(id, { name: P.name, fallback: guy ? 'THERE you are.' : 'Where is ' + HERO[P.guy].name + "? Don't you dare cover for him." });
   hideBox(); startPartner(id);
 }
 async function partnerSolved(id) {
@@ -1270,7 +1283,7 @@ async function bagMenu() {
         { label: '🐸 Party', value: 'party', sub: G.party.length + '/4' }, { label: '🍺 Use', value: 'use', sub: usables().length ? '' : 'Nothing' },
         { label: '🪤 Traps & lures', value: 'traps', sub: (traps.length + lures.length) + ' kinds', dis: !traps.length && !lures.length },
         { label: '🛒 Shopping list', value: 'list', sub: nItems + '/8' }, { label: '📕 Dex', value: 'dex', sub: spc + ' caught' },
-        { label: '📱 Phone', value: 'phone' }, { label: '🏆 Goals', value: 'goals', sub: fmt(goals().total) + ' pts' }, BACK('‹ Close')]);
+        { label: '📓 Notes', value: 'notes' }, { label: '📱 Phone', value: 'phone' }, { label: '🏆 Goals', value: 'goals', sub: fmt(goals().total) + ' pts' }, BACK('‹ Close')]);
       if (!a) break;
       if (a === 'party') {
         const i = await ask('Tap one to make it lead.', G.party.map((c, i) => ({ label: (i === 0 ? '★ ' : '') + cname(c) + ' Lv ' + c.lv, img: creatureIcon(c.sp), ty: typeOf(c), sub: c.hp + '/' + maxHp(c) + ' HP · ATK ' + baseStat(c, 1) + ' DEF ' + baseStat(c, 2) + ' SPD ' + baseStat(c, 3), hp: c.hp / maxHp(c), value: i })).concat([BACK()]), { one: true });
@@ -1287,7 +1300,8 @@ async function bagMenu() {
         await say(G.list.map(q => { const I = ITEMS[q.id] || { em: '📦', name: q.id }; return (q.got ? '✅ ' : '⬜ ') + I.em + ' ' + I.name; }).join('\n'), { auto: false });
       } else if (a === 'dex') {
         await say(SPECIES().filter(k => !D.raw.creatures[k].requires || G.caught[k] || G.seen[k]).map(k => (G.caught[k] ? '● ' : G.seen[k] ? '○ ' : '· ') + '#' + String(D.raw.creatures[k].no).padStart(2, '0') + ' ' + (G.seen[k] || G.caught[k] ? SP[k].name : '???')).join('\n'), { auto: false });
-      } else if (a === 'phone') await S.phone();
+      } else if (a === 'notes') await say(PPL.notes(), { auto: false, center: true });
+      else if (a === 'phone') await S.phone();
       else if (a === 'goals') {
         const g = goals(), c = S.completion();
         await say(g.rows.map(r => r[0] + ': ' + fmt(r[1])).join('\n') + '\nTotal: ' + fmt(g.total) + '\n\nCompletion: ' + c.pct + ' %' + (G.debt ? '\nPromise debt: ' + G.debt : ''), { auto: false });
@@ -1487,10 +1501,10 @@ function newList() {
 }
 const strip = c => { const o = { sp: c.sp, lv: c.lv, xp: c.xp, hp: c.hp }; if (c.fx && c.fx.length) o.fx = EF.save(c); return o; };
 const SAVE_KEYS = ['dir', 'seen', 'caught', 'list', 'kr', 'items', 'beat', 'solved', 'dev', 'eggs', 'egg', 'debt', 'lvlPts', 'flags', 'stache', 'blurred', 'starter',
-  'known', 'traps', 'graves', 'dead', 'caughtP', 'npcBeat', 'gym', 'dealer', 'apps', 'steps', 'fillers', 'trapsUsed'];
-const FRESH = () => ({ items: {}, known: {}, traps: [], graves: [], dead: {}, caughtP: {}, npcBeat: {}, gym: { slots: [] }, dealer: { pts: 0, pen: [], rot: -1, bought: {} }, apps: {}, steps: 0, trapsUsed: {}, flags: {} });
+  'known', 'people', 'know', 'traps', 'graves', 'dead', 'caughtP', 'npcBeat', 'gym', 'dealer', 'apps', 'steps', 'fillers', 'trapsUsed'];
+const FRESH = () => ({ items: {}, known: {}, people: {}, know: {}, traps: [], graves: [], dead: {}, caughtP: {}, npcBeat: {}, gym: { slots: [] }, dealer: { pts: 0, pen: [], rot: -1, bought: {} }, apps: {}, steps: 0, trapsUsed: {}, flags: {} });
 function saveState(G) {
-  const o = { v: 2, p: [Math.round(G.p.x), Math.round(G.p.y)], party: G.party.map(strip), box: G.box.map(strip), me: EF.save(G.me) };
+  const o = { v: 3, p: [Math.round(G.p.x), Math.round(G.p.y)], party: G.party.map(strip), box: G.box.map(strip), me: EF.save(G.me) };
   for (const k of SAVE_KEYS) o[k] = G[k];
   if (o.gym && o.gym.slots) o.gym = Object.assign({}, o.gym, { slots: o.gym.slots.map(s => Object.assign({}, s, { c: strip(s.c) })) });
   return JSON.parse(JSON.stringify(o));
@@ -1501,11 +1515,12 @@ const MIGRATE = {
     d.items.bag = (d.items.bag || 0) + 5; delete d.drinks; delete d.tabs;
     PX.data.fill(d, FRESH());
     return d;
-  }
+  },
+  3: d => PX.data.fill(d, FRESH()) // v2 -> v3: people (relationships, memory) and knowledge
 };
 function loadState(G, d) {
   if (!d || !d.v) return;
-  d = PX.data.migrate(d, MIGRATE, 2);
+  d = PX.data.migrate(d, MIGRATE, 3);
   PX.data.fill(d, FRESH());
   for (const k of SAVE_KEYS) if (d[k] !== undefined) G[k] = d[k];
   const ok = c => c && SP[c.sp] && SP[c.sp].kind !== 'boss';
@@ -1517,7 +1532,7 @@ function loadState(G, d) {
   if (d.p && walkable(d.p[0], d.p[1])) { G.p.x = d.p[0]; G.p.y = d.p[1]; }
   if (G.party.length && !G.party.some(c => c.hp > 0)) for (const c of G.party) c.hp = maxHp(c);
   if (EF.has(G.me, 'tint')) FX.setTint('rainbow', .16, 1);
-  S.afterLoad();
+  S.afterLoad(); PPL.decorateFillers();
   initPeople();
 }
 /* ===================== THE OPENING: wake up, walk around, the stranger, choose a starter ===================== */
@@ -1633,10 +1648,12 @@ const K = {
   get G() { return G; }, get B() { return B; },
   say, say2, ask, hideBox, sleep, BACK, itemOpt, learn, learnItem, known, has, give, take,
   mk, maxHp, xpNeed, cname, typeOf, creatureIcon, addToParty, addXp, heroId, gone, personGone, npcDef, dollOf, drawPerson, drawCreature, spriteOf,
-  startBattle, startPartner, applyAll, SFX, bubble, isCreature, SPECIES, robotLine, cemeteryOpen,
-  setHeart: fn => { ctxHeart = fn; }, get trapSpeed() { return TRAP_SPEED; }
+  startBattle, startNpcFight, startPartner, applyAll, SFX, bubble, isCreature, SPECIES, robotLine, cemeteryOpen,
+  get PPL() { return PPL; }, setHeart: fn => { ctxHeart = fn; }, get trapSpeed() { return TRAP_SPEED; }
 };
 const S = window.M3_SYSTEMS(K);
+const PPL = window.M3_PEOPLE(K);
+for (const w of PPL.validate()) D.warnings.push(w);
 
 /* ===================== THE MISSION ===================== */
 const DEF = {
@@ -1677,7 +1694,7 @@ const DEF = {
       party: [], box: [], seen: {}, caught: {}, kr: CFG.START_KR, beat: [], solved: [], dev: 0, eggs: [0, 0, 0], debt: 0, lvlPts: 0, list: newList(),
       coins: [], coinT: 6, shimT: 8, encCool: CFG.ENC_COOLDOWN, stepD: 0, fishT: 0, mirrorT: 0, blurT: 0, zoneId: 'parking', zoneT: 0, drinkLog: [], near: null, me: { fx: [] }
     }, FRESH());
-    S.newGame();
+    S.newGame(); PPL.decorateFillers();
     initPeople();
   },
   saveState, loadState,
@@ -1718,6 +1735,6 @@ const DEF = {
   }
 };
 LOD.mission(DEF);
-window.__m3 = { xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
+window.__m3 = { PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
   CFG, SP, MAP, ZONES, D, S, tile, zoneAt, tc, mk, goals, startWild, startBoss, startPartner, startDev, startTrainer, startNpcFight, interact, bagMenu, walkable, useItem, give, saveState, loadState, MIGRATE, EF, FX, layer, spots, npcList: () => npcList, gameSpeed, encTable, knockout, catchChance, completion: () => S.completion() };
 })();

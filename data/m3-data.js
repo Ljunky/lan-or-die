@@ -173,7 +173,7 @@ items: {
   bouquet: { kind: 'throwable', name: 'Chlorine bouquet', em: '💐', price: 25, hit: .9, wife: true, throw: [{ type: 'stun', turns: 2 }, { type: 'calm', value: 20 }], learnedNote: 'Sneezing fit. Stunned for 2 turns.', release: 'mon' },
   glitter: { kind: 'throwable', name: 'Glitter bomb', em: '✨', price: 20, hit: .95, wife: true, throw: [{ type: 'blind', value: .35, turns: 3 }, { type: 'calm', value: 15 }], learnedNote: 'Blinded. Her aim gets worse.', release: 'mon' },
   giftcard: { kind: 'throwable', name: 'Gift card', em: '🎁', price: 40, hit: 1, wife: true, throw: [{ type: 'catchBonus', value: .6, turns: 3 }, { type: 'loseTurn', turns: 1 }, { type: 'calm', value: 30 }], learnedNote: 'Distracted. Easier to catch.', release: 'mon' },
-  ringbox: { kind: 'throwable', name: 'Ring box', em: '💍', price: 250, hit: 1, wife: true, throw: [{ type: 'calm', value: 60 }, { type: 'promiseDebt', value: 1 }], learnedNote: 'Big calm. Adds promise debt.', release: 'mon' },
+  ringbox: { requires: 'know:ring', kind: 'throwable', name: 'Ring box', em: '💍', price: 250, hit: 1, wife: true, throw: [{ type: 'calm', value: 60 }, { type: 'promiseDebt', value: 1 }], learnedNote: 'Big calm. Adds promise debt.', release: 'mon' },
   chores: { kind: 'throwable', name: 'Chore chart', em: '📋', price: 8, hit: 1, wife: true, throw: [{ type: 'anger', value: 30 }], learnedNote: 'Backfires. She gets angrier.', release: 'mon' },
   // traps: place one on the map; after waitMin real minutes a dazed creature that likes the lure may sit in it
   fizzMk1: { kind: 'trap', name: 'Open energy drink', em: '⚡', price: 30, lure: 'FIZZ', tier: 1, waitMin: 3, catchBonus: .3, rare: [['genie', 4], ['owl', 4]], learnedNote: 'Attracts FIZZ.', release: 'mon' },
@@ -196,7 +196,7 @@ items: {
   furniture: { kind: 'lure', name: '"Furniture 70 % off" flyer', em: '🛋️', price: 20, lure: 'WIFE', use: [{ type: 'attract', value: 'WIFE', duration: 60 }], learnedNote: 'A wife shows up. Fast.', release: 'tue' },
   beer6: { kind: 'lure', name: 'Six-pack', em: '🍻', price: 60, lure: 'HERO', use: [{ type: 'attract', value: 'HERO', duration: 60 }], learnedNote: 'A hero smells it from across the parking lot.', release: 'tue' },
   // weapon: the tranquilizer gun (in the Throw menu). upgradesTo + cost = buy the next tier at the same shop
-  tranq: { kind: 'weapon', name: 'Tranquilizer gun', em: '🔫', price: 120, hit: .7, throw: [{ type: 'sleep', turns: 2 }], upgradesTo: 'tranqDarts', learnedNote: 'Puts them to sleep for 2 turns.', release: 'mon' },
+  tranq: { requires: 'know:tranq', kind: 'weapon', name: 'Tranquilizer gun', em: '🔫', price: 120, hit: .7, throw: [{ type: 'sleep', turns: 2 }], upgradesTo: 'tranqDarts', learnedNote: 'Puts them to sleep for 2 turns.', release: 'mon' },
   tranqDarts: { kind: 'weapon', name: 'Tranq gun + heavy darts', em: '🔫', price: 0, upgradeCost: 150, hit: .7, throw: [{ type: 'sleep', turns: 3 }, { type: 'catchBonus', value: .2, turns: 3 }], upgradesTo: 'tranqScope', notSold: true, learnedNote: 'Sleeps 3 turns. Easier to catch.', release: 'mon' },
   tranqScope: { kind: 'weapon', name: 'Tranq gun + darts + scope', em: '🎯', price: 0, upgradeCost: 220, hit: 1, throw: [{ type: 'sleep', turns: 3 }, { type: 'catchBonus', value: .3, turns: 3 }], notSold: true, learnedNote: 'Never misses.', release: 'mon' },
   // drugs and drinks: use = on you; throw = on the opponent. Drinks count towards the blur.
@@ -308,7 +308,16 @@ fillers: {
   names: ['Gunnel', 'Bosse', 'Lasse', 'Agneta', 'Pontus', 'Tove', 'Leif', 'Majken', 'Roger', 'Siv', 'Göran', 'Ylva'],
   hair: [['short', '#5a3a22'], ['bob', '#d8d8d8'], ['long', '#e8c46a'], ['messy', '#aa7744'], ['bald', null], ['cap', '#222']],
   tops: ['#d8312f', '#2f6fd0', '#3ddc84', '#f39c34', '#9b6bd6', '#1d1d24', '#f4f4f4'], legs: ['#3d5f92', '#34343c', '#5a4a30'],
-  lines: ['I came in for milk in 2019.', 'Is it Tuesday? It feels like Tuesday.', 'The trolleys are unionizing.', "Don't look the self-checkout in the eye.", 'Discount on souls today.']
+  lines: ['I came in for milk in 2019.', 'Is it Tuesday? It feels like Tuesday.', 'The trolleys are unionizing.', "Don't look the self-checkout in the eye.", 'Discount on souls today.'],
+  /* every shopper gets one personality and a slice of that personality's lines. No line is ever shared between two shoppers. { if, text } lines work too */
+  voices: {
+    grumpy:   ['I came in for milk in 2019.', 'Do not talk to me before my coffee. Or after.', 'They moved the crispbread again. They always move it.', { if: { night: true }, text: 'Nobody should be shopping at night. Including me.' }, 'The queue is always the one I did not pick.', 'Prices. Hmph.'],
+    gossip:   ['I heard Berit has a thing for the self-checkout.', 'Someone told me the Barber is not really a barber.', 'You did not hear it from me, but Pelle talks to the machines.', { if: { killed: 'berit' }, text: 'They say you did something to Berit. They say a lot of things.' }, 'My cousin knows a guy who knows Löken. Personally.', 'The pizza man is in love. Nobody knows with whom.'],
+    paranoid: ['Do not look behind you. Just keep browsing.', 'The freezers hum in a pattern. A pattern!', 'I have counted the cameras. Twelve. There used to be eleven.', { if: { night: true }, text: 'Night is when they replace the stock. Not with stock.' }, 'Is that really a banana? Look at it. Look closely.', 'Whoever is watching the aisles, they are better at it than me.'],
+    flirty:   ['Hello there, stranger. Are you here for the apples, or for me?', 'You have nice shoes. Shoes say a lot.', 'I love a man who carries a bag. Especially a carrier bag.', { if: { state: 'drunk' }, text: 'Oh, you have been drinking. How brave.' }, 'Do you come here often? Everybody does. It is the law.', 'Wink wink. That was a wink. I am bad at it.'],
+    salesman: ['Today only: three for the price of three!', 'May I interest you in a very reasonable bag?', 'I do not work here, but I will sell you things.', { if: { night: true }, text: 'Night special: the same prices, but darker.' }, 'Buy one, get a feeling.', 'Everything is on sale, if you believe hard enough.'],
+    dreamer:  ['Do you ever feel like the cucumbers are watching?', 'I came in for milk and found a purpose. Then I lost both.', 'The aisles go on forever if you stop counting.', { if: { state: 'high' }, text: 'You can see it too. The shimmer on the shelves.' }, 'Sometimes the trolleys whisper in Swedish.', 'I once cried at the sight of a perfect pear.']
+  }
 },
 /* gossip lines about heroes, mixed into talkers with gossip: true */
 gossip: {
@@ -398,6 +407,327 @@ respawn: {
   heart: 'Your heart goes BA-DUM… BA… DUM………',
   wakeVan: 'You wake up in the van. Again. Someone patched your creatures up and left a receipt from Apotek Hjärtat. You are {lost} kr lighter.',
   wakeGrave: 'You wake up at the cemetery gate. Someone already measured you for a stone. You are {lost} kr lighter.'
+},
+
+/* ===================================================== PEOPLE: personality, memory, knowledge =====================================================
+   personalities: how a person reacts to the tone of your replies (tone → relationship change) and how readily they share what they know (shareRel).
+   knowledge: facts you only get from people. Entries with listed:true show as ??? in the 📓 Notes until someone tells you.
+   dialogue: one entry per person id (NPC, hero or wife). See DATA.md "Dialogue" for every condition and effect. */
+personalities: {
+  dry:      { hunt: "You. Yes, you. We are not finished.", voice: 'flat, short, deadpan',            shareRel: 1,  tones: { kind: 1, rude: -1, funny: 0, bribe: 1, honest: 1, lie: -1, flirt: -1 } },
+  grumpy:   { hunt: "I have been waiting for you. With a bad mood.", voice: 'complains, hates small talk',     shareRel: 2,  tones: { kind: 0, rude: 1, funny: -1, bribe: 1, honest: 2, lie: -2, flirt: -2 } },
+  gossip:   { hunt: "There you are! Everyone is talking about what you did.", voice: 'talks too much, knows everything', shareRel: -3, tones: { kind: 1, rude: -2, funny: 1, bribe: 1, honest: 0, lie: 0, flirt: 1 } },
+  paranoid: { hunt: "I KNEW it. I knew it was you.", voice: 'whispers, suspects everyone',     shareRel: 3,  tones: { kind: 0, rude: -2, funny: -1, bribe: 2, honest: 2, lie: -3, flirt: -1 } },
+  flirty:   { hunt: "Oh, darling. You have really done it this time.", voice: 'warm, teasing, a bit much',       shareRel: 0,  tones: { kind: 1, rude: -2, funny: 1, bribe: 1, honest: 0, lie: -1, flirt: 2 } },
+  salesman: { hunt: "No more discounts for you. Only consequences.", voice: 'friendly, always selling',        shareRel: -1, tones: { kind: 1, rude: -1, funny: 1, bribe: 2, honest: 0, lie: 0, flirt: 0 } },
+  dreamer:  { hunt: "The ferns told me you were coming. They were upset.", voice: 'drifting, half in another world', shareRel: 0,  tones: { kind: 1, rude: -1, funny: 2, bribe: 0, honest: 1, lie: 0, flirt: 1 } },
+  hothead:  { hunt: "COME HERE! We settle this NOW.", voice: 'loud, proud, short fuse',         shareRel: 1,  tones: { kind: 0, rude: -2, funny: 1, bribe: 0, honest: 2, lie: -2, flirt: 0 } },
+  robot:    { hunt: "HOSTILITY.EXE LOADED. PREPARE FOR PATCH.", voice: 'ALL CAPS, glitchy',               shareRel: -5, tones: { kind: 0, rude: 0, funny: -1, bribe: 0, honest: 1, lie: 0, flirt: 0 } }
+},
+
+knowledge: {
+  types:   { name: 'How the types work', text: 'FIZZ › GRUB › WILD › TECH › FROST › RUSTLE › FIZZ. The move list shows what is strong.' },
+  tranq:   { name: 'The Barber has a tranquilizer gun', text: 'Under the chair. He sells it.' },
+  ring:    { name: 'Fia keeps a ring box for desperate husbands', text: 'Behind the counter. Pricey.' },
+  'wife:cicci':    { name: 'What Cicci wants', text: 'Someone who talks about the budget out loud. Honestly.' },
+  'wife:anna':     { name: 'What Anna wants', text: 'Someone who talks about the light bill. Out loud.' },
+  'wife:monika':   { name: 'What Monika wants', text: 'Walter found. And a shirt on the problem.' },
+  'wife:sofia':    { name: 'What Sofia wants', text: 'To be looked at during the match.' },
+  'wife:maadmads': { name: 'What MaadMads wants', text: 'Honesty about the coins. And the cats fed.' },
+  'house:ljunky':  { name: "Ljunky's house", text: 'The gym by the bottle machines.', listed: true, release: 'wed' },
+  'house:wizcudi': { name: "Wizcudi's house", text: 'The electronics store in the city.', listed: true, release: 'wed' },
+  'house:jrohn':   { name: "Jrohn's house", text: 'A shaman cave in the mountain.', listed: true, release: 'wed' },
+  'house:loken':   { name: "Löken's house", text: 'A castle, across the big lake.', listed: true, release: 'wed' },
+  'house:bigwman': { name: "BigWman's house", text: 'A 24-hour rave, deep in the forest.', listed: true, release: 'wed' }
+},
+
+dialogue: {
+  /* ---- NPCs ---- */
+  pirate: { personality: 'dreamer', friends: ['hasse'], help: { relMin: 4, give: { bottle: 1 }, text: 'Take this, matey. It was empty when I found it.' },
+    talk: [
+      { if: { met: 0 }, text: "Arr! New face in the lot. The van's yers, aye? Don't touch me parrot.", replies: [
+        { label: 'Nice parrot.', tone: 'kind', text: 'Gunilla be her name. She bites.' },
+        { label: "I don't see a parrot.", tone: 'honest', text: '…Shh. Between us: there be no parrot. Tell no one.' },
+        { label: 'Move, pirate.', tone: 'rude', text: 'Arr. Rude. I almost respect it.' }] },
+      { if: { hero: 'loken' }, text: 'Ye smell o\' fresh lawn and gold coins. The lawn folk be dangerous, they say.' },
+      { if: { state: 'drunk' }, text: 'Ye drink like a pirate! Welcome aboard, ye barnacle!' },
+      { if: { night: true }, text: 'Night be the best time. The bats own the lot. And me.' },
+      { if: { killed: 'pelle' }, text: 'I heard Pelle took a trip to the cemetery. Arr. He still owes me a krona.' },
+      { if: { last: 'honest' }, text: 'Ye told me the truth about me parrot. Few do. Few know.' },
+      { if: { from: 'wed', metMin: 1 }, tell: 'house:loken', release: 'wed', text: "Löken has a castle across the water, they say. Ye can't walk there. Ask about a man called Bengt." },
+      { text: 'Arr. The van smells o\' Löken\'s gym bag. Not that I be complaining.' },
+      { if: { metMin: 1 }, text: 'Back again. The lot be quiet, apart from the cars that breathe.' }] },
+  berit: { personality: 'grumpy', friends: ['pelle', 'cicci'], help: { relMin: 4, give: { bag: 3 }, text: 'Take a few bags. On the house. If you tell anyone I will deny it.' },
+    talk: [
+      { if: { met: 0 }, text: 'Unexpected item in bagging area. Unexpected YOU. Bags are 10 kr.', replies: [
+        { label: 'Just browsing.', tone: 'kind', text: 'Browse faster.' },
+        { label: 'Bags are a scam.', tone: 'honest', text: '…Correct. Do not tell management.' },
+        { label: 'Calm down, Berit.', tone: 'rude', text: 'Do not tell ME to calm down.' }] },
+      { if: { metMin: 2 }, tell: 'wife:cicci', text: "Cicci stood right there crying over a package once. You know what helped? Somebody asked her about the budget. Out loud. Honestly." },
+      { if: { hero: 'bigwman' }, text: "You're BigWman. Your packages are in my back room. All of them. Stop sending them to ICA." },
+      { if: { killed: 'pelle' }, text: "Pelle's gone. Nobody returns bottles properly any more. Are you happy?" },
+      { if: { state: 'blurred' }, text: "You're swaying. Please step away from the register." },
+      { if: { night: true }, text: 'Night shift. Even the cash register gets tired. Do not look the self-checkout in the eye.' },
+      { text: "Still here? The queue is behind you. It has always been behind you." },
+      { text: 'I have been in this queue since 2019.' }] },
+  pelle: { personality: 'paranoid', friends: ['berit', 'sofia'],
+    talk: [
+      { if: { met: 0 }, text: 'Shh. The machines are listening.', replies: [
+        { label: 'Who is listening?', tone: 'kind', text: 'The machines. Keep your voice down.' },
+        { label: 'They are just machines.', tone: 'rude', text: 'That is exactly what they want you to think.' },
+        { label: 'I hear it too.', tone: 'lie', text: '…You do? ...No. No, you are lying. Nobody hears it.' }] },
+      { if: { metMin: 1, hero: 'ljunky' }, text: "You. Ljunky. Your gym is right there. They do burpees at night, ten of them, in perfect time. Perfect." },
+      { if: { from: 'wed', metMin: 1 }, tell: 'house:ljunky', release: 'wed', text: 'That gym next to the machines. The Box. It belongs to Ljunky. The machines respect it.' },
+      { if: { metMin: 2 }, tell: 'wife:sofia', text: "Sofia comes for the bottles Löken throws on the lawn. She says she just wants him to look at her during the match. Not the screen. Her." },
+      { if: { killed: 'berit' }, text: 'Berit is gone. They got her. They are coming for me next. And YOU know it.' },
+      { if: { relMax: -1 }, text: 'You. Go away.' },
+      { if: { night: true }, text: 'The machine hums louder at night. It sings.' },
+      { text: 'One krona per can. I have three million cans. They count the cans. They KNOW.' }] },
+  freja: { personality: 'dry', friends: ['berit'],
+    talk: [
+      { if: { met: 0 }, text: "Cold in here. Colder out there. You want something, or are you just standing in my draught?", replies: [
+        { label: 'Just looking.', tone: 'kind', text: 'Mm. Everyone is.' },
+        { label: 'Your freezers are lovely.', tone: 'flirt', text: 'Please do not.' }] },
+      { if: { metMin: 1 }, tell: 'types', text: 'Listen. FIZZ beats GRUB, GRUB beats WILD, WILD beats TECH, TECH beats FROST, FROST beats RUSTLE, RUSTLE beats FIZZ. Write it down. Or do not. I am only a freezer.' },
+      { if: { carry: 'peng' }, text: 'A penguin. Is it warm? Why is it not shivering?' },
+      { if: { killed: 'berit' }, text: 'Berit and I shared the lunch room. It is very quiet at the lunch table now.' },
+      { if: { state: 'high' }, text: 'Your eyes are the size of dinner plates. Lie down by the peas.' },
+      { text: 'Penguins hate it when you leave the freezer door open. Or love it. I forget.' }] },
+  hasse: { personality: 'dreamer', friends: ['pirate'],
+    talk: [
+      { if: { met: 0 }, text: 'Can you smell purple? No? Then you have not lived.', replies: [
+        { label: 'Smells blue to me.', tone: 'funny', text: 'BLUE! Yes! You see it too!' },
+        { label: 'No.', tone: 'honest', text: 'Honest. Sad. Honest.' }] },
+      { if: { state: 'high' }, text: 'YOU can see them too! The shapes! Tell no one. Tell everyone.' },
+      { if: { hero: 'jrohn' }, text: 'Jrohn! That is you. Wait. That is me? Which one of us is wearing the shirt?' },
+      { if: { from: 'wed', metMin: 1 }, tell: 'house:jrohn', release: 'wed', text: 'There is a cave halfway up the mountain. A shaman lives in it. Half plant, half man, no shirt. I do not know who he is.' },
+      { if: { night: true }, text: 'The stars are loud tonight. Do you hear the receipts? The receipts!' },
+      { text: 'The receipt in aisle 4 is fourteen metres long and it LOOKED at me.' },
+      { text: 'Mushrooms? Ask the guy who hides behind the bottle machines. Did not hear it from me.' }] },
+  barber: { personality: 'salesman', friends: ['maadmads', 'jonas'],
+    talk: [
+      { if: { met: 0 }, text: 'Trim? Gossip? A shave? Something under the chair, for the discerning customer?', replies: [
+        { label: 'A trim, please.', tone: 'kind', text: 'Snip snip. You have good ears.' },
+        { label: 'What is under the chair?', tone: 'funny', text: 'Ask me when we are better friends.' }] },
+      { if: { know: 'tranq' }, text: 'Jonas talked? Fine, fine. A tranquilizer gun, for the moths. 120 kr. No questions.' },
+      { if: { metMin: 2 }, tell: 'wife:maadmads', text: 'MaadMads comes by for the cat fur. Says one day she will sell it to feed the other cats. What she really wants is honesty about the coins. Fewer coins, more honesty.' },
+      { if: { hero: 'ljunky' }, text: 'Ljunky! The moustache king himself. Your cats left hair on my chair again.' },
+      { if: { killed: 'jonas' }, text: 'No more sharp tools from Jonas. I have to sharpen my own now. It is a shame.' },
+      { text: 'Hair grows. Gossip grows faster.' }] },
+  jonas: { personality: 'grumpy', friends: ['anna', 'barber'], help: { relMin: 4, give: { rock: 3 }, text: 'Here. Rocks. Free. The only thing in this shop with no markup.' },
+    talk: [
+      { if: { met: 0 }, text: 'Traps work while you sleep. Like me.', replies: [
+        { label: 'What is good for catching?', tone: 'kind', text: 'Anything with a smell. Creatures are simple.' },
+        { label: 'Your prices are a joke.', tone: 'rude', text: 'The joke is you are still standing here.' }] },
+      { if: { metMin: 1 }, tell: 'tranq', text: 'The Barber has a tranquilizer gun under the chair. Do not ask why. He says it is for the moths.' },
+      { if: { metMin: 2 }, tell: 'wife:anna', text: 'Anna buys the cheapest bulbs and complains about the bill. Honestly? She wants somebody to talk about the light bill. Out loud. With her.' },
+      { if: { from: 'wed', metMin: 1 }, tell: 'house:wizcudi', release: 'wed', text: 'Wizcudi has the electronics store in the city. Do not go in under-levelled. He turns the lights off on you.' },
+      { if: { killed: 'barber' }, text: 'Barber is dead? Then who else buys my blades? Thanks a lot.' },
+      { if: { night: true }, text: 'Closing time was six hours ago. I am here because I am too grumpy to go home.' },
+      { text: 'Put it where the creatures walk. Come back later.' }] },
+  fia: { personality: 'flirty', friends: ['monika'],
+    talk: [
+      { if: { met: 0 }, text: 'Flowers solve everything. Except chlorine flowers. Those make it worse.', replies: [
+        { label: 'You solve everything.', tone: 'flirt', text: 'Oh, aren\'t you sweet.' },
+        { label: 'What are chlorine flowers?', tone: 'kind', text: 'A mistake. Do not give them to a wife.' }] },
+      { if: { metMin: 1 }, tell: 'ring', text: 'Behind the counter I keep a ring box for desperate husbands. Instant calm. Many regrets. Ask me when you are desperate.' },
+      { if: { metMin: 2 }, tell: 'wife:monika', text: 'Monika buys tulips and tells them about Walter. All she wants is Walter found. Bring him, or at least say you have seen him.' },
+      { if: { state: 'drunk' }, text: 'Careful, darling. I am not a lamppost.' },
+      { if: { killed: 'monika' }, text: 'Monika was my best customer. Now every tulip is sad.' },
+      { text: 'Never give a wife a chore chart. Trust me.' }] },
+  system: { personality: 'salesman', talk: [
+      { if: { met: 0 }, text: 'ID, please. …You look 47. Go ahead.' },
+      { if: { state: 'drunk' }, text: 'Hm. You have had some. I will serve you anyway. I am a professional.' },
+      { if: { night: true }, text: 'Closing soon. Which means: buy more now.' },
+      { text: 'Special today: everything. All of it.' }] },
+  apotek: { personality: 'dry', talk: [
+      { if: { met: 0 }, text: 'Everyone is fully healed. Take care out there.' },
+      { if: { state: 'blurred' }, text: 'You are swaying. Sit. Breathe. Do not mix any more.' },
+      { if: { debtMin: 2 }, text: 'There is no medicine for promise debt. Only payment.' },
+      { text: 'Take two Fizz tablets and call me in the morning. I am here at night too.' }] },
+  burgercook: { personality: 'hothead', talk: [
+      { if: { met: 0 }, text: 'ORDER UP! Oh. You are not an order.' },
+      { if: { carry: 'bear' }, text: 'Is that a BURGER BEAR? Do not bring it near my grill. It knows.' },
+      { text: 'The secret ingredient is rage. And mayonnaise.' }] },
+  pizzaiolo: { personality: 'flirty', talk: [
+      { if: { met: 0 }, text: 'Ciao, bella! Kebab pizza, the national dish. Specialita della casa: regret.' },
+      { if: { night: true }, text: 'Midnight pizza? The best kind. I do not judge. Much.' },
+      { text: 'Extra garlic sauce? You say yes. Everybody says yes.' }] },
+  sushichef: { personality: 'dry', talk: [
+      { if: { met: 0 }, text: 'Fresh today. Probably.' },
+      { if: { carry: 'salmon' }, text: 'That salmon roll walks. That is not on my menu. Please take it away.' },
+      { text: 'Soy sauce is not a personality.' }] },
+  dealer: { personality: 'paranoid', talk: [
+      { if: { met: 0 }, text: "Psst. You didn't see me." },
+      { if: { relMin: 2 }, text: 'You again. Good. You are not a cop. Cops have worse shoes.' },
+      { if: { night: true }, text: 'Nighttime is good for business. And for hiding.' },
+      { text: 'Cash is for tourists. I take creatures.' }] },
+  kenny: { personality: 'salesman', friends: ['dealer'], talk: [
+      { if: { met: 0 }, text: 'Psst. I buy animals. No paperwork, no questions, no real money.' },
+      { if: { relMin: 2 }, text: 'You are a good customer. I will pay a bit above the going rate. A bit.' },
+      { text: 'Creatures? I know a guy in Norrtälje. He knows a guy.' }] },
+  kenta: { personality: 'hothead', friends: ['trainer1', 'trainer2'], talk: [
+      { if: { met: 0 }, text: 'Three, two, one, GO! …Why are you not going?' },
+      { if: { flag: 'gymOpen' }, text: 'The board is open. Drop your creatures, pick them up later.' },
+      { if: { killed: 'trainer1' }, text: 'You... you did what to Patrik? Get out of my gym.' },
+      { text: 'Leave your creatures on the WOD board. They come back stronger.' }] },
+  trainer1: { personality: 'hothead', friends: ['kenta'], talk: [
+      { if: { met: 0 }, text: 'Do you even lift, bro?' },
+      { if: { carry: 'protein' }, text: 'THAT is a protein shake. Respect.' },
+      { text: 'Protein shake? I have nine.' }] },
+  trainer2: { personality: 'dry', friends: ['kenta'], talk: [
+      { if: { met: 0 }, text: 'WOD of the day: catch 20 creatures, for time.' },
+      { text: 'Rest day is a social construct.' }] },
+  aiLjunky: { personality: 'robot', talk: [
+      { if: { met: 0 }, text: 'HELLO. I AM LJUNKY. VERSION 2.0. NOW WITH 40 % MORE DIP.' },
+      { text: 'ERROR: FEELINGS.EXE NOT FOUND. FIGHT? Y/N' },
+      { text: 'I HAVE TRAINED ON 10,000 HOURS OF LJUNKY EXPLAINING CRYPTO. YOU CANNOT WIN.' }] },
+  ingvar: { personality: 'dry', talk: [{ text: 'Inkasso-Ingvar. You promised. Klarna remembers.' }] },
+
+  /* ---- the heroes (before the fight). Their first meeting uses the bossLines from above, written once ---- */
+  bigwman: { personality: 'dry', friends: ['cicci'], talk: [
+      { if: { metMin: 1 }, text: 'Back again. I updated the spreadsheet: you appear in row 14.' },
+      { if: { debtMin: 2 }, text: 'Your promise debt is on my sheet. In red.' },
+      { if: { killed: 'cicci' }, text: 'You did what to Cicci? I have no formula for that.' },
+      { if: { state: 'drunk' }, text: 'You smell like Systembolaget. Is that a tax write-off?' },
+      { if: { night: true }, text: 'It is the middle of the night. Nobody does spreadsheets at night. Except me.' },
+      { text: 'Every single package is accounted for. YES.' }] },
+  wizcudi: { personality: 'paranoid', friends: ['anna'], talk: [
+      { if: { metMin: 1 }, text: 'You moved a lamp last time. I counted. I always count.' },
+      { if: { killed: 'anna' }, text: 'Anna... was the only one who turned the light on. Now it is dark. Thank you.' },
+      { if: { state: 'blurred' }, text: 'You are swaying. The electricity is wobbling because of you.' },
+      { if: { night: true }, text: 'Night rate is cheaper. This conversation is already too expensive.' },
+      { text: 'Who left that light on?!' }] },
+  jrohn: { personality: 'dreamer', friends: ['monika'], talk: [
+      { if: { metMin: 1 }, text: 'You came back! I have been telling the ferns about you.' },
+      { if: { killed: 'monika' }, text: 'Monika... the ferns are very quiet today.' },
+      { if: { carry: 'walter' }, text: 'WALTER! You found him! I love this! I love you! Where is my shirt?' },
+      { if: { state: 'high' }, text: 'We are in the same garden right now. Do you see it? The same one.' },
+      { text: 'Walk with me. Or fight me. Whichever has more hugs.' }] },
+  loken: { personality: 'hothead', friends: ['sofia'], talk: [
+      { if: { metMin: 1 }, text: 'Back on my lawn. Stick together, boys. Except you.' },
+      { if: { killed: 'sofia' }, text: 'You... touched Sofia. You are DEAD to the lawn.' },
+      { if: { carry: 'crow' }, text: 'A bottle crow. The lawn approves. Gently. Loyally.' },
+      { if: { night: true }, text: 'It is the middle of the night. The grass sleeps. Be QUIET on it.' },
+      { text: 'I dropped 400 kr on the way here. Pick it up, I dare you.' }] },
+  ljunky: { personality: 'salesman', friends: ['maadmads'], talk: [
+      { if: { metMin: 1 }, text: 'Back for more? I have patched the game since you left.' },
+      { if: { killed: 'maadmads' }, text: 'You... deleted my wife? That is not in the patch notes.' },
+      { if: { carry: 'cat' }, text: 'You have my cats! Give them back. They do not like you. They like me.' },
+      { if: { debtMin: 3 }, text: 'Three promise debts. I could make a coin out of that.' },
+      { text: 'Buy the dip, my friend. Buy it.' }] },
+
+  /* ---- the wives. talk = what she says when you walk up (per hero, then memory of earlier meetings).
+         wife.reacts = how hard she hits and how many turns she needs, per hero you play.
+         wife.lines = what you can say. right: {conditions} = this line is THE right line while the conditions hold (most specific wins);
+         lines without right are always wrong. Nobody can memorise the answer: it depends on who you are, what you carry, what you did. ---- */
+  cicci: { after: [{ text: "We are good. For now. Tell him the packages stay cancelled." }], personality: 'dry', friends: ['berit', 'bigwman'],
+    wife: { reacts: { bigwman: { mul: 1.5, turns: 1 }, wizcudi: { mul: .9, turns: 0 }, jrohn: { mul: .8, turns: 0 }, loken: { mul: .7, turns: 0 }, ljunky: { mul: 1, turns: 0 } },
+      lines: [
+        { text: 'A budget. In writing. I will sign it myself.', right: { hero: 'bigwman', last: 'wrong' } },
+        { text: 'Berit will not be signing for any more packages. That is a relief, not a loss.', right: { killed: 'berit' } },
+        { text: 'Sit down. Drink some water. We can do the packages tomorrow.', right: { state: 'drunk' } },
+        { text: 'I know I promised. I am paying it back. Now.', right: { debtMin: 2 } },
+        { text: 'I cancelled the packages. All of them.', right: { hero: 'bigwman' } },
+        { text: 'He is at the checkouts, signing for something. Go easy on him.', right: { notHero: 'bigwman' } },
+        { text: "It's an investment, technically." },
+        { text: 'Packages? What packages?' },
+        { text: 'Is the spreadsheet in the cloud, at least?' },
+        { text: 'It was only a small one. Medium.' }] },
+    talk: [
+      { if: { met: 0, hero: 'bigwman' }, text: 'There you are. I counted the boxes: fourteen. You have a minute to explain.' },
+      { if: { met: 0, hero: 'wizcudi' }, text: "Oh, thank goodness. It is you and not him. Where is that man with his packages?" },
+      { if: { met: 0, hero: 'jrohn' }, text: 'You. Without a shirt. Have you seen my husband? He might be wearing one.' },
+      { if: { met: 0, hero: 'loken' }, text: 'Löken. You are the only one of them who never orders anything. I like you. Where is my husband?' },
+      { if: { met: 0, hero: 'ljunky' }, text: 'Ljunky. Is any of this your fault? Whatever "this" is.' },
+      { if: { last: 'promise' }, text: 'You promised me last time. I wrote it down. We are not doing that again.' },
+      { if: { last: 'right' }, text: 'You listened to me last time. That is rarer than you think. Try again.' },
+      { if: { killed: 'berit' }, text: 'You... did something to Berit? She was my friend. I am not alone, you know.' },
+      { text: 'Another one of you. Of course.' }] },
+  anna: { after: [{ text: "The light is on. For Ellie. Thank you. Tell him to look at the bill, not the switch." }], personality: 'paranoid', friends: ['jonas', 'wizcudi'],
+    wife: { reacts: { wizcudi: { mul: 1.6, turns: 1 }, bigwman: { mul: .9, turns: 0 }, jrohn: { mul: .7, turns: 0 }, loken: { mul: 1, turns: 0 }, ljunky: { mul: .9, turns: 0 } },
+      lines: [
+        { text: 'Last time I promised the light. I forgot. I will not forget now.', right: { last: 'promise' } },
+        { text: 'I am sorry about Jonas. He was the only one who understood the meter.', right: { killed: 'jonas' } },
+        { text: 'Quiet. Ellie is asleep, and she needs her light.', right: { state: 'drunk' } },
+        { text: 'The bill is high. I will pay it myself.', right: { debtMin: 2 } },
+        { text: 'Ellie can have every light in the house. I will pay the bill.', right: { hero: 'wizcudi' } },
+        { text: 'I turned the light ON. For Ellie.', right: { notHero: 'wizcudi' } },
+        { text: 'Do you know what that lamp costs per hour?' },
+        { text: 'He told me to say he is in a meeting.' },
+        { text: 'LEDs are fine. Relax.' },
+        { text: 'Have you tried turning yourself off and on?' }] },
+    talk: [
+      { if: { met: 0, hero: 'wizcudi' }, text: 'Turn it back ON. NOW. Ellie is scared of the dark, and so am I.' },
+      { if: { met: 0, hero: 'bigwman' }, text: 'You are not him. But you know him. Whatever you say, I am writing it down.' },
+      { if: { met: 0, hero: 'jrohn' }, text: 'Jrohn. You and the lights. Do you know how much your basement costs me?' },
+      { if: { met: 0, hero: 'loken' }, text: 'Löken. Quiet one. I like quiet. It uses less electricity.' },
+      { if: { met: 0, hero: 'ljunky' }, text: 'Ljunky. Your mining rig. I can hear it from here. Everything hums.' },
+      { if: { last: 'wrong' }, text: 'Last time you said something stupid. I remembered. I always remember.' },
+      { text: 'Is the light on? Check. Check again.' }] },
+  monika: { after: [{ text: "Walter is home and the shirt is on. Mostly. Tell him I love him. Nicely." }], personality: 'dreamer', friends: ['fia', 'jrohn'],
+    wife: { reacts: { jrohn: { mul: 1.5, turns: 1 }, bigwman: { mul: .8, turns: 0 }, wizcudi: { mul: .9, turns: 0 }, loken: { mul: .8, turns: 0 }, ljunky: { mul: 1, turns: 0 } },
+      lines: [
+        { text: 'I have Walter right here. He is fine. He is FINE.', right: { carry: 'walter' } },
+        { text: 'Fia gave him his flowers. I will miss her.', right: { killed: 'fia' } },
+        { text: 'No more drinks for you. Have a sandwich.', right: { state: 'drunk' } },
+        { text: 'It is true, I promised. I will fix it.', right: { debtMin: 2 } },
+        { text: 'Shirt on. Walter found. Let us go home.', right: { hero: 'jrohn' } },
+        { text: 'He is in the flower department, talking to plants.', right: { notHero: 'jrohn' } },
+        { text: 'Have you seen my pants?' },
+        { text: 'Clothes are a social construct.' },
+        { text: 'Walter is a free spirit.' },
+        { text: 'It is a lifestyle choice.' }] },
+    talk: [
+      { if: { met: 0, hero: 'jrohn' }, text: 'Jrohn. Where is Walter? And where is your shirt? One answer will do.' },
+      { if: { met: 0, hero: 'bigwman' }, text: 'BigWman. You look very organised. Has anyone told you that is suspicious?' },
+      { if: { met: 0, hero: 'wizcudi' }, text: 'Wizcudi. Lovely to see you. I am sorry about the lights. Everyone is.' },
+      { if: { met: 0, hero: 'loken' }, text: 'Löken. The lawn man. Please tell me my husband is not on it.' },
+      { if: { met: 0, hero: 'ljunky' }, text: 'Ljunky. Are those cats following you, or are you following them?' },
+      { if: { carry: 'walter' }, text: 'WALTER! Oh. Oh, you have him. Do you know what that means?' },
+      { text: 'Walter ran away AGAIN.' }] },
+  sofia: { after: [{ text: "No match tonight. I made soup. Tell him to look at me." }], personality: 'hothead', friends: ['pelle', 'loken'],
+    wife: { reacts: { loken: { mul: 1.6, turns: 1 }, bigwman: { mul: .9, turns: 0 }, wizcudi: { mul: 1.2, turns: 0 }, jrohn: { mul: .8, turns: 0 }, ljunky: { mul: .9, turns: 0 } },
+      lines: [
+        { text: 'Pelle was a Djurgården fan, you know. I think he would have wanted a quiet day.', right: { killed: 'pelle' } },
+        { text: 'It is late. Come home. The match will be replayed.', right: { night: true } },
+        { text: 'Let me sit with you. Not the screen. You.', right: { state: 'drunk' } },
+        { text: 'I know about the promises. I forgive you. Once.', right: { debtMin: 2 } },
+        { text: 'No match today. Just you and me.', right: { hero: 'loken' } },
+        { text: 'He is on the lawn by the lake. Guarding it.', right: { notHero: 'loken' } },
+        { text: 'Djurgården plays at seven, though.' },
+        { text: 'Löken? Never heard of him.' },
+        { text: 'AIK are rubbish anyway.' },
+        { text: 'It is tradition.' }] },
+    talk: [
+      { if: { met: 0, hero: 'loken' }, text: 'Löken. There you are. Where have you been? Which match was it this time?' },
+      { if: { met: 0, hero: 'wizcudi' }, text: 'AIK man. Of course. Everything is your fault. Do not argue.' },
+      { if: { met: 0, hero: 'bigwman' }, text: 'BigWman. Calm. Neat. Boring. Have you seen him? The loud one?' },
+      { if: { met: 0, hero: 'jrohn' }, text: 'Jrohn. Put on a shirt. Then we can talk about my husband.' },
+      { if: { met: 0, hero: 'ljunky' }, text: 'Ljunky. Tell me you did not teach him crypto.' },
+      { if: { killed: 'pelle' }, text: 'Pelle. You... You killed Pelle? He was a friend. A bit weird. But a friend.' },
+      { text: 'Not another Djurgården match.' }] },
+  maadmads: { after: [{ text: "The cats are fed. I saved the coins. Please tell him to text me." }], personality: 'gossip', friends: ['barber', 'ljunky'],
+    wife: { reacts: { ljunky: { mul: 1.5, turns: 1 }, bigwman: { mul: .8, turns: 0 }, wizcudi: { mul: 1, turns: 0 }, jrohn: { mul: .9, turns: 0 }, loken: { mul: .9, turns: 0 } },
+      lines: [
+        { text: 'The cats are with you? Thank god. Give them tuna.', right: { carry: 'cat' } },
+        { text: 'I heard what happened at The Box. I am not angry. Honestly.', right: { flag: 'ljunkyDone' } },
+        { text: 'You smell of beer. Go and drink some water. Then we talk.', right: { state: 'drunk' } },
+        { text: 'I know the promises. I will not take another.', right: { debtMin: 2 } },
+        { text: 'I sold everything. The cats are fed.', right: { hero: 'ljunky' } },
+        { text: 'He is in Systembolaget, buying the dip in liquid form.', right: { notHero: 'ljunky' } },
+        { text: 'It is not a dip, it is a discount.' },
+        { text: 'He is mining. Somewhere. Do not ask.' },
+        { text: 'Sell the cats and you are covered.' },
+        { text: 'Crypto is a lifestyle.' }] },
+    talk: [
+      { if: { met: 0, hero: 'ljunky' }, text: 'Ljunky. The cats are hungry and so am I. Where have you been?' },
+      { if: { met: 0, hero: 'bigwman' }, text: 'BigWman! Spreadsheet man! Quick, tell me his numbers. Wait, no. Not that.' },
+      { if: { met: 0, hero: 'wizcudi' }, text: 'Wizcudi. Everyone knows about your lights. I mean everyone.' },
+      { if: { met: 0, hero: 'jrohn' }, text: 'Jrohn. Have you seen Ljunky? You seem like you know things. Or like you know nothing.' },
+      { if: { met: 0, hero: 'loken' }, text: 'Löken, the lawn man. Everyone tells me about you. Everyone.' },
+      { if: { killed: 'barber' }, text: 'The Barber is dead? I... I just saw him yesterday. I always see everyone yesterday.' },
+      { text: 'Did you buy the dip again?' }] }
 },
 
 /* ---------- small pixel sprites (char grids, see PX.palette: o navy, c cream, g/G/d greys, k black, w white …) ---------- */
