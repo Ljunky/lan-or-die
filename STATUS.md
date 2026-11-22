@@ -33,6 +33,15 @@ Latest state is always: this file + `CHARACTERS.md` (every person and line, gene
 - **Mini-games**: fishing (3 timing bars) at the pier and a lake spot; golf (power bar, par 3) at tee 1. One tap each; numbers in data.
 - **Day and night**: the real clock tints the outdoors at night; Night-watch Nisse only at night; the rave pulses a bass, louder at night; a Monday balloon stand, a Tuesday market (half price), a Wednesday lost wallet; rumours that change per day (people with `rumours: true`), listed in Notes.
 
+## Balance pass (simulated, see BALANCE.md; `node tools/balance.js` re-runs it from the data)
+The simulator copies the game's battle, XP and encounter maths and was checked against real in-game fights (same win rate, turns and HP loss within noise). It assumes a party of four types, best move, swapping to the best matchup, no items. Times are an ideal grind in the best safe zone; real play (talking, shopping, exploring, healing) is probably 2-3× slower.
+- **Monday (old map only):** Lv 10 in 6 min, Lv 15 in 20 min, Lv 20 in about an hour, Lv 25 in 3.7 h, then it stalls on purpose (the old map tops out at Lv 11 foes). The first house (The Box, Lv 10) opens after minutes.
+- **Tuesday/Wednesday (east open):** Lv 20 in 36 min, Lv 30 in 1.6 h, Lv 40 in 3.2 h, Lv 46 in 5.2 h, Lv 50 in 6.5 h (lead only). Every level band up to Lv 32 has a fair zone (win >= 90 %, < 55 % HP lost); above that the best zone is 2-4 levels below you, so Lv 40 to 50 is a slow top end.
+- **Hero bosses (7/8/9 rising by 2 per hero beaten):** a party of four is at ~100 % when its level is boss level +3 and 0-15 % at equal level. A lead alone has no chance, so players must bring a party. Fair.
+- **Dev Ljunky (Lv 46, HP x2.6, kept as asked):** a party of four at Lv 46 wins ~100 % (loses ~2 of 4 creatures, no items), at Lv 40 about 55 %. Levelling four creatures costs ~2.3× the lead's grind, so Dev is a Wednesday-night goal for dedicated players only.
+- **Economy:** 1.5 kr per foe level is about one carrier bag per win at Lv 7 and 3-6 bags per win at Lv 20-40; a Fizz tablet (15 kr) per fight is affordable. Catch chances at 25 % HP: Common 56 %, Epic 18 %, Legendary 12 %, Mythic 8 % per bag (after a knockout 70 / 30 / 22 / 30 %).
+- **Not changed.** No number was out of line enough to retune before launch. Open question for the planning chat: two houses want Lv 40 (The rave on Tuesday, The castle on Wednesday), which is about 3 h of ideal grinding after the east opens. If Tuesday should have a reachable second house, set `houses.bigwman.level` to 35 in data/m3-data.js.
+
 ## NOT built yet
 - Heroes still stand where they were (moving them into the houses is a later update). The rave dance-off and the electronics gadget repair mini-games were cut (2 mini-games agreed). Each house is one short puzzle, not a long dungeon. Starter text only: the owner's planning chat rewrites it.
 

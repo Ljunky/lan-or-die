@@ -1841,6 +1841,6 @@ const DEF = {
   }
 };
 LOD.mission(DEF);
-window.__m3 = { bossTeam, MINI, PROPS, propVisible, propUse, HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
+window.__m3 = { maxHp, bestMove, learned, MOVES, bossTeam, MINI, PROPS, propVisible, propUse, HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
   CFG, SP, MAP, ZONES, D, S, tile, zoneAt, tc, mk, goals, startWild, startBoss, startPartner, startDev, startTrainer, startNpcFight, interact, bagMenu, walkable, useItem, give, saveState, loadState, MIGRATE, EF, FX, layer, spots, npcList: () => npcList, gameSpeed, encTable, knockout, catchChance, completion: () => S.completion() };
 })();
