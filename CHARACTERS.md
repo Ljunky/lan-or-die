@@ -29,6 +29,7 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
 - `house:jrohn` **Jrohn's house** (shows as ??? until told) [release tue]: A shaman cave in the mountain. — told by: hasse
 - `house:loken` **Löken's house** (shows as ??? until told) [release wed]: A castle, across the big lake. — told by: pirate
 - `house:bigwman` **BigWman's house** (shows as ??? until told) [release tue]: A 24-hour rave, deep in the forest. — told by: kenny
+- `herbs` **Jrohn's brew** [release tue]: Fern, then mushroom, then moss. Never the other way. — told by: guide
 - `boat` **Boat-Bengt** [release wed]: Trades boats for vans. On the big lake shore. — told by: folke
 - `ferry` **A ferry creature** [release wed]: A big lake creature that knows Ferry can carry you across the water. — told by: folke
 
@@ -47,6 +48,7 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
   - ljunky: "Bitcoin is not an asset class. It's a cry for help."
 - **Personality:** dry (flat, short, deadpan); friends: cicci
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if flag="edge:bigwman")_ "Why is the beat in my head on the seven? One, two, three… I lost count!"
   -  _(if metMin=1)_ "Back again. I updated the spreadsheet: you appear in row 14."
   -  _(if debtMin=2)_ "Your promise debt is on my sheet. In red."
   -  _(if killed="cicci")_ "You did what to Cicci? I have no formula for that."
@@ -67,6 +69,7 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
   - ljunky: "Your mining rig costs me money from across town. I can feel it."
 - **Personality:** paranoid (whispers, suspects everyone); friends: anna
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if flag="edge:wizcudi")_ "Every light in my store is on. EVERY ONE. Who did this?!"
   -  _(if metMin=1)_ "You moved a lamp last time. I counted. I always count."
   -  _(if killed="anna")_ "Anna... was the only one who turned the light on. Now it is dark. Thank you."
   -  _(if state="blurred")_ "You are swaying. The electricity is wobbling because of you."
@@ -86,6 +89,7 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
   - ljunky: "Have you seen Walter? No? Then you have to fight me."
 - **Personality:** dreamer (drifting, half in another world); friends: monika
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if flag="edge:jrohn")_ "Everything is so... soft. What were we doing? Oh! A hug!"
   -  _(if metMin=1)_ "You came back! I have been telling the ferns about you."
   -  _(if killed="monika")_ "Monika... the ferns are very quiet today."
   -  _(if carry="walter")_ "WALTER! You found him! I love this! I love you! Where is my shirt?"
@@ -105,6 +109,7 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
   - ljunky: "The coins I drop are real. Yours are imaginary."
 - **Personality:** hothead (loud, proud, short fuse); friends: sofia
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if flag="edge:loken")_ "Someone sat on my throne. I can SMELL it. Gently. But I can smell it."
   -  _(if metMin=1)_ "Back on my lawn. Stick together, boys. Except you."
   -  _(if killed="sofia")_ "You... touched Sofia. You are DEAD to the lawn."
   -  _(if carry="crow")_ "A bottle crow. The lawn approves. Gently. Loyally."
@@ -124,6 +129,7 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
   - loken: "Have you checked the Bitcoin price today? No? That's why you lose."
 - **Personality:** salesman (friendly, always selling); friends: maadmads
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if flag="edge:ljunky")_ "Why am I so tired already? I did not even start. WHY IS THE ROWER WARM?"
   -  _(if metMin=1)_ "Back for more? I have patched the game since you left."
   -  _(if killed="maadmads")_ "You... deleted my wife? That is not in the patch notes."
   -  _(if carry="cat")_ "You have my cats! Give them back. They do not like you. They like me."
@@ -281,6 +287,11 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - Epitaph: "Arr. Parked forever."
 - **Personality:** dreamer (drifting, half in another world); friends: hasse; gives {"bottle":1} when liked (rel ≥ 4)
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if step="pirate_rum:0")_ "Got me bottle yet, matey? A dry pirate be a sad pirate."
+  -  _(if metMin=2, questNot="pirate_rum")_ "Me bottle be empty. Fetch me another one. Jonas sells them, the traitor."
+      - you: "Aye aye." → "Ye be a good sailor!" [tone:"kind"]
+      - you: "Buy your own." → "Arr. Cold." [tone:"rude"]
+  -  _(if questDone="pirate_rum")_ "Ye saved me life. Almost. Parrot says thank you."
   -  _(if met=0)_ "Arr! New face in the lot. The van's yers, aye? Don't touch me parrot."
       - you: "Nice parrot." → "Gunilla be her name. She bites." [tone:"kind"]
       - you: "I don't see a parrot." → "…Shh. Between us: there be no parrot. Tell no one." [tone:"honest"]
@@ -302,6 +313,14 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - Epitaph: "Unexpected item in the grave area."
 - **Personality:** grumpy (complains, hates small talk); friends: pelle, cicci; gives {"bag":3} when liked (rel ≥ 4)
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if step="bottle_war:0")_ "Pelle sent you? He returns FAKE cans. Count them yourself. Whose side are you on?"
+      - you: "Berit is right." → "Finally someone sensible." [rel:2 set:{"bw_decided":true,"side:berit":true}]
+      - you: "Pelle is right." → "Out. Out of my queue." [rel:-2 set:{"bw_decided":true,"side:pelle":true}]
+      - you: "You are both wrong." → "…Fair. I hate that you are fair." [tone:"honest" set:{"bw_decided":true,"side:none":true}]
+  -  _(if metMin=3, questNot="berit_parcel")_ "A parcel arrived for Hardware Jonas. It ticks. I do not want it near my register. Take it to him?"
+      - you: "Fine. I will take it." → "Do not shake it." [tone:"kind" give:{"parcel":1}]
+      - you: "It ticks?!" → "It is probably a clock. Probably." [tone:"funny"]
+  -  _(if questLocked="berit_parcel")_ "You are in with Pelle now. I have nothing for you."
   -  _(if met=0)_ "Unexpected item in bagging area. Unexpected YOU. Bags are 10 kr."
       - you: "Just browsing." → "Browse faster." [tone:"kind"]
       - you: "Bags are a scam." → "…Correct. Do not tell management." [tone:"honest"]
@@ -322,6 +341,13 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - Epitaph: "Returned his last bottle."
 - **Personality:** paranoid (whispers, suspects everyone); friends: berit, sofia
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if metMin=3, questNot="bottle_war")_ "Berit is stealing my cans. I counted. Ask her. Quietly. Then tell me whose side you are on."
+      - you: "I will ask her." → "Do not trust the bagging area." [tone:"kind"]
+      - you: "Not my problem." → [tone:"rude"]
+  -  _(if step="bottle_war:1")_ "So? What did she say?"
+  -  _(if questDone="bottle_war", flag="side:pelle")_ "You took my side. I will never forget it. I forget everything else, but not that."
+  -  _(if questDone="bottle_war", flag="side:berit")_ "You took her side. The machines are watching you now."
+  -  _(if questLocked="bottle_war")_ "Berit asked you something first. I know. The machines told me."
   -  _(if met=0)_ "Shh. The machines are listening."
       - you: "Who is listening?" → "The machines. Keep your voice down." [tone:"kind"]
       - you: "They are just machines." → "That is exactly what they want you to think." [tone:"rude"]
@@ -342,6 +368,11 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - Epitaph: "Finally warm."
 - **Personality:** dry (flat, short, deadpan); friends: berit
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if step="freja_penguin:0")_ "Have you found a penguin yet? Any penguin. It does not have to like me."
+  -  _(if metMin=2, questNot="freja_penguin")_ "It is lonely in here. Bring me a Freezer Penguin. Just so I can see it. Do not tell the peas."
+      - you: "I will find one." → "Mm. Thanks." [tone:"kind"]
+      - you: "Penguins have jobs." → "Mm." [tone:"funny"]
+  -  _(if questDone="freja_penguin")_ "It stood by the peas for a whole minute. I will remember that forever."
   -  _(if met=0)_ "Cold in here. Colder out there. You want something, or are you just standing in my draught?"
       - you: "Just looking." → "Mm. Everyone is." [tone:"kind"]
       - you: "Your freezers are lovely." → "Please do not." [tone:"flirt"]
@@ -377,6 +408,11 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - Epitaph: "Took a little off the top. All of it."
 - **Personality:** salesman (friendly, always selling); friends: maadmads, jonas
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if step="barber_fur:0")_ "A real cat, mind you. From Ljunky's gang. For the fur. No questions."
+  -  _(if metMin=3, questNot="barber_fur")_ "I need a cat. One of Ljunky's, for the fur. I will pay well. I will ask nothing."
+      - you: "I will see what I can do." → "Discretion. Always." [tone:"kind"]
+      - you: "That is creepy." → "It is a business." [tone:"honest"]
+  -  _(if questDone="barber_fur")_ "The fur is perfect. I cried. The mirror cried."
   -  _(if met=0)_ "Trim? Gossip? A shave? Something under the chair, for the discerning customer?"
       - you: "A trim, please." → "Snip snip. You have good ears." [tone:"kind"]
       - you: "What is under the chair?" → "Ask me when we are better friends." [tone:"funny"]
@@ -394,6 +430,13 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - Epitaph: "Always had the right tool. Except this time."
 - **Personality:** grumpy (complains, hates small talk); friends: anna, barber; gives {"rock":3} when liked (rel ≥ 4)
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if step="jonas_bulbs:1")_ "Well? How was she about the bill?"
+  -  _(if step="jonas_bulbs:0")_ "Anna. The light bill. Go and talk to her. She yells less at strangers."
+  -  _(if metMin=3, questNot="jonas_bulbs")_ "Anna buys the cheap bulbs, then yells at me about the bill. Talk to her about it? For me?"
+      - you: "I will." → "You are a good person. Or a fool. Same thing." [tone:"kind"]
+      - you: "Not my fight." → "Everybody says that." [tone:"rude"]
+  -  _(if questDone="jonas_bulbs")_ "She said thank you. To me. I did not know she could."
+  -  _(if carry="parcel")_ "That parcel ticks. From Berit? Give it here. Quickly. Then go."
   -  _(if met=0)_ "Traps work while you sleep. Like me."
       - you: "What is good for catching?" → "Anything with a smell. Creatures are simple." [tone:"kind"]
       - you: "Your prices are a joke." → "The joke is you are still standing here." [tone:"rude"]
@@ -552,6 +595,11 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - Epitaph: "Found the water hazard."
 - **Personality:** dry (flat, short, deadpan); friends: hermit
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if step="caddy_par:1")_ "Par? You made par? Tell me everything. Every stroke."
+  -  _(if step="caddy_par:0")_ "The tee is by the pond. Hit it long. Then hit it right."
+  -  _(if metMin=1, questNot="caddy_par")_ "Nobody makes par on the first hole. Not since the pond moved. Do you want to try? Tee is over there."
+      - you: "Fore!" → "Oh, I like you." [tone:"funny"]
+      - you: "Golf is boring." → "It is. That is the beauty." [tone:"honest"]
   -  _(if met=0)_ "Fore! …That was for me. Nobody is playing. Nobody has played since the lake rose."
       - you: "Nice course." → "Eight holes, three of them under water. I call it character." [tone:"kind"]
       - you: "Who needs golf?" → "Exactly. I only carry the bag." [tone:"honest"]
@@ -596,6 +644,7 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - Epitaph: "Slipped on the way up."
 - **Personality:** grumpy (complains, hates small talk)
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if metMin=1)_ "Jrohn brews in the cave. The order matters: fern first, then the mushroom, then moss. Do not ask me how I know. I carried the herbs." [tell:"herbs"]
   -  _(if met=0)_ "Hiking boots? No? You will regret that. Everyone does."
   -  _(if carry="peng")_ "A freezer penguin on a mountain. It looks at home, at least."
   -  _(if night=true)_ "Nobody goes up at night. Except the shaman. And he floats."
@@ -622,6 +671,15 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - Epitaph: "The big one got away. And back."
 - **Personality:** dreamer (drifting, half in another world); friends: bengt
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if step="folke_pike:0")_ "A Pikezilla. With the crown. Show me one and I will believe in you."
+  -  _(if step="folke_cast:0")_ "A perfect cast: every reel in the gold. Do it once and I will respect you."
+  -  _(if step="folke_cast:1")_ "You did the perfect cast? I felt it from here."
+  -  _(if metMin=3, questNot="folke_pike")_ "The one with the crown. Bring me one, where I can see it. I have only ever heard it."
+      - you: "I will find it." → "Be quiet about it." [tone:"kind"]
+      - you: "Fish stories." → "Mm. Everyone says that." [tone:"funny"]
+  -  _(if metMin=4, questNot="folke_cast")_ "Can you cast? A perfect cast: every reel in the gold, once."
+      - you: "Watch me." → "I never watch. I listen." [tone:"funny"]
+      - you: "Not now." → [tone:"kind"]
   -  _(if met=0)_ "Shh. They bite better in the quiet."
       - you: "What are you fishing for?" → "The one with the crown. He always gets away." [tone:"kind"]
       - you: "Any luck?" → "Luck is for lottery winners. I have patience." [tone:"funny"]
@@ -642,6 +700,33 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
   -  _(if flag="boat")_ "How is she? The old van? I mean, the new boat? Both of them, I hope."
   -  _(if night=true)_ "Night is for sailing. And for not asking where the boat was before."
   -  "Keys for keys. That is the whole business."
+
+### Night-watch Nisse (`nisse`), role talker, release mon
+- At [12,57], wanders in [10,56,8,3]
+- Sells: nothing
+- Party: none
+- Can die: true, catchable: true, likes: coke
+- Epitaph: "Off duty."
+- **Personality:** paranoid (whispers, suspects everyone); friends: pelle
+- **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if met=0)_ "Shh. Night shift. I watch the lot. Somebody has to, and it is never the day shift."
+      - you: "What do you see?" → "Bats. Mostly. And once, a trolley that walked on its own." [tone:"kind"]
+      - you: "Nothing happens here." → "That is exactly what they want you to think." [tone:"rude"]
+  -  _(if carry="bat")_ "A bat in a bag. Good. Do not let it near the lights."
+  -  "The rave in the deep forest is louder at night. You can feel it in the bags."
+  -  "Day people have no idea. I could tell them. They would not listen."
+
+### Market-Maud (`market`), role merchant, release tue
+- At [24,56], wanders in [22,55,5,3]
+- Sells: bottle, rock, meatballs, banana, net
+- Party: none
+- Can die: true, catchable: true, likes: buns
+- Epitaph: "Everything must go. She did."
+- **Personality:** salesman (friendly, always selling)
+- **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if met=0)_ "TUESDAY MARKET! Everything half price! Nothing is guaranteed!"
+  -  _(if relMin=2)_ "For you, even cheaper. Do not tell Jonas."
+  -  "Come tomorrow and I will be gone. Come today and I will be cheap."
 
 ### Kenny the Fence (`kenny`), role fence, release mon
 - At [46,62]
@@ -665,6 +750,99 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - **Personality:** dry (flat, short, deadpan)
 - **What they say** (best match first, no repeats until the pool is used up):
   -  "Inkasso-Ingvar. You promised. Klarna remembers."
+
+## Quests
+
+- **The bottle war** (`bottle_war`, given by pelle, release tue) — closes: berit_parcel
+  1. Pelle says Berit steals his cans. Ask Berit. Pick a side. _(if flag="bw_decided")_
+  2. Tell Pelle what you decided. (hand in to pelle)
+  - reward _(if flag="side:berit")_: rel:{"berit":3,"pelle":-3} give:{"bag":3} — "Berit owes you. Pelle does not."
+  - reward _(if flag="side:pelle")_: rel:{"pelle":3,"berit":-3} give:{"bottle":3} — "Pelle owes you. Berit does not."
+  - reward _(if flag="side:none")_: rel:{"pelle":-1,"berit":-1} kr:60 — "Neither is happy. You are fair."
+- **The ticking parcel** (`berit_parcel`, given by berit, release tue) — closes: bottle_war
+  1. Deliver Berit's parcel to Hardware Jonas. (hand in to jonas) _(if carry="parcel")_
+  - reward: rel:{"berit":2,"jonas":1} give:{"surstromming":1} — "Jonas signs for it, sweating."
+- **An empty bottle** (`pirate_rum`, given by pirate, release tue)
+  1. Bring the pirate an empty bottle (Hardware Jonas sells them). (hand in to pirate) _(if carry="bottle")_
+  - reward: rel:{"pirate":2} give:{"surstromming":1} — "The pirate cries a little."
+- **Company for the freezer** (`freja_penguin`, given by freja, release tue)
+  1. Show Freja a Freezer Penguin. (hand in to freja) _(if carry="peng")_
+  - reward: rel:{"freja":2} give:{"meatballs":3,"frostMk1":1} — "She cannot stop smiling. Cold smile."
+- **The cat hair** (`barber_fur`, given by barber, release tue)
+  1. Bring the Barber one of Ljunky's cats (it has to be a real one). (hand in to barber) _(if carry="cat")_
+  - reward: rel:{"barber":2,"maadmads":1} give:{"ringbox":1} kr:300 — "He weeps over the fur. Pays well."
+- **Anna's light bill** (`jonas_bulbs`, given by jonas, release tue)
+  1. Talk to Anna about the light bill. _(if flag="talked:anna")_
+  2. Tell Jonas how it went. (hand in to jonas)
+  - reward: rel:{"jonas":2,"anna":2} tell:"wife:anna" give:{"techMk1":1} — "Jonas finally understands the meter."
+- **The one with the crown** (`folke_pike`, given by folke, release tue)
+  1. Show Folke a Pikezilla. (hand in to folke) _(if carry="pike")_
+  - reward: rel:{"folke":3} give:{"netTrap":1} — "Folke whispers: "It is real." And gives you a trap."
+- **The perfect cast** (`folke_cast`, given by folke, release tue)
+  1. Fish with a perfect timing (every reel in the gold). _(if flag="fish:perfect")_
+  2. Tell Folke. (hand in to folke)
+  - reward: rel:{"folke":2} give:{"net":3} — "Folke respects the cast."
+- **Par on the first hole** (`caddy_par`, given by caddy, release tue)
+  1. Make par on the first hole (the tee is by the pond). _(if flag="golf:par")_
+  2. Tell Caddy Calle. (hand in to caddy)
+  - reward: rel:{"caddy":3} give:{"beer6":1} kr:250 — "Calle shakes your hand. It is damp."
+- **The WOD** (`box_wod`, given by kb1, release mon)
+  1. Warm up in The Box: the kettlebells, light to heavy. _(if flag="wod3")_
+  2. Finish on the rower. _(if flag="edge:ljunky")_
+  - reward: give:{"protein":2} — "Ljunky will start late."
+- **Lights on** (`store_fuses`, given by fuse1, release tue)
+  1. Find the three fuses hidden in the store. _(if flag=["got:fuse1","got:fuse2","got:fuse3"])_
+  2. Put them in the fuse box. _(if flag="edge:wizcudi")_
+  - reward: kr:150 — "Wizcudi winces from across town."
+- **The shaman's brew** (`cave_brew`, given by fern, release tue)
+  1. Gather the herbs in the right order (someone knows it). _(if flag="h3")_
+  2. Add them to the cauldron. _(if flag="edge:jrohn")_
+  - reward: give:{"shrooms":1} — "Jrohn will be very relaxed."
+- **The empty throne** (`castle_throne`, given by throne, release wed)
+  1. Decide what to do with Löken's throne. _(if flag="throne:done")_
+  - reward:  — "Done. Everybody will hear about it."
+- **Off the beat** (`rave_dj`, given by bar, release tue)
+  1. Get a glow stick from the bar. _(if flag="got:glow")_
+  2. Give the DJ a reason (after dark). _(if flag="edge:bigwman")_
+  - reward: give:{"coke":1} — "BigWman will lose count."
+
+## Props (puzzle pieces, tees, fishing spots, day events)
+
+- `pier` 🎣 The pier at [23,2], mini-game: fishing
+- `lakespot` 🎣 A fishing spot at [66,18], mini-game: fishing
+- `tee1` ⛳ Tee 1 at [58,36], mini-game: golf
+- `kb1` 🏋️ 8 kg kettlebell at [39,12] — says: "You are done here. Your arms agree." / "Already lifted. Something heavier next." / "8 kg. Light. You lift it with one finger. Something in The Box nods."
+- `kb2` 🏋️ 16 kg kettlebell at [40,14] — says: "Lifted. Heavier next." / "16 kg. You lift it. Properly." / "16 kg, cold. Your back says: start with the light one."
+- `kb3` 🏋️ 24 kg kettlebell at [43,14] — says: "Lifted. All of them. The rower is waiting." / "24 kg. You lift it. The Box applauds silently." / "24 kg, cold. You hear something pop. Start light."
+- `rower` 🚣 The rower at [42,12] — says: "You did the WOD already. Ljunky never does the last set. He starts late. Always." / "500 metres on the rower. You finish. Ljunky never does the last set. He starts late, and tired." / "The rower waits. Warm up first: light to heavy."
+- `fuse1` 🗄️ A drawer at [101,33] — says: "Empty. Just cables." / "A fuse, in a drawer of cables. You take it."
+- `fuse2` 🧰 A toolbox at [107,36] — says: "Empty. Just screws." / "A fuse, wrapped in a sock, in a toolbox. Of course."
+- `fuse3` 📚 A shelf at [110,34] — says: "Just manuals." / "A fuse, behind a manual about fuses."
+- `fusebox` 🔲 The fuse box at [104,33] — says: "Every light is on. The store hums." / "A fuse box with three empty slots. Every light in the building is off. On purpose."
+- `fern` 🌿 A fern at [136,24] — says: "A fern, growing out of the cave wall. It looks strangely proud."
+- `mush` 🍄 A mushroom at [145,27] — says: "A mushroom. It tastes of Thursdays. You pick it." / "A mushroom, cold. The cave coughs. Something about the order…"
+- `moss` 🪨 Moss at [136,28] — says: "Moss. Soft. It purrs. You pick it." / "Moss, too soon. It sulks. The order matters."
+- `cauldron` 🍲 The cauldron at [141,24] — says: "The brew bubbles. Jrohn will be very, very relaxed." / "You add the herbs. The cauldron hums. Somewhere, Jrohn loses track of what a fight is." / "A cold cauldron. It wants herbs, in the right order. Someone on the mountain knows it."
+- `throne` 👑 The throne at [141,6] — says: "The throne is quiet. For now." / "An empty throne. Dusty. Löken guards it from the lawn, gently."
+- `bar` 🍹 The bar at [139,64] — says: "The bartender shrugs. You already have yours." / "The bartender hands you a glow stick without a word. 🍹"
+- `dj` 🎧 The DJ booth at [148,64] — says: "The beat is perfect. Nobody can count it now." / "The DJ sees the glow stick. "You. Up here." You drop the beat on the seven. Somewhere, BigWman loses count of everything." / "The DJ is in the zone. Bring something that glows." / "The DJ is asleep under the decks. Come back after dark."
+- `balloons` 🎈 Balloon stand at [27,47], only when {"day":"mon"} — says: "Out of balloons. Monday is for balloons." / "A man gives you a balloon and a Fizz tablet. "Monday!" he says. That is all he says."
+- `wallet` 👛 A lost wallet at [30,18], only when {"day":"wed"} — says: "Empty now. A photo of a cat." / "A lost wallet. 200 kr and a photo of a cat. You keep the money. The cat judges you."
+
+## Rumours
+
+- mon:
+  - "Somebody saw a van with no driver outside ICA."
+  - "Pelle says the bottle machines are humming a new tune."
+  - "Berit locked the self-checkout. From the inside."
+- tue:
+  - "The golf course is open again. Nobody knows why."
+  - "A shaman is selling herbs in the mountain. Or buying them."
+  - "The big lake rose three tiles last night."
+- wed:
+  - "Boat-Bengt is trading boats for vans. Two vans. Maybe three."
+  - "The castle drawbridge creaks at night."
+  - "Löken dropped 400 kr on the way home. Again."
 
 ## Random shoppers (fillers): each gets one personality and a slice of that personality's lines
 

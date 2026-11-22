@@ -223,6 +223,9 @@ items: {
   // key items
   stache: { kind: 'key', name: 'Moustache trim', em: '✂️', price: 20, cosmetic: true, learnedNote: 'Magnificent. Purely cosmetic.', release: 'mon' },
   bitcoin: { kind: 'key', name: 'Bitcoin (physical)', em: '🪙', notSold: true, learnedNote: 'Somebody would love this on a grave.', release: 'wed' },
+  parcel: { kind: 'key', name: 'Suspicious parcel', em: '📦', notSold: true, learnedNote: 'It ticks. Probably just a clock.', release: 'tue' },
+  fuse: { kind: 'key', name: 'Fuse', em: '🔌', notSold: true, learnedNote: 'Old, ceramic, important.', release: 'tue' },
+  glowstick: { kind: 'key', name: 'Glow stick', em: '🟢', notSold: true, learnedNote: 'Glows. Loudly.', release: 'tue' },
   // shopping list (8 random per new game), zone = where it lies
   milk: { kind: 'key', list: true, name: 'Milk', em: '🥛', zone: 'freezer' }, kaviar: { kind: 'key', list: true, name: 'Kalles kaviar', em: '🐟', zone: 'fruit' },
   falukorv: { kind: 'key', list: true, name: 'Falukorv', em: '🌭', zone: 'fruit' }, crisp: { kind: 'key', list: true, name: 'Crispbread', em: '🫓', zone: 'bakery' },
@@ -308,6 +311,10 @@ npcs: {
     look: { hair: '#8a6a4a', style: 'hat', beard: '#8a6a4a', top: '#2f6fd0', legs: '#3a2a1a', prop: 'bag' }, shop: ['net', 'netTrap'], release: 'tue', lines: { pool: ['Fish.'] } },
   bengt: { name: 'Boat-Bengt', role: 'boatman', at: [58, 19], requires: 'know:boat', canDie: true, catchable: true, likes: 'buns', epitaph: 'Sank with dignity.',
     look: { hair: '#222', style: 'cap', cap: '#fbf6e8', cap2: '#1F2A44', beard: '#222', top: '#1F2A44', legs: '#fbf6e8', glasses: 1 }, release: 'wed', lines: { pool: ['Boats.'] } },
+  nisse: { name: 'Night-watch Nisse', role: 'talker', at: [12, 57], area: [10, 56, 8, 3], show: { night: true }, canDie: true, catchable: true, likes: 'coke', epitaph: 'Off duty.',
+    look: { hair: '#555', style: 'cap', cap: '#1F2A44', cap2: '#ffd23a', top: '#1F2A44', legs: '#1F2A44', glasses: 1 }, release: 'mon', lines: { pool: ['Night.'] } },
+  market: { name: 'Market-Maud', role: 'merchant', at: [24, 56], area: [22, 55, 5, 3], show: { day: 'tue' }, priceMul: .5, canDie: true, catchable: true, likes: 'buns', epitaph: 'Everything must go. She did.',
+    look: { skin: '#f0c8a8', hair: '#d8d8d8', style: 'bob', top: '#ff6b9a', legs: '#34343c', prop: 'bag' }, shop: ['bottle', 'rock', 'meatballs', 'banana', 'net'], release: 'tue', lines: { pool: ['Half price.'] } },
   kenny: { name: 'Kenny the Fence', role: 'fence', at: [46, 62], canDie: true, catchable: true, likes: 'snus', epitaph: 'Fenced in. Finally.',
     look: { skin: '#d8b090', hair: '#222', style: 'cap', cap: '#2a2a33', cap2: '#3ddc84', top: '#3a3a44', legs: '#222', stache: 1 }, release: 'mon',
     lines: { pool: ['Psst. I buy animals. No paperwork, no questions, no real money.', 'Creatures? I know a guy in Norrtälje. He knows a guy.'] },
@@ -370,7 +377,7 @@ zones: {
   estore: { name: 'The electronics store', r: [98, 32, 14, 6], house: 'wizcudi', release: 'tue' },
   cave: { name: 'The shaman cave', r: [134, 22, 14, 8], house: 'jrohn', release: 'tue' },
   castle: { name: 'The castle', r: [131, 4, 20, 9], house: 'loken', release: 'wed' },
-  rave: { name: 'The rave', r: [136, 62, 18, 10], house: 'bigwman', release: 'tue' },
+  rave: { name: 'The rave', r: [136, 62, 18, 10], house: 'bigwman', release: 'tue', ambient: { tone: 55, vol: .035, nightVol: .09, every: .5, flash: true } },
   grounds: { name: 'The castle grounds', r: [126, 2, 30, 15], out: 1, release: 'wed' },
   boxpath: { name: 'The lawn, east side', r: [24, 9, 23, 11], enc: [['crow', 4], ['fly', 3], ['bat', 2], ['elk', 1]], lv: [8, 11], out: 1 },
   band_s1: { name: 'Roadside grass', r: [52, 46, 4, 5], enc: [['fly', 3], ['crow', 3], ['cat', 1]], lv: [11, 14], out: 1, release: 'tue' },
@@ -485,14 +492,19 @@ knowledge: {
   'house:jrohn':   { name: "Jrohn's house", text: 'A shaman cave in the mountain.', listed: true, release: 'tue' },
   'house:loken':   { name: "Löken's house", text: 'A castle, across the big lake.', listed: true, release: 'wed' },
   'house:bigwman': { name: "BigWman's house", text: 'A 24-hour rave, deep in the forest.', listed: true, release: 'tue' },
+  herbs: { name: "Jrohn's brew", text: 'Fern, then mushroom, then moss. Never the other way.', release: 'tue' },
   boat:  { name: 'Boat-Bengt', text: 'Trades boats for vans. On the big lake shore.', release: 'wed' },
   ferry: { name: 'A ferry creature', text: 'A big lake creature that knows Ferry can carry you across the water.', release: 'wed' }
 },
 
 dialogue: {
   /* ---- NPCs ---- */
-  pirate: { personality: 'dreamer', friends: ['hasse'], help: { relMin: 4, give: { bottle: 1 }, text: 'Take this, matey. It was empty when I found it.' },
+  pirate: { rumours: true, personality: 'dreamer', friends: ['hasse'], help: { relMin: 4, give: { bottle: 1 }, text: 'Take this, matey. It was empty when I found it.' },
     talk: [
+      { if: { step: 'pirate_rum:0' }, text: 'Got me bottle yet, matey? A dry pirate be a sad pirate.' },
+      { if: { metMin: 2, questNot: 'pirate_rum' }, text: 'Me bottle be empty. Fetch me another one. Jonas sells them, the traitor.', replies: [
+        { label: 'Aye aye.', quest: 'pirate_rum', tone: 'kind', text: 'Ye be a good sailor!' }, { label: 'Buy your own.', tone: 'rude', text: 'Arr. Cold.' }] },
+      { if: { questDone: 'pirate_rum' }, text: 'Ye saved me life. Almost. Parrot says thank you.' },
       { if: { met: 0 }, text: "Arr! New face in the lot. The van's yers, aye? Don't touch me parrot.", replies: [
         { label: 'Nice parrot.', tone: 'kind', text: 'Gunilla be her name. She bites.' },
         { label: "I don't see a parrot.", tone: 'honest', text: '…Shh. Between us: there be no parrot. Tell no one.' },
@@ -505,8 +517,15 @@ dialogue: {
       { if: { from: 'wed', metMin: 1 }, tell: 'house:loken', release: 'wed', text: "Löken has a castle across the water, they say. Ye can't walk there. Ask about a man called Bengt." },
       { text: 'Arr. The van smells o\' Löken\'s gym bag. Not that I be complaining.' },
       { if: { metMin: 1 }, text: 'Back again. The lot be quiet, apart from the cars that breathe.' }] },
-  berit: { personality: 'grumpy', friends: ['pelle', 'cicci'], help: { relMin: 4, give: { bag: 3 }, text: 'Take a few bags. On the house. If you tell anyone I will deny it.' },
+  berit: { rumours: true, personality: 'grumpy', friends: ['pelle', 'cicci'], help: { relMin: 4, give: { bag: 3 }, text: 'Take a few bags. On the house. If you tell anyone I will deny it.' },
     talk: [
+      { if: { step: 'bottle_war:0' }, text: 'Pelle sent you? He returns FAKE cans. Count them yourself. Whose side are you on?', replies: [
+        { label: 'Berit is right.', set: { bw_decided: true, 'side:berit': true }, rel: 2, text: 'Finally someone sensible.' },
+        { label: 'Pelle is right.', set: { bw_decided: true, 'side:pelle': true }, rel: -2, text: 'Out. Out of my queue.' },
+        { label: 'You are both wrong.', set: { bw_decided: true, 'side:none': true }, tone: 'honest', text: '…Fair. I hate that you are fair.' }] },
+      { if: { metMin: 3, questNot: 'berit_parcel' }, text: 'A parcel arrived for Hardware Jonas. It ticks. I do not want it near my register. Take it to him?', replies: [
+        { label: 'Fine. I will take it.', quest: 'berit_parcel', give: { parcel: 1 }, tone: 'kind', text: 'Do not shake it.' }, { label: 'It ticks?!', tone: 'funny', text: 'It is probably a clock. Probably.' }] },
+      { if: { questLocked: 'berit_parcel' }, text: 'You are in with Pelle now. I have nothing for you.' },
       { if: { met: 0 }, text: 'Unexpected item in bagging area. Unexpected YOU. Bags are 10 kr.', replies: [
         { label: 'Just browsing.', tone: 'kind', text: 'Browse faster.' },
         { label: 'Bags are a scam.', tone: 'honest', text: '…Correct. Do not tell management.' },
@@ -520,6 +539,12 @@ dialogue: {
       { text: 'I have been in this queue since 2019.' }] },
   pelle: { personality: 'paranoid', friends: ['berit', 'sofia'],
     talk: [
+      { if: { metMin: 3, questNot: 'bottle_war' }, text: 'Berit is stealing my cans. I counted. Ask her. Quietly. Then tell me whose side you are on.', replies: [
+        { label: 'I will ask her.', quest: 'bottle_war', tone: 'kind', text: 'Do not trust the bagging area.' }, { label: 'Not my problem.', tone: 'rude' }] },
+      { if: { step: 'bottle_war:1' }, text: 'So? What did she say?' },
+      { if: { questDone: 'bottle_war', flag: 'side:pelle' }, text: 'You took my side. I will never forget it. I forget everything else, but not that.' },
+      { if: { questDone: 'bottle_war', flag: 'side:berit' }, text: 'You took her side. The machines are watching you now.' },
+      { if: { questLocked: 'bottle_war' }, text: 'Berit asked you something first. I know. The machines told me.' },
       { if: { met: 0 }, text: 'Shh. The machines are listening.', replies: [
         { label: 'Who is listening?', tone: 'kind', text: 'The machines. Keep your voice down.' },
         { label: 'They are just machines.', tone: 'rude', text: 'That is exactly what they want you to think.' },
@@ -533,6 +558,10 @@ dialogue: {
       { text: 'One krona per can. I have three million cans. They count the cans. They KNOW.' }] },
   freja: { personality: 'dry', friends: ['berit'],
     talk: [
+      { if: { step: 'freja_penguin:0' }, text: 'Have you found a penguin yet? Any penguin. It does not have to like me.' },
+      { if: { metMin: 2, questNot: 'freja_penguin' }, text: 'It is lonely in here. Bring me a Freezer Penguin. Just so I can see it. Do not tell the peas.', replies: [
+        { label: 'I will find one.', quest: 'freja_penguin', tone: 'kind', text: 'Mm. Thanks.' }, { label: 'Penguins have jobs.', tone: 'funny', text: 'Mm.' }] },
+      { if: { questDone: 'freja_penguin' }, text: 'It stood by the peas for a whole minute. I will remember that forever.' },
       { if: { met: 0 }, text: "Cold in here. Colder out there. You want something, or are you just standing in my draught?", replies: [
         { label: 'Just looking.', tone: 'kind', text: 'Mm. Everyone is.' },
         { label: 'Your freezers are lovely.', tone: 'flirt', text: 'Please do not.' }] },
@@ -541,7 +570,7 @@ dialogue: {
       { if: { killed: 'berit' }, text: 'Berit and I shared the lunch room. It is very quiet at the lunch table now.' },
       { if: { state: 'high' }, text: 'Your eyes are the size of dinner plates. Lie down by the peas.' },
       { text: 'Penguins hate it when you leave the freezer door open. Or love it. I forget.' }] },
-  hasse: { personality: 'dreamer', friends: ['pirate'],
+  hasse: { rumours: true, personality: 'dreamer', friends: ['pirate'],
     talk: [
       { if: { met: 0 }, text: 'Can you smell purple? No? Then you have not lived.', replies: [
         { label: 'Smells blue to me.', tone: 'funny', text: 'BLUE! Yes! You see it too!' },
@@ -552,8 +581,12 @@ dialogue: {
       { if: { night: true }, text: 'The stars are loud tonight. Do you hear the receipts? The receipts!' },
       { text: 'The receipt in aisle 4 is fourteen metres long and it LOOKED at me.' },
       { text: 'Mushrooms? Ask the guy who hides behind the bottle machines. Did not hear it from me.' }] },
-  barber: { personality: 'salesman', friends: ['maadmads', 'jonas'],
+  barber: { rumours: true, personality: 'salesman', friends: ['maadmads', 'jonas'],
     talk: [
+      { if: { step: 'barber_fur:0' }, text: 'A real cat, mind you. From Ljunky\'s gang. For the fur. No questions.' },
+      { if: { metMin: 3, questNot: 'barber_fur' }, text: 'I need a cat. One of Ljunky\'s, for the fur. I will pay well. I will ask nothing.', replies: [
+        { label: 'I will see what I can do.', quest: 'barber_fur', tone: 'kind', text: 'Discretion. Always.' }, { label: 'That is creepy.', tone: 'honest', text: 'It is a business.' }] },
+      { if: { questDone: 'barber_fur' }, text: 'The fur is perfect. I cried. The mirror cried.' },
       { if: { met: 0 }, text: 'Trim? Gossip? A shave? Something under the chair, for the discerning customer?', replies: [
         { label: 'A trim, please.', tone: 'kind', text: 'Snip snip. You have good ears.' },
         { label: 'What is under the chair?', tone: 'funny', text: 'Ask me when we are better friends.' }] },
@@ -564,6 +597,12 @@ dialogue: {
       { text: 'Hair grows. Gossip grows faster.' }] },
   jonas: { personality: 'grumpy', friends: ['anna', 'barber'], help: { relMin: 4, give: { rock: 3 }, text: 'Here. Rocks. Free. The only thing in this shop with no markup.' },
     talk: [
+      { if: { step: 'jonas_bulbs:1' }, text: 'Well? How was she about the bill?' },
+      { if: { step: 'jonas_bulbs:0' }, text: 'Anna. The light bill. Go and talk to her. She yells less at strangers.' },
+      { if: { metMin: 3, questNot: 'jonas_bulbs' }, text: 'Anna buys the cheap bulbs, then yells at me about the bill. Talk to her about it? For me?', replies: [
+        { label: 'I will.', quest: 'jonas_bulbs', tone: 'kind', text: 'You are a good person. Or a fool. Same thing.' }, { label: 'Not my fight.', tone: 'rude', text: 'Everybody says that.' }] },
+      { if: { questDone: 'jonas_bulbs' }, text: 'She said thank you. To me. I did not know she could.' },
+      { if: { carry: 'parcel' }, text: 'That parcel ticks. From Berit? Give it here. Quickly. Then go.' },
       { if: { met: 0 }, text: 'Traps work while you sleep. Like me.', replies: [
         { label: 'What is good for catching?', tone: 'kind', text: 'Anything with a smell. Creatures are simple.' },
         { label: 'Your prices are a joke.', tone: 'rude', text: 'The joke is you are still standing here.' }] },
@@ -634,7 +673,12 @@ dialogue: {
   ingvar: { personality: 'dry', talk: [{ text: 'Inkasso-Ingvar. You promised. Klarna remembers.' }] },
 
   /* ---- the bigger world ---- */
-  caddy: { personality: 'dry', friends: ['hermit'], talk: [
+  caddy: { rumours: true, personality: 'dry', friends: ['hermit'], talk: [
+
+      { if: { step: 'caddy_par:1' }, text: 'Par? You made par? Tell me everything. Every stroke.' },
+      { if: { step: 'caddy_par:0' }, text: 'The tee is by the pond. Hit it long. Then hit it right.' },
+      { if: { metMin: 1, questNot: 'caddy_par' }, text: 'Nobody makes par on the first hole. Not since the pond moved. Do you want to try? Tee is over there.', replies: [
+        { label: 'Fore!', quest: 'caddy_par', tone: 'funny', text: 'Oh, I like you.' }, { label: 'Golf is boring.', tone: 'honest', text: 'It is. That is the beauty.' }] },
       { if: { met: 0 }, text: 'Fore! …That was for me. Nobody is playing. Nobody has played since the lake rose.', replies: [
         { label: 'Nice course.', tone: 'kind', text: 'Eight holes, three of them under water. I call it character.' },
         { label: 'Who needs golf?', tone: 'honest', text: 'Exactly. I only carry the bag.' }] },
@@ -642,7 +686,7 @@ dialogue: {
       { if: { night: true }, text: 'Night golf. The ball glows. Very exclusive.' },
       { if: { killed: 'hermit' }, text: 'Hilding is gone? Then who will complain about the noise now?' },
       { text: 'Between the rough and the road there is always something with teeth. Mind the tall grass.' }] },
-  kioskman: { personality: 'salesman', talk: [
+  kioskman: { rumours: true, personality: 'salesman', talk: [
       { if: { met: 0 }, text: 'Welcome to the city! Everything is available. Some of it legally.' },
       { if: { night: true }, text: 'Night kiosk: the same prices, but with the lights on.' },
       { if: { metMin: 1 }, text: 'Nets for fishing, snus for everything else. What can I do for you?' },
@@ -655,6 +699,7 @@ dialogue: {
       { if: { night: true }, text: 'At night the forest gets deeper. Never go east in the dark.' },
       { text: 'There is a party in the deep forest. It never ends. The bass makes my teeth ring.' }] },
   guide: { personality: 'grumpy', talk: [
+      { if: { metMin: 1 }, tell: 'herbs', release: 'tue', text: 'Jrohn brews in the cave. The order matters: fern first, then the mushroom, then moss. Do not ask me how I know. I carried the herbs.' },
       { if: { met: 0 }, text: 'Hiking boots? No? You will regret that. Everyone does.' },
       { if: { carry: 'peng' }, text: 'A freezer penguin on a mountain. It looks at home, at least.' },
       { if: { night: true }, text: 'Nobody goes up at night. Except the shaman. And he floats.' },
@@ -665,6 +710,13 @@ dialogue: {
       { if: { hero: 'bigwman' }, text: 'Oh, it is you. The owner. I did not recognise you with the shirt on.' },
       { text: 'Not tonight. Come back when you are stronger. Much stronger.' }] },
   folke: { personality: 'dreamer', friends: ['bengt'], talk: [
+      { if: { step: 'folke_pike:0' }, text: 'A Pikezilla. With the crown. Show me one and I will believe in you.' },
+      { if: { step: 'folke_cast:0' }, text: 'A perfect cast: every reel in the gold. Do it once and I will respect you.' },
+      { if: { step: 'folke_cast:1' }, text: 'You did the perfect cast? I felt it from here.' },
+      { if: { metMin: 3, questNot: 'folke_pike' }, text: 'The one with the crown. Bring me one, where I can see it. I have only ever heard it.', replies: [
+        { label: 'I will find it.', quest: 'folke_pike', tone: 'kind', text: 'Be quiet about it.' }, { label: 'Fish stories.', tone: 'funny', text: 'Mm. Everyone says that.' }] },
+      { if: { metMin: 4, questNot: 'folke_cast' }, text: 'Can you cast? A perfect cast: every reel in the gold, once.', replies: [
+        { label: 'Watch me.', quest: 'folke_cast', tone: 'funny', text: 'I never watch. I listen.' }, { label: 'Not now.', tone: 'kind' }] },
       { if: { met: 0 }, text: 'Shh. They bite better in the quiet.', replies: [
         { label: 'What are you fishing for?', tone: 'kind', text: 'The one with the crown. He always gets away.' },
         { label: 'Any luck?', tone: 'funny', text: 'Luck is for lottery winners. I have patience.' }] },
@@ -677,8 +729,83 @@ dialogue: {
       { if: { flag: 'boat' }, text: 'How is she? The old van? I mean, the new boat? Both of them, I hope.' },
       { if: { night: true }, text: 'Night is for sailing. And for not asking where the boat was before.' },
       { text: 'Keys for keys. That is the whole business.' }] },
+  /* ---- people with a schedule ---- */
+  nisse: { rumours: true, personality: 'paranoid', friends: ['pelle'], talk: [
+      { if: { met: 0 }, text: 'Shh. Night shift. I watch the lot. Somebody has to, and it is never the day shift.', replies: [
+        { label: 'What do you see?', tone: 'kind', text: 'Bats. Mostly. And once, a trolley that walked on its own.' },
+        { label: 'Nothing happens here.', tone: 'rude', text: 'That is exactly what they want you to think.' }] },
+      { if: { carry: 'bat' }, text: 'A bat in a bag. Good. Do not let it near the lights.' },
+      { text: 'The rave in the deep forest is louder at night. You can feel it in the bags.' },
+      { text: 'Day people have no idea. I could tell them. They would not listen.' }] },
+  market: { rumours: true, personality: 'salesman', talk: [
+      { if: { met: 0 }, text: 'TUESDAY MARKET! Everything half price! Nothing is guaranteed!' },
+      { if: { relMin: 2 }, text: 'For you, even cheaper. Do not tell Jonas.' },
+      { text: 'Come tomorrow and I will be gone. Come today and I will be cheap.' }] },
+  /* ---- puzzle pieces and day events (props). repeat: true = the same line can be said again ---- */
+  kb1: { repeat: true, talk: [
+      { if: { flag: 'edge:ljunky' }, text: 'You are done here. Your arms agree.' },
+      { if: { flag: 'wod1', notFlag: 'wod2' }, text: 'Already lifted. Something heavier next.' },
+      { text: '8 kg. Light. You lift it with one finger. Something in The Box nods.', set: { wod1: true }, quest: 'box_wod' }] },
+  kb2: { repeat: true, talk: [
+      { if: { flag: 'wod2', notFlag: 'wod3' }, text: 'Lifted. Heavier next.' },
+      { if: { flag: 'wod1' }, text: '16 kg. You lift it. Properly.', set: { wod2: true } },
+      { text: '16 kg, cold. Your back says: start with the light one.', set: { wod1: false, wod2: false, wod3: false } }] },
+  kb3: { repeat: true, talk: [
+      { if: { flag: 'wod3' }, text: 'Lifted. All of them. The rower is waiting.' },
+      { if: { flag: 'wod2' }, text: '24 kg. You lift it. The Box applauds silently.', set: { wod3: true } },
+      { text: '24 kg, cold. You hear something pop. Start light.', set: { wod1: false, wod2: false, wod3: false } }] },
+  rower: { repeat: true, talk: [
+      { if: { flag: 'edge:ljunky' }, text: 'You did the WOD already. Ljunky never does the last set. He starts late. Always.' },
+      { if: { flag: 'wod3' }, text: '500 metres on the rower. You finish. Ljunky never does the last set. He starts late, and tired.', set: { 'edge:ljunky': true } },
+      { text: 'The rower waits. Warm up first: light to heavy.' }] },
+  fuse1: { repeat: true, talk: [
+      { if: { flag: 'got:fuse1' }, text: 'Empty. Just cables.' },
+      { text: 'A fuse, in a drawer of cables. You take it.', give: { fuse: 1 }, set: { 'got:fuse1': true }, quest: 'store_fuses' }] },
+  fuse2: { repeat: true, talk: [
+      { if: { flag: 'got:fuse2' }, text: 'Empty. Just screws.' },
+      { text: 'A fuse, wrapped in a sock, in a toolbox. Of course.', give: { fuse: 1 }, set: { 'got:fuse2': true }, quest: 'store_fuses' }] },
+  fuse3: { repeat: true, talk: [
+      { if: { flag: 'got:fuse3' }, text: 'Just manuals.' },
+      { text: 'A fuse, behind a manual about fuses.', give: { fuse: 1 }, set: { 'got:fuse3': true }, quest: 'store_fuses' }] },
+  fusebox: { repeat: true, talk: [
+      { if: { flag: 'edge:wizcudi' }, text: 'Every light is on. The store hums.' },
+      { text: 'A fuse box with three empty slots. Every light in the building is off. On purpose.', replies: [
+        { label: 'Put in the fuses', take: { fuse: 3 }, set: { 'edge:wizcudi': true }, text: 'Click. Click. Click. EVERY light comes on. Somewhere across town, Wizcudi winces.' },
+        { label: 'Later' }] }] },
+  fern: { repeat: true, talk: [{ text: 'A fern, growing out of the cave wall. It looks strangely proud.', set: { h1: true, h2: false, h3: false }, quest: 'cave_brew' }] },
+  mush: { repeat: true, talk: [
+      { if: { flag: 'h1' }, text: 'A mushroom. It tastes of Thursdays. You pick it.', set: { h2: true } },
+      { text: 'A mushroom, cold. The cave coughs. Something about the order…', set: { h1: false, h2: false, h3: false } }] },
+  moss: { repeat: true, talk: [
+      { if: { flag: 'h2' }, text: 'Moss. Soft. It purrs. You pick it.', set: { h3: true } },
+      { text: 'Moss, too soon. It sulks. The order matters.', set: { h1: false, h2: false, h3: false } }] },
+  cauldron: { repeat: true, talk: [
+      { if: { flag: 'edge:jrohn' }, text: 'The brew bubbles. Jrohn will be very, very relaxed.' },
+      { if: { flag: 'h3' }, text: 'You add the herbs. The cauldron hums. Somewhere, Jrohn loses track of what a fight is.', set: { 'edge:jrohn': true }, give: { shrooms: 1 } },
+      { text: 'A cold cauldron. It wants herbs, in the right order. Someone on the mountain knows it.' }] },
+  throne: { repeat: true, talk: [
+      { if: { flag: 'throne:done' }, text: 'The throne is quiet. For now.' },
+      { text: 'An empty throne. Dusty. Löken guards it from the lawn, gently.', quest: 'castle_throne', replies: [
+        { label: 'Sit on it', set: { 'edge:loken': true, 'throne:done': true }, rel: { sofia: -2 }, text: 'You sit. It is comfortable. A crown rolls out of the cushion. Löken will hear about this.' },
+        { label: 'Polish it', set: { 'throne:done': true }, rel: { sofia: 1 }, kr: 100, text: 'You polish it until your face shows. Behind the cushion: 100 kr.' },
+        { label: 'Leave it' }] }] },
+  bar: { repeat: true, talk: [
+      { if: { flag: 'got:glow' }, text: 'The bartender shrugs. You already have yours.' },
+      { text: 'The bartender hands you a glow stick without a word. 🍹', give: { glowstick: 1 }, set: { 'got:glow': true }, quest: 'rave_dj' }] },
+  dj: { repeat: true, talk: [
+      { if: { flag: 'edge:bigwman' }, text: 'The beat is perfect. Nobody can count it now.' },
+      { if: { night: true, carry: 'glowstick' }, text: 'The DJ sees the glow stick. "You. Up here." You drop the beat on the seven. Somewhere, BigWman loses count of everything.', set: { 'edge:bigwman': true }, take: { glowstick: 1 } },
+      { if: { night: true }, text: 'The DJ is in the zone. Bring something that glows.' },
+      { if: { night: false }, text: 'The DJ is asleep under the decks. Come back after dark.' }] },
+  balloons: { repeat: true, talk: [
+      { if: { flag: 'got:balloon' }, text: 'Out of balloons. Monday is for balloons.' },
+      { text: 'A man gives you a balloon and a Fizz tablet. "Monday!" he says. That is all he says.', give: { fizztab: 1 }, set: { 'got:balloon': true } }] },
+  wallet: { repeat: true, talk: [
+      { if: { flag: 'got:wallet' }, text: 'Empty now. A photo of a cat.' },
+      { text: 'A lost wallet. 200 kr and a photo of a cat. You keep the money. The cat judges you.', kr: 200, set: { 'got:wallet': true } }] },
   /* ---- the heroes (before the fight). Their first meeting uses the bossLines from above, written once ---- */
   bigwman: { personality: 'dry', friends: ['cicci'], talk: [
+      { if: { flag: 'edge:bigwman' }, text: 'Why is the beat in my head on the seven? One, two, three… I lost count!' },
       { if: { metMin: 1 }, text: 'Back again. I updated the spreadsheet: you appear in row 14.' },
       { if: { debtMin: 2 }, text: 'Your promise debt is on my sheet. In red.' },
       { if: { killed: 'cicci' }, text: 'You did what to Cicci? I have no formula for that.' },
@@ -686,24 +813,28 @@ dialogue: {
       { if: { night: true }, text: 'It is the middle of the night. Nobody does spreadsheets at night. Except me.' },
       { text: 'Every single package is accounted for. YES.' }] },
   wizcudi: { personality: 'paranoid', friends: ['anna'], talk: [
+      { if: { flag: 'edge:wizcudi' }, text: 'Every light in my store is on. EVERY ONE. Who did this?!' },
       { if: { metMin: 1 }, text: 'You moved a lamp last time. I counted. I always count.' },
       { if: { killed: 'anna' }, text: 'Anna... was the only one who turned the light on. Now it is dark. Thank you.' },
       { if: { state: 'blurred' }, text: 'You are swaying. The electricity is wobbling because of you.' },
       { if: { night: true }, text: 'Night rate is cheaper. This conversation is already too expensive.' },
       { text: 'Who left that light on?!' }] },
   jrohn: { personality: 'dreamer', friends: ['monika'], talk: [
+      { if: { flag: 'edge:jrohn' }, text: 'Everything is so... soft. What were we doing? Oh! A hug!' },
       { if: { metMin: 1 }, text: 'You came back! I have been telling the ferns about you.' },
       { if: { killed: 'monika' }, text: 'Monika... the ferns are very quiet today.' },
       { if: { carry: 'walter' }, text: 'WALTER! You found him! I love this! I love you! Where is my shirt?' },
       { if: { state: 'high' }, text: 'We are in the same garden right now. Do you see it? The same one.' },
       { text: 'Walk with me. Or fight me. Whichever has more hugs.' }] },
   loken: { personality: 'hothead', friends: ['sofia'], talk: [
+      { if: { flag: 'edge:loken' }, text: 'Someone sat on my throne. I can SMELL it. Gently. But I can smell it.' },
       { if: { metMin: 1 }, text: 'Back on my lawn. Stick together, boys. Except you.' },
       { if: { killed: 'sofia' }, text: 'You... touched Sofia. You are DEAD to the lawn.' },
       { if: { carry: 'crow' }, text: 'A bottle crow. The lawn approves. Gently. Loyally.' },
       { if: { night: true }, text: 'It is the middle of the night. The grass sleeps. Be QUIET on it.' },
       { text: 'I dropped 400 kr on the way here. Pick it up, I dare you.' }] },
   ljunky: { personality: 'salesman', friends: ['maadmads'], talk: [
+      { if: { flag: 'edge:ljunky' }, text: 'Why am I so tired already? I did not even start. WHY IS THE ROWER WARM?' },
       { if: { metMin: 1 }, text: 'Back for more? I have patched the game since you left.' },
       { if: { killed: 'maadmads' }, text: 'You... deleted my wife? That is not in the patch notes.' },
       { if: { carry: 'cat' }, text: 'You have my cats! Give them back. They do not like you. They like me.' },
@@ -879,6 +1010,87 @@ houses: {
   bigwman: { name: 'The rave', hero: 'bigwman', level: 40, door: [144, 62], doorW: 2, release: 'tue', home: { at: [148, 66] },
     trophy: { at: [140, 66], give: { protein: 2, coke: 1 }, text: 'A rack of glow sticks and a spreadsheet of beats. You take the protein bars.' },
     locked: "A bouncer made of bass. 'Not tonight.' You are not on the list." }
+},
+
+/* ===================================================== THINGS TO DO: quests, props (puzzles, fishing spots, tees), mini-games, rumours =====================================================
+   quests: a chain of steps. A step is done when its conditions match (same language as dialogue); turnIn = only when you talk to that person. Rewards are knowledge, items, kronor and relationships (never points).
+   rewards: the best matching one is given (choices change what you get). locks: starting this quest closes those (you chose a side).
+   Start a quest from any dialogue line or reply with  quest: 'id'. Rel can be a map:  rel: { berit: +3, pelle: -3 }. Hand in a creature with takeCreature. */
+quests: {
+  bottle_war: { name: 'The bottle war', giver: 'pelle', release: 'tue', locks: ['berit_parcel'],
+    steps: [ { text: 'Pelle says Berit steals his cans. Ask Berit. Pick a side.', done: { flag: 'bw_decided' } }, { text: 'Tell Pelle what you decided.', turnIn: 'pelle', done: {} } ],
+    rewards: [ { if: { flag: 'side:berit' }, rel: { berit: 3, pelle: -3 }, give: { bag: 3 }, text: 'Berit owes you. Pelle does not.' },
+               { if: { flag: 'side:pelle' }, rel: { pelle: 3, berit: -3 }, give: { bottle: 3 }, text: 'Pelle owes you. Berit does not.' },
+               { if: { flag: 'side:none' }, rel: { pelle: -1, berit: -1 }, kr: 60, text: 'Neither is happy. You are fair.' } ] },
+  berit_parcel: { name: 'The ticking parcel', giver: 'berit', release: 'tue', locks: ['bottle_war'],
+    steps: [ { text: 'Deliver Berit\'s parcel to Hardware Jonas.', turnIn: 'jonas', done: { carry: 'parcel' }, take: { parcel: 1 } } ],
+    rewards: [ { rel: { berit: 2, jonas: 1 }, give: { surstromming: 1 }, text: 'Jonas signs for it, sweating.' } ] },
+  pirate_rum: { name: 'An empty bottle', giver: 'pirate', release: 'tue',
+    steps: [ { text: 'Bring the pirate an empty bottle (Hardware Jonas sells them).', turnIn: 'pirate', done: { carry: 'bottle' }, take: { bottle: 1 } } ],
+    rewards: [ { rel: { pirate: 2 }, give: { surstromming: 1 }, text: 'The pirate cries a little.' } ] },
+  freja_penguin: { name: 'Company for the freezer', giver: 'freja', release: 'tue',
+    steps: [ { text: 'Show Freja a Freezer Penguin.', turnIn: 'freja', done: { carry: 'peng' } } ],
+    rewards: [ { rel: { freja: 2 }, give: { meatballs: 3, frostMk1: 1 }, text: 'She cannot stop smiling. Cold smile.' } ] },
+  barber_fur: { name: 'The cat hair', giver: 'barber', release: 'tue',
+    steps: [ { text: 'Bring the Barber one of Ljunky\'s cats (it has to be a real one).', turnIn: 'barber', done: { carry: 'cat' } } ],
+    rewards: [ { rel: { barber: 2, maadmads: 1 }, kr: 300, give: { ringbox: 1 }, text: 'He weeps over the fur. Pays well.' } ] },
+  jonas_bulbs: { name: "Anna's light bill", giver: 'jonas', release: 'tue',
+    steps: [ { text: 'Talk to Anna about the light bill.', done: { flag: 'talked:anna' } }, { text: 'Tell Jonas how it went.', turnIn: 'jonas', done: {} } ],
+    rewards: [ { rel: { jonas: 2, anna: 2 }, tell: 'wife:anna', give: { techMk1: 1 }, text: 'Jonas finally understands the meter.' } ] },
+  folke_pike: { name: 'The one with the crown', giver: 'folke', release: 'tue',
+    steps: [ { text: 'Show Folke a Pikezilla.', turnIn: 'folke', done: { carry: 'pike' } } ],
+    rewards: [ { rel: { folke: 3 }, give: { netTrap: 1 }, text: 'Folke whispers: "It is real." And gives you a trap.' } ] },
+  folke_cast: { name: 'The perfect cast', giver: 'folke', release: 'tue',
+    steps: [ { text: 'Fish with a perfect timing (every reel in the gold).', done: { flag: 'fish:perfect' } }, { text: 'Tell Folke.', turnIn: 'folke', done: {} } ],
+    rewards: [ { rel: { folke: 2 }, give: { net: 3 }, text: 'Folke respects the cast.' } ] },
+  caddy_par: { name: 'Par on the first hole', giver: 'caddy', release: 'tue',
+    steps: [ { text: 'Make par on the first hole (the tee is by the pond).', done: { flag: 'golf:par' } }, { text: 'Tell Caddy Calle.', turnIn: 'caddy', done: {} } ],
+    rewards: [ { rel: { caddy: 3 }, kr: 250, give: { beer6: 1 }, text: 'Calle shakes your hand. It is damp.' } ] },
+  // the house puzzles: each gives you an edge on that hero (his team is 3 levels lower, and he is off his game)
+  box_wod: { name: 'The WOD', giver: 'kb1', release: 'mon',
+    steps: [ { text: 'Warm up in The Box: the kettlebells, light to heavy.', done: { flag: 'wod3' } }, { text: 'Finish on the rower.', done: { flag: 'edge:ljunky' } } ],
+    rewards: [ { give: { protein: 2 }, text: 'Ljunky will start late.' } ] },
+  store_fuses: { name: 'Lights on', giver: 'fuse1', release: 'tue',
+    steps: [ { text: 'Find the three fuses hidden in the store.', done: { flag: ['got:fuse1', 'got:fuse2', 'got:fuse3'] } }, { text: 'Put them in the fuse box.', done: { flag: 'edge:wizcudi' } } ],
+    rewards: [ { kr: 150, text: 'Wizcudi winces from across town.' } ] },
+  cave_brew: { name: "The shaman's brew", giver: 'fern', release: 'tue',
+    steps: [ { text: 'Gather the herbs in the right order (someone knows it).', done: { flag: 'h3' } }, { text: 'Add them to the cauldron.', done: { flag: 'edge:jrohn' } } ],
+    rewards: [ { give: { shrooms: 1 }, text: 'Jrohn will be very relaxed.' } ] },
+  castle_throne: { name: 'The empty throne', giver: 'throne', release: 'wed',
+    steps: [ { text: 'Decide what to do with Löken\'s throne.', done: { flag: 'throne:done' } } ],
+    rewards: [ { text: 'Done. Everybody will hear about it.' } ] },
+  rave_dj: { name: 'Off the beat', giver: 'bar', release: 'tue',
+    steps: [ { text: 'Get a glow stick from the bar.', done: { flag: 'got:glow' } }, { text: 'Give the DJ a reason (after dark).', done: { flag: 'edge:bigwman' } } ],
+    rewards: [ { give: { coke: 1 }, text: 'BigWman will lose count.' } ] }
+},
+
+/* props: things you can tap that are not people: puzzle pieces, tees, fishing spots, day events. at = tile, em = icon.
+   minigame: 'fishing' (catch = [[creature, weight]], lv = [min, max]) or 'golf' (hole). Others use dialogue[id] like a person (repeat: true = may repeat lines).
+   show = conditions for when it is there (day, night …). Every prop has dialogue/quests like any person. */
+props: {
+  pier: { name: 'The pier', at: [23, 2], em: '🎣', minigame: 'fishing', catch: [['golem', 3], ['crow', 2], ['frog', 3]], lv: [6, 9], junk: 'A boot. Size 46. Smells like Löken.', cooldown: 20 },
+  lakespot: { name: 'A fishing spot', at: [66, 18], em: '🎣', minigame: 'fishing', catch: [['pike', 4], ['salmon', 3], ['genie', 2], ['frog', 2]], lv: [30, 36], junk: 'A shopping trolley. It is not alive. Not yet.', cooldown: 20, release: 'tue' },
+  tee1: { name: 'Tee 1', at: [58, 36], em: '⛳', minigame: 'golf', hole: { name: 'Hole 1: over the pond', distance: 140, par: 3 }, release: 'tue' },
+  kb1: { name: '8 kg kettlebell', at: [39, 12], em: '🏋️', release: 'mon' }, kb2: { name: '16 kg kettlebell', at: [40, 14], em: '🏋️', release: 'mon' }, kb3: { name: '24 kg kettlebell', at: [43, 14], em: '🏋️', release: 'mon' }, rower: { name: 'The rower', at: [42, 12], em: '🚣', release: 'mon' },
+  fuse1: { name: 'A drawer', at: [101, 33], em: '🗄️', release: 'tue' }, fuse2: { name: 'A toolbox', at: [107, 36], em: '🧰', release: 'tue' }, fuse3: { name: 'A shelf', at: [110, 34], em: '📚', release: 'tue' }, fusebox: { name: 'The fuse box', at: [104, 33], em: '🔲', release: 'tue' },
+  fern: { name: 'A fern', at: [136, 24], em: '🌿', release: 'tue' }, mush: { name: 'A mushroom', at: [145, 27], em: '🍄', release: 'tue' }, moss: { name: 'Moss', at: [136, 28], em: '🪨', release: 'tue' }, cauldron: { name: 'The cauldron', at: [141, 24], em: '🍲', release: 'tue' },
+  throne: { name: 'The throne', at: [141, 6], em: '👑', release: 'wed' },
+  bar: { name: 'The bar', at: [139, 64], em: '🍹', release: 'tue' }, dj: { name: 'The DJ booth', at: [148, 64], em: '🎧', release: 'tue' },
+  balloons: { name: 'Balloon stand', at: [27, 47], em: '🎈', show: { day: 'mon' }, release: 'mon' },
+  wallet: { name: 'A lost wallet', at: [30, 18], em: '👛', show: { day: 'wed' }, release: 'wed' }
+},
+
+/* minigames: numbers only. fishing: rounds you need to win out of rounds, zone = size of the green part (0-1), speed = how fast the marker swings. golf: maxCarry metres at full power, window = how forgiving the green zone is, cup = how close is "in" */
+minigames: {
+  fishing: { rounds: 3, need: 2, zone: .24, speed: 1.2 },
+  golf: { maxCarry: 100, maxStrokes: 6, window: .09, cup: 5, speed: 1.1 }
+},
+
+/* rumours: what gossipy people repeat, per release day (people with  rumours: true  in their dialogue). They end up in 📓 Notes. */
+rumours: {
+  mon: ['Somebody saw a van with no driver outside ICA.', 'Pelle says the bottle machines are humming a new tune.', 'Berit locked the self-checkout. From the inside.'],
+  tue: ['The golf course is open again. Nobody knows why.', 'A shaman is selling herbs in the mountain. Or buying them.', 'The big lake rose three tiles last night.'],
+  wed: ['Boat-Bengt is trading boats for vans. Two vans. Maybe three.', 'The castle drawbridge creaks at night.', 'Löken dropped 400 kr on the way home. Again.']
 },
 
 /* ---------- small pixel sprites (char grids, see PX.palette: o navy, c cream, g/G/d greys, k black, w white …) ---------- */

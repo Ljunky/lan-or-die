@@ -1021,7 +1021,8 @@ function wildFor(z, rare) {
 }
 function startWild(z, rare) { const f = wildFor(z || zoneAt(G.p.x, G.p.y), rare); if (f) startBattle({ kind: 'wild', foes: [f] }); }
 function bossLv() { return CFG.BOSS_LV + CFG.BOSS_LV_STEP * Math.min(3, G.beat.length); }
-function startBoss(id) { const base = bossLv(); startBattle({ kind: 'boss', boss: id, foes: HERO[id].team.map((sp, i) => mk(sp, base - 1 + i)) }); }
+const bossTeam = id => { const base = bossLv() - (G.flags['edge:' + id] ? 3 : 0); return HERO[id].team.map((sp, i) => mk(sp, Math.max(1, base - 1 + i))); };   // a puzzle solved in his house = his team is 3 levels lower
+function startBoss(id) { startBattle({ kind: 'boss', boss: id, foes: bossTeam(id) }); }
 function startPartner(id) {
   const avg = G.party.reduce((a, c) => a + c.lv, 0) / Math.max(1, G.party.length);
   const f = mk('w_' + id, Math.round(avg) + 2); f.partner = id; f.t = 'MIND';
@@ -1045,7 +1046,7 @@ function initPeople() {
   for (const id in NPCS) add(id, NPCS[id]);
   for (const id in (G.fillers || {})) add(id, G.fillers[id]);
 }
-const npcVisible = n => rel(n.d) && !n.d.offMap && !gone('n_' + n.id) && !(n.d.role === 'gym' && heroId() !== D.raw.gyms.box.boss && n.d.bossOnly);
+const npcVisible = n => rel(n.d) && PPL.visible(n.d, n.id) && !n.d.offMap && !gone('n_' + n.id) && !(n.d.role === 'gym' && heroId() !== D.raw.gyms.box.boss && n.d.bossOnly);
 function heroVisible(id) { return id !== heroId() && rel(HERO[id]) && !gone('h_' + id); }
 function partnerVisible(id) { return rel(PARTNERS[id]) && !gone('w_' + id); }
 function interactables() {
@@ -1060,7 +1061,7 @@ function interactables() {
     if (h.trophy && !G.flags['trophy:' + id]) { const [x, y] = tc(...h.trophy.at); L.push({ kind: 'trophy', id, x, y, range: 22 }); }
     if (h.home && heroId() === h.hero) { const [x, y] = tc(...h.home.at); L.push({ kind: 'home', id, x, y, range: 24 }); } }
   { const [x, y] = tc(4, 61); L.push({ kind: 'van', x, y: y + 10, range: 34 }); }
-  { const [x, y] = tc(23, 2); L.push({ kind: 'pier', x, y, range: 26 }); }
+  for (const id in PROPS) if (propVisible(id)) { const [x, y] = tc(...PROPS[id].at); L.push({ kind: 'prop', id, x, y, range: PROPS[id].range || 22 }); }
   { const [x, y] = tc(...D.raw.gyms.box.board); L.push({ kind: 'board', x, y: y + 14, range: 26 }); }
   if (!cemeteryOpen()) { const [x, y] = tc(...D.raw.graves.gate); L.push({ kind: 'gate', x, y: y + 12, range: 22 }); }
   for (const o of S.mapObjects()) L.push(o);
@@ -1147,6 +1148,12 @@ function updMap(dt) {
   G.near = nearest();
 }
 const EGG_AT = [[9, 8], [18, 34], [46, 57]];
+let ambT = 0, strobe = 0;
+function ambient(dt) { // the rave: a bass pulse, louder at night
+  const z = zoneAt(G.p.x, G.p.y), a = z.ambient; strobe = Math.max(0, strobe - dt * 4);
+  if (!a || G.scene !== 'map' || G.mode !== 'play') return;
+  if ((ambT -= dt) <= 0) { ambT = a.every || .5; LOD.tone(a.tone || 55, .22, 'sine', PPL.isNight() ? a.nightVol : a.vol); if (a.flash && PPL.isNight()) strobe = 1; }
+}
 
 async function hunted(n) {
   G.scene = 'talk'; LOD.input.clear(); const e = PPL.entry(n.id) || {}, pe = D.raw.personalities[e.personality] || {};
@@ -1165,13 +1172,41 @@ async function interact() {
     else if (o.kind === 'door') await say('🔒 STAFF ONLY. "Beat the four heroes. Then we talk. – management"', { auto: false });
     else if (o.kind === 'gate') await say('🔒 The gate is chained shut. A note: "Opens Tuesday. The dead need a day off."', { auto: false });
     else if (o.kind === 'van') await vanMenu();
-    else if (o.kind === 'pier') await fish();
+    else if (o.kind === 'prop') await propUse(o.id);
     else if (o.kind === 'board') await S.board();
     else if (o.kind === 'housedoor') await say(HOUSES[o.id].locked || 'It does not budge.', { auto: false });
     else if (o.kind === 'trophy') await trophy(o.id);
     else if (o.kind === 'home') await home(o.id);
     else if (S.interact) await S.interact(o);
   } finally { if (G && G.scene === 'talk') { hideBox(); G.scene = 'map'; } }
+}
+const PROPS = D.raw.props || {};
+const propVisible = id => rel(PROPS[id]) && PPL.visible(PROPS[id], id);
+function takeCreature(sp) { for (const arr of [G.box, G.party]) { const i = arr.findIndex(c => c.sp === sp); if (i >= 0 && !(arr === G.party && G.party.length <= 1)) { arr.splice(i, 1); return true; } } return false; }
+async function propUse(id) {
+  const p = PROPS[id];
+  if (p.minigame === 'fishing') return fishAt(id);
+  if (p.minigame === 'golf') return golfAt(id);
+  await PPL.talk(id, { name: p.name, fallback: '…' });
+}
+async function fishAt(id) {
+  const p = PROPS[id], cfg = D.raw.minigames.fishing;
+  if (G.fishT > 0) return say('Nothing bites. Give it a minute.', { auto: false });
+  await say('You cast a line…', { auto: false }); hideBox();
+  const r = await MINI.fishing(cfg, p.name); G.fishT = p.cooldown || 20;
+  if (!r.ok) { await say(r.hits ? 'It got away. So close.' : (p.junk || 'You reel in nothing.'), { auto: false }); return; }
+  const tab = (p.catch || []).filter(([sp]) => SP[sp] && rel(SP[sp])); if (!tab.length) { await say(p.junk || 'Nothing.', { auto: false }); return; }
+  const sp = PX.data.weighted(tab), lv = Math.round(rand(p.lv[0], p.lv[1]));
+  if (r.perfect) G.flags['fish:perfect'] = 1;
+  await say((r.perfect ? 'PERFECT! ' : '') + 'Something big on the line!', { auto: false }); hideBox();
+  startBattle({ kind: 'wild', foes: [mk(sp, lv)], dazed: r.perfect ? .35 : .2 });
+}
+async function golfAt(id) {
+  const p = PROPS[id], cfg = D.raw.minigames.golf;
+  await say(p.name + ': ' + p.hole.name + ', ' + p.hole.distance + ' m, par ' + p.hole.par + '.', { auto: false }); hideBox();
+  const r = await MINI.golf(cfg, p.hole);
+  G.flags['golf:strokes'] = r.strokes; if (r.holed && r.strokes <= r.par) G.flags['golf:par'] = 1; if (r.holed && r.strokes < r.par) G.flags['golf:birdie'] = 1;
+  await say(r.label + '. ' + (r.holed ? r.strokes + ' stroke' + (r.strokes > 1 ? 's' : '') + '.' : 'Better luck next time.'), { auto: false });
 }
 function npcLine(d) {
   const when = (d.lines && d.lines.when || []).find(w => G.flags[w.flag] || (w.flag.startsWith('dead:') && G.dead['h_' + w.flag.slice(5)]));
@@ -1335,16 +1370,6 @@ async function vanMenu() {
   if (!G.party.some(c => c.hp > 0)) { G.box[bi] = G.party[pi]; G.party[pi] = out; return say('Someone in the party has to be awake.', { auto: false }); }
   await say('Swapped.', { auto: false });
 }
-async function fish() {
-  if (G.fishT > 0) return say('Nothing bites. Give it a minute.', { auto: false });
-  G.fishT = 30; await say('You cast a shopping bag on a string…', { auto: false });
-  const r = Math.random();
-  if (r < .4) { await say("You fished up a shopping trolley. It's ALIVE!", { auto: false }); hideBox(); startBattle({ kind: 'wild', foes: [mk('golem', 7 + Math.min(5, G.beat.length))] }); }
-  else if (r < .7 && rel(SP.pike)) { await say('The water explodes. Something with a crown of reeds!', { auto: false }); hideBox(); startBattle({ kind: 'wild', foes: [mk('pike', 10 + Math.min(6, G.beat.length))] }); }
-  else if (r < .7) await say('Something HUGE with a crown of reeds swims past. It ignores you.', { auto: false });
-  else await say('A boot. Size 46. Smells like Löken.', { auto: false });
-}
-
 /* ---------- bag menu on the map ---------- */
 async function bagMenu() {
   G.scene = 'talk'; LOD.input.clear(); G.v.x = G.v.y = 0;
@@ -1411,6 +1436,7 @@ function drawWorld(ctx, G, t) {
     ctx.fillStyle = bg; ctx.fillRect(Math.round(x - w / 2), y - 5, Math.round(w), 10); ctx.fillStyle = fg; ctx.fillText(txt, x, y + .5);
   }
   S.drawMap(ctx, t);
+  for (const id in PROPS) if (propVisible(id)) { const [x, y] = tc(...PROPS[id].at); LOD.em(PROPS[id].em || '❔', x, y - 4 + Math.sin(t * 2 + x) * .8, 10); }
   for (const c of G.coins) LOD.em('🪙', c.x, c.y - 4, 8, Math.min(1, c.t));
   for (const it of G.list) if (!it.got && it.y > y0 * T - 20 && it.y < y1 * T + 20) {
     const b = Math.sin(t * 4 + it.x) * 1.5; ctx.fillStyle = 'rgba(255,230,120,.35)'; ctx.beginPath(); ctx.arc(it.x, it.y - 6, 7 + Math.sin(t * 5) * 1.5, 0, 7); ctx.fill();
@@ -1529,6 +1555,7 @@ function hud(ctx, G) {
     const rows = ['💰 ' + G.kr + ' kr', '🛒 ' + G.list.filter(q => q.got).length + '/8', '🏆 ' + G.beat.length + '/4'];
     const seen = {};
     for (const f of (G.me.fx || [])) { const em = { speed: f.value > 0 ? '❄️' : '🌿', reveal: '🍄', stat: '🍺', attract: '🧲', guard: '🥃', catchBonus: '🎯' }[f.type]; if (!em || seen[em]) continue; seen[em] = 1; rows.push(em + (f.n > 1 ? '×' + f.n : '') + ' ' + Math.ceil(f.t) + 's'); }
+    if (PPL.isNight()) rows.push('🌙');
     if (G.blurT > 0) rows.push('🥴 ' + Math.ceil(G.blurT) + 's'); if (G.mirrorT > 0) rows.push('🌀 ' + Math.ceil(G.mirrorT) + 's');
     rows.forEach((s, i) => { const w = ctx.measureText(s).width + 12; ctx.fillStyle = 'rgba(10,16,22,.62)'; LOD.rrect(8, y0 - 10 + i * 23, w, 20, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(s, 14, y0 + i * 23); });
     if (G.zoneT > 0) {
@@ -1544,6 +1571,8 @@ function drawScreen(ctx, G, t) {
   if (G.scene === 'battle' && B) drawBattle(ctx, t);
   else if (G.blurT > 0) { ctx.fillStyle = 'rgba(200,120,255,' + (.08 + Math.sin(t * 2) * .04) + ')'; ctx.fillRect(0, 0, LOD.view.W, LOD.view.H); }
   if (G.mirrorT > 0 && G.scene !== 'battle') { ctx.fillStyle = 'rgba(224,92,196,.1)'; ctx.fillRect(0, 0, LOD.view.W, LOD.view.H); }
+  if (G.scene === 'map' && PPL.isNight() && zoneAt(G.p.x, G.p.y).out) { ctx.fillStyle = 'rgba(8,16,52,.44)'; ctx.fillRect(0, 0, LOD.view.W, LOD.view.H); }   // real night, outdoors
+  if (strobe > 0 && G.scene === 'map') { ctx.fillStyle = 'hsla(' + ((t * 120) % 360) + ',90%,60%,' + (.1 * strobe) + ')'; ctx.fillRect(0, 0, LOD.view.W, LOD.view.H); }
   FX.drawScreen(ctx, LOD.view.W, LOD.view.H, t);
   if (wakeT > 0 || (G.scene === 'talk' && !G.started)) drawLids(ctx, wakeT > 0 ? lidOpen(1 - wakeT / OP.blink) : 0);
 }
@@ -1575,10 +1604,10 @@ function newList() {
 }
 const strip = c => { const o = { sp: c.sp, lv: c.lv, xp: c.xp, hp: c.hp }; if (c.fx && c.fx.length) o.fx = EF.save(c); return o; };
 const SAVE_KEYS = ['dir', 'seen', 'caught', 'list', 'kr', 'items', 'beat', 'solved', 'dev', 'eggs', 'egg', 'debt', 'lvlPts', 'flags', 'stache', 'blurred', 'starter',
-  'known', 'people', 'know', 'traps', 'graves', 'dead', 'caughtP', 'npcBeat', 'gym', 'dealer', 'apps', 'steps', 'fillers', 'trapsUsed'];
-const FRESH = () => ({ items: {}, known: {}, people: {}, know: {}, traps: [], graves: [], dead: {}, caughtP: {}, npcBeat: {}, gym: { slots: [] }, dealer: { pts: 0, pen: [], rot: -1, bought: {} }, apps: {}, steps: 0, trapsUsed: {}, flags: {} });
+  'known', 'people', 'know', 'quests', 'heard', 'traps', 'graves', 'dead', 'caughtP', 'npcBeat', 'gym', 'dealer', 'apps', 'steps', 'fillers', 'trapsUsed'];
+const FRESH = () => ({ items: {}, known: {}, people: {}, know: {}, quests: {}, heard: {}, traps: [], graves: [], dead: {}, caughtP: {}, npcBeat: {}, gym: { slots: [] }, dealer: { pts: 0, pen: [], rot: -1, bought: {} }, apps: {}, steps: 0, trapsUsed: {}, flags: {} });
 function saveState(G) {
-  const o = { v: 3, p: [Math.round(G.p.x), Math.round(G.p.y)], party: G.party.map(strip), box: G.box.map(strip), me: EF.save(G.me) };
+  const o = { v: 4, p: [Math.round(G.p.x), Math.round(G.p.y)], party: G.party.map(strip), box: G.box.map(strip), me: EF.save(G.me) };
   for (const k of SAVE_KEYS) o[k] = G[k];
   if (o.gym && o.gym.slots) o.gym = Object.assign({}, o.gym, { slots: o.gym.slots.map(s => Object.assign({}, s, { c: strip(s.c) })) });
   return JSON.parse(JSON.stringify(o));
@@ -1590,11 +1619,12 @@ const MIGRATE = {
     PX.data.fill(d, FRESH());
     return d;
   },
-  3: d => PX.data.fill(d, FRESH()) // v2 -> v3: people (relationships, memory) and knowledge
+  3: d => PX.data.fill(d, FRESH()), // v2 -> v3: people (relationships, memory) and knowledge
+  4: d => PX.data.fill(d, FRESH())  // v3 -> v4: quests and heard rumours
 };
 function loadState(G, d) {
   if (!d || !d.v) return;
-  d = PX.data.migrate(d, MIGRATE, 3);
+  d = PX.data.migrate(d, MIGRATE, 4);
   PX.data.fill(d, FRESH());
   for (const k of SAVE_KEYS) if (d[k] !== undefined) G[k] = d[k];
   const ok = c => c && SP[c.sp] && SP[c.sp].kind !== 'boss';
@@ -1723,10 +1753,12 @@ const K = {
   say, say2, ask, hideBox, sleep, BACK, itemOpt, learn, learnItem, known, has, give, take,
   mk, maxHp, xpNeed, cname, typeOf, creatureIcon, addToParty, addXp, heroId, gone, personGone, npcDef, dollOf, drawPerson, drawCreature, spriteOf,
   startBattle, startNpcFight, startPartner, applyAll, SFX, bubble, isCreature, SPECIES, robotLine, cemeteryOpen,
-  get PPL() { return PPL; }, setHeart: fn => { ctxHeart = fn; }, get trapSpeed() { return TRAP_SPEED; }
+  get PPL() { return PPL; }, get uiRoot() { return ui.root; }, tone: (...a) => LOD.tone(...a), haptic: h => LOD.haptic(h), takeCreature,
+  setHeart: fn => { ctxHeart = fn; }, get trapSpeed() { return TRAP_SPEED; }
 };
 const S = window.M3_SYSTEMS(K);
 const PPL = window.M3_PEOPLE(K);
+const MINI = window.M3_MINI(K);
 for (const w of PPL.validate()) D.warnings.push(w);
 
 /* ===================== THE MISSION ===================== */
@@ -1789,7 +1821,7 @@ const DEF = {
     EF.tick(G.me, dt, { onHeart: heartAttack });
     if (G.blurT > 0) G.blurT -= dt; if (G.mirrorT > 0) G.mirrorT -= dt; if (G.zoneT > 0) G.zoneT -= dt; if (G.fishT > 0) G.fishT -= dt;
     if (B) { B.flashT -= dt; if (B.glitchT > 0) B.glitchT -= dt; if (B.bug) B.bug.t -= dt; }
-    S.tick(dt);
+    S.tick(dt); PPL.tick(dt); ambient(dt);
     if (heartPending && G.scene === 'map') { G.scene = 'talk'; heartAttackFlow(); }
     if (G.scene === 'map') updMap(real * gameSpeed());
     if (G.scene === 'map' || stranger) updStranger(real);
@@ -1809,6 +1841,6 @@ const DEF = {
   }
 };
 LOD.mission(DEF);
-window.__m3 = { HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
+window.__m3 = { bossTeam, MINI, PROPS, propVisible, propUse, HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
   CFG, SP, MAP, ZONES, D, S, tile, zoneAt, tc, mk, goals, startWild, startBoss, startPartner, startDev, startTrainer, startNpcFight, interact, bagMenu, walkable, useItem, give, saveState, loadState, MIGRATE, EF, FX, layer, spots, npcList: () => npcList, gameSpeed, encTable, knockout, catchChance, completion: () => S.completion() };
 })();

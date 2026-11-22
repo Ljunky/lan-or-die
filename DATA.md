@@ -138,6 +138,36 @@ apps.tinder:      { name: 'Tinder', icon: '🔥', lines: ['It\'s a match! With {
 ```
 App line variables: `{steps}`, `{price}`, `{name}`, `{kr}`, `{debt}`.
 
+## Things to do: quests, puzzles, mini-games, day and night, rumours
+
+### Quests (`quests`)
+```js
+bottle_war: { name: 'The bottle war', giver: 'pelle', release: 'tue', locks: ['berit_parcel'],     // starting this closes the others (you chose a side)
+  steps: [ { text: 'Ask Berit. Pick a side.', done: { flag: 'bw_decided' } },                          // done when the conditions match (same language as dialogue)
+           { text: 'Tell Pelle.', turnIn: 'pelle', done: {} } ],                                      // turnIn = only when you talk to that person; done: {} = always true
+  rewards: [ { if: { flag: 'side:berit' }, rel: { berit: 3, pelle: -3 }, give: { bag: 3 }, text: '…' },   // the best matching reward is given: choices matter
+             { if: { flag: 'side:pelle' }, rel: { pelle: 3, berit: -3 }, give: { bottle: 3 } } ] }
+```
+- **Start** a quest from any dialogue line or reply: `quest: 'bottle_war'`. A reply can set the choice: `set: { 'side:berit': true, bw_decided: true }`.
+- **Step effects** (on a step or a reward): `give`, `take` (hand in items), `takeCreature: 'peng'` (hand in a creature), `kr`, `tell: 'knowledgeId'`, `set`, and `rel` as a number (this person) or a **map** `{ berit: 3, pelle: -3 }` (several people). Rewards are knowledge, items, kronor and relationships, never points.
+- **Dialogue conditions for quests:** `quest: 'id'` (active), `step: 'id:1'` (at that step), `questDone: 'id'`, `questNot: 'id'` (not started and not closed), `questLocked: 'id'` (closed because you chose another). Also useful: `flag: 'talked:berit'` (set whenever you have talked to someone).
+- Quests show in 📓 Notes (done ones ticked, closed ones crossed out). Quest offers should come on the 3rd meeting or later, after the person's knowledge lines.
+
+### Props (`props`): things to tap that are not people
+```js
+kb1: { name: '8 kg kettlebell', at: [39, 12], em: '🏋️', release: 'mon' },       // + dialogue.kb1 = { repeat: true, talk: [ … ] }   (repeat: true = lines may be said again)
+tee1: { name: 'Tee 1', at: [58, 36], em: '⛳', minigame: 'golf', hole: { name: 'Hole 1', distance: 140, par: 3 } },
+lakespot: { name: 'A fishing spot', at: [66, 18], em: '🎣', minigame: 'fishing', catch: [['pike', 4], ['salmon', 3]], lv: [30, 36], junk: 'A shopping trolley.', cooldown: 20 },
+balloons: { name: 'Balloon stand', at: [27, 47], em: '🎈', show: { day: 'mon' } }     // show = when it is there (day, night, any dialogue condition)
+```
+Puzzles are props whose lines depend on flags set by other props (`set: { wod1: true }`, `if: { flag: 'wod1' }`), e.g. the kettlebells in The Box (light → heavy), three fuses in the store, herbs in the right order in the cave, the throne in the castle (a choice), the bar and DJ at the rave (only after dark). Solving one sets `edge:<hero>`: that hero's team is **3 levels lower** and he says something about it. `People` can have `show` too (Night-watch Nisse: `show: { night: true }`, Market-Maud: `show: { day: 'tue' }`).
+
+### Mini-games (`minigames`)
+`fishing: { rounds: 3, need: 2, zone: .24, speed: 1.2 }` (win `need` of `rounds` timing bars; zone = size of the green part), `golf: { maxCarry: 100, maxStrokes: 6, window: .09, cup: 5, speed: 1.1 }` (the green zone is the power that reaches the hole). A perfect fishing round sets `fish:perfect` and leaves the fish dazed; golf sets `golf:par`, `golf:birdie`, `golf:strokes`. Both are one tap.
+
+### Day and night, rumours
+Night is the real clock (21–06) and tints the outdoors. `ambient` on a zone makes a bass pulse (`nightVol` = louder at night; the rave). `rumours: { mon: [...], tue: [...], wed: [...] }` are repeated by people with `rumours: true` in their dialogue, and end up in 📓 Notes. Day events are props or people with `show: { day: 'tue' }`.
+
 ## The bigger world: map, houses, zones, lake
 
 **The map** is rectangles in `data/m3-data.js` → `world`. The old map (x 0–47) is in code and never changes, so saves keep working; everything east of it is data. Edit the rectangles, reload, look.

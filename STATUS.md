@@ -26,8 +26,15 @@ Latest state is always: this file + `CHARACTERS.md` (every person and line, gene
 - Seven new people with their own dialogue: Caddy Calle, Kiosk-Klas, Hermit Hilding, Mountain guide Greta, Doorman Dragan, Fisherman Folke, Boat-Bengt. Knowledge chain: Pelle/Hasse/Jonas/Kenny tell the houses (Tue), Pirate the castle (Wed), Folke the boat and the ferry (Wed).
 - Release: world, houses (except the castle), net: Tue. Castle, boat, ferry, Bengt: Wed. The Box and its level gate: Mon.
 
-## NOT built yet (point 7). Heroes stay in place for now; moving them into houses is a later update
-7. **Things to do**: quest chains per important NPC (rewards = knowledge/items/keys/relationships, no points), choices with consequences, mini-games (fishing timing bar + golf power meter first), real-clock day/night (the clock is already a dialogue condition; the rave louder at night), rumours that change Mon/Tue/Wed, short puzzles/quests inside each house (the houses are empty rooms with a trophy today).
+## Built since (point 7: things to do), tested
+- **Quests** (data → `quests`): steps done by conditions (same language as dialogue), hand-ins to a person, choices with consequences (`locks` close the other quest, rewards depend on what you chose, `rel` maps change how several people feel). 14 starter quests: Pelle vs Berit (choose a side) / the ticking parcel (mutually exclusive), the pirate's bottle, Freja's penguin, the Barber's cat, Jonas and Anna's light bill, Folke's Pikezilla and perfect cast, Caddy Calle's par. Quests show in 📓 Notes.
+- **Props** (data → `props`): puzzle pieces, tees, fishing spots and day events, with dialogue like a person.
+- **House puzzles** (each gives an edge on that hero: his team is 3 levels lower and he comments): The Box = kettlebells in order then the rower (Mon); electronics store = find 3 fuses, put them in the fuse box; shaman cave = herbs in the right order (Greta tells you); castle = the throne (a choice: sit or polish); rave = glow stick from the bar, give it to the DJ after dark. Heroes still stand where they were.
+- **Mini-games**: fishing (3 timing bars) at the pier and a lake spot; golf (power bar, par 3) at tee 1. One tap each; numbers in data.
+- **Day and night**: the real clock tints the outdoors at night; Night-watch Nisse only at night; the rave pulses a bass, louder at night; a Monday balloon stand, a Tuesday market (half price), a Wednesday lost wallet; rumours that change per day (people with `rumours: true`), listed in Notes.
+
+## NOT built yet
+- Heroes still stand where they were (moving them into the houses is a later update). The rave dance-off and the electronics gadget repair mini-games were cut (2 mini-games agreed). Each house is one short puzzle, not a long dungeon. Starter text only: the owner's planning chat rewrites it.
 
 ## Decisions taken
 1. Heroes stay where they are for now; houses (and moving heroes into them) are a later update.

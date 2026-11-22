@@ -79,6 +79,19 @@ async function talkTo(p, id, click) {
   }
   return { texts, btns, res: null };
 }
+// use a prop (puzzle piece, tee, fishing spot) through the real code; clicks the reply matching `click` if a menu shows
+async function startProp(p, id) { await E(p, id => { window.__u = { done: false }; window.__m3.propUse(id).then(() => { window.__u.done = true; }); }, id); }
+// click through everything a prop says until it is finished (a running mini-game is left alone); clicks the reply matching `click` if a menu shows
+async function settle(p, click, max = 150) {
+  for (let i = 0; i < max; i++) {
+    const r = await E(p, () => { const m = window.__m3, pd = m.pending; if (window.__u.done) return { done: true }; if (m.MINI.active || !pd) return { wait: true }; if (pd.say) { pd.res(); return { say: true }; } return { btns: true }; });
+    if (r.done) return true;
+    if (r.btns) await E(p, re => { const b = [...document.querySelectorAll('#m3ui .m3grid button')].find(x => !x.disabled && new RegExp(re).test(x.textContent)) || document.querySelector('#m3ui .m3grid button'); b.click(); }, click || '.');
+    await p.waitForTimeout(40);
+  }
+  return false;
+}
+const useProp = async (p, id, click) => { await startProp(p, id); return settle(p, click); };
 const btnText = p => E(p, () => [...document.querySelectorAll('#m3ui .m3grid button')].map(b => b.textContent).join(' | '));
 const at = (p, x, y) => E(p, ([x, y]) => { const m = window.__m3, [px, py] = m.tc(x, y); m.G.p.x = px; m.G.p.y = py; window.__lod.LOD.cam.x = px; window.__lod.LOD.cam.y = py; }, [x, y]);
 
@@ -265,7 +278,7 @@ async function pickStarter(p, name) {
   // saved
   await E(p, () => { document.getElementById('btn-pause').click(); }); await p.waitForTimeout(150);
   g = await E(p, () => { const d = JSON.parse(localStorage.getItem('lod.save.m3.Ljunky')).data; return { v: d.v, rel: d.people.freja && d.people.freja.rel, know: Object.keys(d.know).sort().join() }; });
-  ok(g.v === 3 && g.rel >= 1 && /types/.test(g.know) && /ring/.test(g.know), 'relationships, memory and knowledge are saved (' + JSON.stringify(g) + ')');
+  ok(g.v === 4 && g.rel >= 1 && /types/.test(g.know) && /ring/.test(g.know), 'relationships, memory and knowledge are saved (' + JSON.stringify(g) + ')');
   // fillers
   await E(p, () => document.getElementById('resume').click());
   g = await E(p, () => { const f = Object.values(window.__m3.G.fillers), all = f.flatMap(x => x.dialogue.talk.map(t => t.text)); return { n: f.length, lines: all.length, uniq: new Set(all).size, pers: new Set(f.map(x => x.personality)).size, min: Math.min(...f.map(x => x.dialogue.talk.length)) }; });
@@ -381,6 +394,147 @@ async function pickStarter(p, name) {
   for (const [n, x, y] of [['golf', 66, 28], ['city', 104, 40], ['mountain', 136, 33], ['forest', 70, 62], ['rave', 144, 60], ['lake', 62, 17], ['castle', 140, 14]]) { await E(p, () => { const m = window.__m3; m.G.scene = 'map'; m.G.flags.boat = 1; }); await at(p, x, y); await E(p, () => { document.querySelector('#m3ui .m3box').hidden = true; document.querySelector('#m3ui .m3hint').hidden = true; }); await p.waitForTimeout(450); await p.screenshot({ path: OUT + '/M3P_world_' + n + '.png' }); }
   ok(p.errs.length === 0, 'no page errors (world)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
   await p.close();
+
+  // ---------- point 7: quests, choices, lock-outs ----------
+  p = await open(b, '?dev=all&date=2026-11-25'); await play(p); await E(p, () => { window.__m3.skipReplies = false; });
+  const Q = id => E(p, id => ({ ...window.__m3.PPL.qs(id) }), id);
+  await E(p, () => { const m = window.__m3; m.PPL.pst('pelle').met = 3; m.PPL.pst('pelle').rel = 1; m.PPL.pst('berit').met = 3; m.PPL.pst('berit').rel = 1; });
+  await talkTo(p, 'pelle', 'ask her');
+  ok((await Q('bottle_war')).started && (await Q('berit_parcel')).locked, 'Pelle asks you to look into Berit: the quest starts and closes the parcel quest (you chose a side)');
+  ok(await E(p, () => window.__m3.PPL.cond({ questNot: 'berit_parcel' }, 'berit') === -1 && !window.__m3.PPL.startQuest('berit_parcel', 'berit')), 'a locked quest is not offered and cannot be started');
+  await talkTo(p, 'berit', 'Berit is right');
+  ok((await Q('bottle_war')).step === 1 && await E(p, () => window.__m3.G.flags['side:berit'] === true), 'Berit asks whose side you are on: your reply is the choice, the quest moves on');
+  await talkTo(p, 'pelle');
+  g = await E(p, () => ({ berit: window.__m3.PPL.rel('berit'), pelle: window.__m3.PPL.rel('pelle'), bag: window.__m3.G.items.bag || 0 }));
+  ok((await Q('bottle_war')).done && g.berit >= 4 && g.pelle <= -2 && g.bag >= 3, 'telling Pelle ends it: consequences for both (Berit ' + g.berit + ', Pelle ' + g.pelle + ') and the reward of the side you took (' + g.bag + ' bags)');
+  // fetch + hand in, a creature you only have to show, a step that waits for something you did
+  await E(p, () => { const m = window.__m3; m.PPL.pst('pirate').met = 2; m.PPL.pst('freja').met = 2; m.PPL.pst('jonas').met = 3; m.PPL.pst('jonas').rel = 1; });
+  await talkTo(p, 'pirate', 'Aye aye'); ok((await Q('pirate_rum')).started, 'the pirate wants an empty bottle');
+  await talkTo(p, 'pirate'); ok(!(await Q('pirate_rum')).done, 'without the bottle nothing happens');
+  await E(p, () => { window.__m3.give('bottle'); }); await talkTo(p, 'pirate');
+  ok((await Q('pirate_rum')).done && await E(p, () => !(window.__m3.G.items.bottle > 0) && window.__m3.G.items.surstromming >= 1), 'hand in the bottle to the pirate: it is taken, the reward is given');
+  await talkTo(p, 'freja', 'find one'); await E(p, () => { const m = window.__m3; m.G.party.push(m.mk('peng', 8)); }); await talkTo(p, 'freja');
+  ok((await Q('freja_penguin')).done && await E(p, () => window.__m3.G.party.some(c => c.sp === 'peng')), 'show Freja a Freezer Penguin: she keeps nothing but gives a reward, you keep the penguin');
+  await talkTo(p, 'jonas', 'I will'); ok((await Q('jonas_bulbs')).step === 0, "Jonas: talk to Anna about the light bill (step 1)");
+  await E(p, () => { window.__m3.G.flags['talked:anna'] = 1; }); await p.waitForTimeout(1300);
+  ok((await Q('jonas_bulbs')).step === 1, 'the step finishes by itself once you have talked to Anna');
+  await talkTo(p, 'jonas');
+  ok((await Q('jonas_bulbs')).done && await E(p, () => window.__m3.PPL.know('wife:anna')), 'tell Jonas: done, and the reward is knowledge (what Anna wants)');
+  await E(p, () => { window.__m3.bagMenu(); }); await until(p, 'Notes'); await p.waitForTimeout(250);
+  t = await E(p, () => document.querySelector('#m3ui .m3txt').textContent);
+  ok(/QUESTS/.test(t) && /✓ The bottle war/.test(t) && /✓ An empty bottle/.test(t), '📓 Notes shows your quests (done ones ticked)');
+  await drive(p, ['OK', 'Close']);
+  // starting one quest first closes the other for good
+  await E(p, () => { const m = window.__m3; m.G.quests = {}; m.PPL.startQuest('berit_parcel', 'berit'); });
+  ok((await Q('bottle_war')).locked, 'start the parcel quest first and the bottle war is closed instead');
+
+  // ---------- the house puzzles ----------
+  await E(p, () => { const m = window.__m3; m.skipReplies = false; m.G.flags = {}; m.G.quests = {}; m.G.items = {}; m.PPL.test.hour = null; });
+  const flag = f => E(p, f => window.__m3.G.flags[f], f);
+  await useProp(p, 'kb2'); await useProp(p, 'kb1'); await useProp(p, 'kb2'); await useProp(p, 'kb3'); ok(await flag('wod3') === true && (await Q('box_wod')).started, "The Box: light, medium, heavy – the kettlebells in the right order");
+  await useProp(p, 'kb3'); await useProp(p, 'rower');
+  ok(await flag('edge:ljunky') === true && (await Q('box_wod')).done, 'the rower finishes the WOD: you have an edge on Ljunky');
+  await E(p, () => { window.__m3.G.flags = {}; });
+  await useProp(p, 'kb1'); await useProp(p, 'kb3');
+  ok(await flag('wod3') !== true && await flag('wod1') === false, 'wrong order (heavy first) resets the puzzle');
+  await E(p, () => { window.__m3.G.flags['edge:ljunky'] = 1; });
+  g = await E(p, () => ({ edge: window.__m3.bossTeam('ljunky').map(c => c.lv), noedge: (window.__m3.G.flags['edge:ljunky'] = 0, window.__m3.bossTeam('ljunky').map(c => c.lv)) }));
+  ok(g.edge[0] === g.noedge[0] - 3 && g.edge[2] === g.noedge[2] - 3, 'the edge makes the hero\'s team 3 levels lower (' + g.edge.join('/') + ' instead of ' + g.noedge.join('/') + ')');
+  await E(p, () => { window.__m3.G.flags = {}; window.__m3.G.items = {}; });
+  await useProp(p, 'fuse1'); await useProp(p, 'fuse2'); await useProp(p, 'fuse3'); await useProp(p, 'fuse1');
+  ok(await E(p, () => window.__m3.G.items.fuse === 3), 'the store: three fuses hidden in drawers, taken once each');
+  await useProp(p, 'fusebox', 'fuses');
+  ok(await flag('edge:wizcudi') === true && await E(p, () => !(window.__m3.G.items.fuse > 0)), 'the fuses go into the fuse box: lights on, edge on Wizcudi');
+  await E(p, () => { window.__m3.G.flags = {}; });
+  await useProp(p, 'moss'); await useProp(p, 'fern'); await useProp(p, 'mush'); await useProp(p, 'moss'); await useProp(p, 'cauldron');
+  ok(await flag('edge:jrohn') === true && await E(p, () => window.__m3.G.items.shrooms >= 1), 'the cave: moss first resets, then fern → mushroom → moss → cauldron gives an edge on Jrohn');
+  await E(p, () => { window.__m3.G.flags = {}; window.__m3.G.items = {}; window.__m3.PPL.pst('sofia').rel = 0; });
+  await useProp(p, 'throne', 'Sit');
+  ok(await flag('edge:loken') === true && await E(p, () => window.__m3.PPL.rel('sofia') === -2), 'the castle: sitting on the throne gives an edge but costs you Sofia\'s trust (a choice with a consequence)');
+  await E(p, () => { window.__m3.G.flags = {}; window.__m3.G.items = {}; });
+  await E(p, () => { window.__m3.fakeHour = 12; }); await useProp(p, 'bar'); await useProp(p, 'dj');
+  ok(await flag('edge:bigwman') !== true && /asleep/.test(await E(p, () => document.querySelector('#m3ui .m3txt').textContent)), 'the rave: by day the DJ is asleep');
+  await E(p, () => { window.__m3.fakeHour = 23; }); await useProp(p, 'dj');
+  ok(await flag('edge:bigwman') === true && await E(p, () => !(window.__m3.G.items.glowstick > 0)), 'after dark, with the glow stick from the bar, the DJ throws BigWman off the beat');
+  await E(p, () => { window.__m3.fakeHour = null; });
+
+  // ---------- mini-games ----------
+  await E(p, () => { const m = window.__m3; m.G.flags = {}; m.G.quests = {}; m.G.fishT = 0; m.MINI.force = 'perfect'; m.G.party = [m.mk('frog', 40)]; });
+  await at(p, 66, 18);
+  await useProp(p, 'lakespot'); await p.waitForTimeout(1500);
+  g = await E(p, () => { const m = window.__m3; return m.B && { sp: m.B.foes[0].sp, stun: m.EF.has(m.B.foes[0], 'stun'), lv: m.B.foes[0].lv, perfect: m.G.flags['fish:perfect'], cd: m.G.fishT }; });
+  ok(g && ['pike', 'salmon', 'genie', 'frog'].includes(g.sp) && g.perfect === 1 && g.lv >= 30, 'fishing, every reel perfect: a lake creature on the hook (' + JSON.stringify(g) + ')');
+  ok(g && g.stun, 'a perfect cast leaves it dazed');
+  await drive(p, ['Walk away', '^⚔️ Fight', 'Foam|Body|Can|Burp'], 600);
+  await startProp(p, 'lakespot'); await p.waitForTimeout(400);
+  ok(/Nothing bites/.test(await E(p, () => document.querySelector('#m3ui .m3txt').textContent)), 'a spot needs a minute to recover');
+  await settle(p);
+  await E(p, () => { const m = window.__m3; m.G.fishT = 0; m.MINI.force = 'miss'; });
+  await useProp(p, 'lakespot'); await p.waitForTimeout(100);
+  ok(await E(p, () => !window.__m3.B) && /trolley|got away|nothing/i.test(await E(p, () => document.querySelector('#m3ui .m3txt').textContent)), 'mistime every reel and it is only junk');
+  await drive(p, []);
+  // golf, with a real finger on the real bar
+  await E(p, () => { const m = window.__m3; m.MINI.force = null; m.G.flags = {}; });
+  await startProp(p, 'tee1');
+  for (let i = 0; i < 60 && !(await E(p, () => window.__m3.MINI.active)); i++) { await E(p, () => { const pd = window.__m3.pending; if (pd && pd.say) pd.res(); }); await p.waitForTimeout(80); }
+  await p.waitForTimeout(300);
+  ok(await E(p, () => window.__m3.MINI.active && !!document.querySelector('#m3ui .mm .mm-mark')), 'golf: a power bar with a marker is on screen');
+  await p.screenshot({ path: OUT + '/M3P_golf.png' });
+  const mbox = await p.locator('#m3ui .mm-card').boundingBox();
+  await p.mouse.click(mbox.x + mbox.width / 2, mbox.y + mbox.height / 2); await p.waitForTimeout(1500);
+  ok(await E(p, () => /Stroke 2|left|hole|Landed/i.test(document.querySelector('#m3ui .mm-sub').textContent)), 'a real tap stops the marker and the ball flies (' + (await E(p, () => document.querySelector('#m3ui .mm-sub').textContent)).replace(/\s+/g, ' ') + ')');
+  await E(p, () => { window.__m3.MINI.force = 'perfect'; }); await settle(p);
+  await E(p, () => { window.__m3.MINI.force = 'perfect'; window.__m3.G.flags = {}; });
+  await useProp(p, 'tee1'); g = await E(p, () => ({ par: window.__m3.G.flags['golf:par'], strokes: window.__m3.G.flags['golf:strokes'] }));
+  ok(g.par === 1 && g.strokes <= 3, 'a perfect round: par or better (' + g.strokes + ' strokes)');
+  await E(p, () => { const m = window.__m3; m.G.quests = {}; m.PPL.pst('caddy').met = 1; m.G.flags = {}; m.PPL.startQuest('caddy_par', 'caddy'); m.G.kr = 0; });
+  await useProp(p, 'tee1'); await p.waitForTimeout(1300);
+  ok((await Q('caddy_par')).step === 1, 'making par moves the golf quest on');
+  await talkTo(p, 'caddy');
+  ok((await Q('caddy_par')).done && await E(p, () => window.__m3.G.kr === 250), 'Caddy Calle pays 250 kr for par');
+  await E(p, () => { window.__m3.MINI.force = null; });
+
+  // ---------- day and night ----------
+  await E(p, () => { window.__m3.fakeHour = 12; });
+  g = await E(p, () => { const m = window.__m3, n = m.npcList().find(x => x.id === 'nisse'); return n && m.PPL.visible(n.d, n.id); });
+  ok(g === false, 'by day Night-watch Nisse is not there');
+  await E(p, () => { window.__m3.fakeHour = 23; });
+  g = await E(p, () => { const m = window.__m3, n = m.npcList().find(x => x.id === 'nisse'); return n && m.PPL.visible(n.d, n.id); });
+  ok(g === true, 'at night he is on the parking lot');
+  await at(p, 11, 57); await p.waitForTimeout(500); await p.screenshot({ path: OUT + '/M3P_night.png' });
+  await E(p, () => { window.__m3.G.flags = {}; });
+  await E(p, () => { window.__lod.LOD.__t = []; const o = window.__lod.LOD.tone; window.__lod.LOD.__o = o; window.__lod.LOD.tone = (...a) => { window.__lod.LOD.__t.push(a); return o(...a); }; });
+  await at(p, 142, 66); await E(p, () => { window.__m3.fakeHour = 12; window.__lod.LOD.__t = []; }); await p.waitForTimeout(1300);
+  const dayVol = await E(p, () => { const t = window.__lod.LOD.__t.filter(a => a[0] === 55); return t.length ? t[t.length - 1][3] : 0; });
+  await E(p, () => { window.__m3.fakeHour = 23; window.__lod.LOD.__t = []; }); await p.waitForTimeout(1300);
+  const nightVol = await E(p, () => { const t = window.__lod.LOD.__t.filter(a => a[0] === 55); return t.length ? t[t.length - 1][3] : 0; });
+  ok(dayVol > 0 && nightVol > dayVol * 2, 'the rave pulses a bass, louder at night (' + dayVol + ' → ' + nightVol + ')');
+  await p.screenshot({ path: OUT + '/M3P_rave_night.png' });
+  await E(p, () => { window.__lod.LOD.tone = window.__lod.LOD.__o; window.__m3.fakeHour = null; });
+  ok(p.errs.length === 0, 'no page errors (quests, puzzles, mini-games)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
+  await p.close();
+
+  // ---------- one new thing every day + rumours ----------
+  for (const [date, here, gone] of [['2026-11-23', ['balloons'], ['wallet']], ['2026-11-24', [], ['balloons', 'wallet']], ['2026-11-25', ['wallet'], ['balloons']]]) {
+    p = await open(b, '?dev=all&date=' + date); await play(p);
+    g = await E(p, () => { const m = window.__m3, mk = n => m.npcList().find(x => x.id === 'market'); return { props: Object.keys(m.PROPS).filter(id => m.PROPS[id].show && m.propVisible(id)), market: !!mk() && m.PPL.visible(mk().d, 'market') }; });
+    ok(here.every(x => g.props.includes(x)) && gone.every(x => !g.props.includes(x)) && g.market === (date === '2026-11-24'), date + ': today\'s event is there (' + g.props.join(',') + (g.market ? ', market' : '') + ') and yesterday\'s is gone');
+    if (date === '2026-11-25') {
+      await E(p, () => { window.__m3.skipReplies = true; window.__m3.PPL.pst('berit').met = 1; });
+      for (let i = 0; i < 14; i++) await talkTo(p, 'berit');
+      g = await E(p, () => ({ heard: Object.values(window.__m3.G.heard || {}), wed: window.M3_DATA.rumours.wed }));
+      ok(g.heard.length >= 1 && g.heard.every(x => g.wed.includes(x)), 'a gossip repeats today\'s rumours (Wednesday ones): ' + (g.heard[0] || '').slice(0, 40));
+      await E(p, () => { window.__m3.bagMenu(); }); await until(p, 'Notes'); await p.waitForTimeout(250);
+      ok(/RUMOURS/.test(await E(p, () => document.querySelector('#m3ui .m3txt').textContent)), 'the rumours you heard are in 📓 Notes');
+      await drive(p, ['OK', 'Close']);
+      await E(p, () => { document.getElementById('btn-pause').click(); }); await p.waitForTimeout(150);
+      ok(await E(p, () => { const d = JSON.parse(localStorage.getItem('lod.save.m3.Ljunky')).data; return d.v === 4 && d.heard && Object.keys(d.heard).length >= 1 && d.quests !== undefined; }), 'quests and heard rumours are saved (v4)');
+      await E(p, () => { const D = window.M3_DATA; D.quests.bad = { name: 'x', giver: 'nobody', steps: [{ text: 'x', done: { wat: 1 }, turnIn: 'ghost' }], rewards: [{ give: { nothing: 1 } }], locks: ['nope'] }; });
+      const bad = await E(p, () => window.__m3.PPL.validate());
+      ok(bad.some(x => /giver "nobody"/.test(x)) && bad.some(x => /unknown condition "wat"/.test(x)) && bad.some(x => /turnIn "ghost"/.test(x)) && bad.some(x => /locks unknown quest/.test(x)), 'the validator checks quests: giver, conditions, turn-in person, lock-outs');
+    }
+    await p.close();
+  }
 
   // ---------- balance (point 1): XP curve, anti-grind, no XP for catching, money, Kenny, Inkasso-Ingvar ----------
   p = await open(b); await play(p);
@@ -687,7 +841,7 @@ async function pickStarter(p, name) {
   ok(g.party === 'frog9,bat6' && g.kr === 77 && g.beat.join() === 'loken' && g.t >= 321 && g.t < 330 && g.scene === 'map', 'old save: party, money, heroes, playtime restored');
   ok(g.items.folkol === 2 && g.items.ipa === 1 && g.items.whisky === 1 && g.items.fizztab === 2 && g.items.bag === 5 && Array.isArray(g.graves) && g.known, 'old save: drinks + tablets migrated into the item bag, new fields filled');
   await E(p, () => document.getElementById('btn-pause').click()); await p.waitForTimeout(100);
-  ok(await E(p, () => JSON.parse(localStorage.getItem('lod.save.m3.Ljunky')).data.v === 3), 'saved again as v3');
+  ok(await E(p, () => JSON.parse(localStorage.getItem('lod.save.m3.Ljunky')).data.v === 4), 'saved again as v4');
   ok(p.errs.length === 0, 'no page errors (old save)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
   await p.close();
 
