@@ -1,7 +1,7 @@
 /* Creature art importer, the part that runs in a browser (used by tools/import-art.js and tools/import-art.html).
-   ArtCore.process(img, opts) -> a 48 x 48 canvas: background removed, cropped, scaled to fit, snapped to the PX palette, 1-px navy outline.
+   ArtCore.process(img, opts) -> a size × size canvas (default 96 × 96): background removed, cropped, scaled to fit, snapped to the PX palette, 1-px navy outline.
    Needs engine/sprites.js first (PX.sprites.quantize does the palette snap and the outline, the same code the game uses).
-   opts: { size: 48, margin: 1 (px kept free for the outline), tol: 42 (how different from the background a pixel must be to stay),
+   opts: { size: 96 (the picture is size × size; 48 and 96 both work in the game), margin: size/48 (px kept free for the outline, which is also size/48 px thick), tol: 42 (how different from the background a pixel must be to stay),
            bg: '#rrggbb' (default: the most common colour along the image border), noBg: keep the image as it is (it already has transparency),
            snap: 'auto' (palette: only when the picture already looks like pixel art; true / false to force), outline: true, flip: false, feather: true (soft edges are cut hard before the snap) } */
 (() => {
@@ -33,10 +33,12 @@ function bounds(cv, alphaMin = 40) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] >= alphaMin) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
   return x1 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
 }
-function addOutline(cv) { // the navy outline only, colours untouched (--no-snap)
-  const w = cv.width, h = cv.height, c = cv.getContext('2d'), im = c.getImageData(0, 0, w, h), d = im.data, solid = new Uint8Array(w * h);
-  for (let i = 0; i < w * h; i++) solid[i] = d[i * 4 + 3] > 0 ? 1 : 0;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (solid[i]) continue; if ((x > 0 && solid[i - 1]) || (x < w - 1 && solid[i + 1]) || (y > 0 && solid[i - w]) || (y < h - 1 && solid[i + w])) { d[i * 4] = 0x1F; d[i * 4 + 1] = 0x2A; d[i * 4 + 2] = 0x44; d[i * 4 + 3] = 255; } }
+function addOutline(cv, thick = 1) { // the navy outline, `thick` pixels wide, colours untouched
+  const w = cv.width, h = cv.height, c = cv.getContext('2d'), im = c.getImageData(0, 0, w, h), d = im.data;
+  for (let pass = 0; pass < thick; pass++) {
+    const solid = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) solid[i] = d[i * 4 + 3] > 0 ? 1 : 0;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (solid[i]) continue; if ((x > 0 && solid[i - 1]) || (x < w - 1 && solid[i + 1]) || (y > 0 && solid[i - w]) || (y < h - 1 && solid[i + w])) { d[i * 4] = 0x1F; d[i * 4 + 1] = 0x2A; d[i * 4 + 2] = 0x44; d[i * 4 + 3] = 255; } }
+  }
   c.putImageData(im, 0, 0);
 }
 /* pixel art = small and few colours. Photos, AI pictures and smooth drawings are not: snapping those to 24 colours turns fur into mush */
@@ -47,7 +49,7 @@ function looksPixelArt(img) {
   return true;
 }
 function process(img, opts = {}) {
-  const o = Object.assign({ size: 48, margin: 1, tol: 42, snap: 'auto', outline: true, flip: false, feather: true }, opts), N = o.size;
+  const o = Object.assign({ size: 96, margin: null, tol: 42, snap: 'auto', outline: true, flip: false, feather: true }, opts), N = o.size; o.thick = Math.max(1, Math.round(N / 48)); if (o.margin == null) o.margin = o.thick;
   // 1. the picture at its own size (very large photos are first brought down to ~1000 px: speed)
   const k0 = Math.min(1, 1000 / Math.max(img.width, img.height)), src = canvas(Math.max(1, Math.round(img.width * k0)), Math.max(1, Math.round(img.height * k0)));
   const sc = src.getContext('2d'); sc.imageSmoothingQuality = 'high'; sc.drawImage(img, 0, 0, src.width, src.height);
@@ -65,8 +67,8 @@ function process(img, opts = {}) {
   // 3. soft edges become hard ones (pixel art has no half-transparent pixels)
   if (o.feather) { const im = oc.getImageData(0, 0, N, N), d = im.data; for (let i = 0; i < N * N; i++) d[i * 4 + 3] = d[i * 4 + 3] >= 110 ? 255 : 0; oc.putImageData(im, 0, 0); }
   // 4. the palette and the navy outline, exactly as the game's own sprites get them
-  if (o.snap && window.PX && PX.sprites) PX.sprites.quantize(out, { outline: o.outline });
-  else if (o.outline) addOutline(out);
+  if (o.snap && window.PX && PX.sprites) PX.sprites.quantize(out, { outline: false });
+  if (o.outline) addOutline(out, o.thick);
   out.__info = (o.snap ? 'palette snapped' : 'original colours kept') + '; ' + rb.info + '; cropped ' + box.w + '×' + box.h + ' → ' + tw + '×' + th;
   return out;
 }

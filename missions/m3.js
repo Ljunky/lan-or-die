@@ -125,7 +125,9 @@ function drawCreature(ctx, sp, x, y, scale, o = {}) { // bottom-centre at (x, y)
     ctx.fillStyle = '#1F2A44'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill(); ctx.lineWidth = 3 * scale; ctx.strokeStyle = col; ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = '900 ' + Math.round(22 * scale) + 'px Barlow, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('?', cx, cy + scale); ctx.restore(); return;
   }
-  PX.drawSprite(ctx, id, 'idle', o.t || 0, x, y, Object.assign({ scale, idle: true }, o));
+  // art taller than 48 px (96 px files) is shown at the size 48 px art would have: same layout, smoother picture
+  const h = PX.sprites.size(id)[1], k = h > 48 ? 48 / h : 1;
+  PX.drawSprite(ctx, id, 'idle', o.t || 0, x, y, Object.assign({ scale: scale * k, idle: true, exact: k !== 1, smooth: k !== 1 }, o));
 }
 /* intro portrait: assets/portraits/<id>.png if it exists, else the sprite */
 const portraitTried = {};

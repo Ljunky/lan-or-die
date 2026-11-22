@@ -119,19 +119,20 @@ function frameIndex(def, anim, t) {
 }
 
 /* draw a sprite. o: scale (integer), flipX, flash (0..1, >0.5 = white), squash (-1..1: + = flat/wide, - = tall/thin),
-   alpha, idle (bob + breathe + blink), seed (desync idle per sprite), rot (radians), anchor 'bottom'|'center' */
+   alpha, idle (bob + breathe + blink), seed (desync idle per sprite), rot (radians), anchor 'bottom'|'center'
+   exact: true = the scale may be a fraction (hi-res art shown at the size of low-res art), smooth: true = smoothed instead of pixel-sharp */
 function draw(ctx, id, anim, t, x, y, o = {}) {
   const e = entry(id); if (!e || !e.frames.length) return false;
-  const def = defs[id] || {}, sc = Math.max(1, Math.round(o.scale || 1));
+  const def = defs[id] || {}, sc = o.exact ? Math.max(.1, o.scale || 1) : Math.max(1, Math.round(o.scale || 1));
   let fi = frameIndex(def, anim || 'idle', t || 0); if (fi >= e.frames.length) fi = 0;
   const seed = o.seed || 0;
   let img = e.frames[fi];
   if (o.flash > .5) img = e.flash[fi];
   else if (o.idle !== false && e.blink && ((t + seed * 1.7) % 3.6) < .13) img = e.blink[fi];
-  let w = e.w * sc, h = e.h * sc, bob = 0, sx = 1, sy = 1;
+  let w = Math.round(e.w * sc), h = Math.round(e.h * sc), bob = 0, sx = 1, sy = 1;
   if (o.idle) { bob = Math.round(Math.sin((t + seed) * 2.6) * .6) * sc; const br = Math.sin((t + seed) * 2.6) * .025; sx = 1 - br; sy = 1 + br; }
   if (o.squash) { sx *= 1 + o.squash * .25; sy *= 1 - o.squash * .25; }
-  ctx.save(); ctx.imageSmoothingEnabled = false;
+  ctx.save(); ctx.imageSmoothingEnabled = !!o.smooth; if (o.smooth) ctx.imageSmoothingQuality = 'high';
   if (o.alpha != null) ctx.globalAlpha *= o.alpha;
   ctx.translate(Math.round(x), Math.round(y) + (o.anchor === 'center' ? 0 : 0));
   if (o.rot) ctx.rotate(o.rot);

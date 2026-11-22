@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Import creature art: any image -> background removed, cropped, 48 x 48, palette-snapped, navy outline -> assets/creatures/<id>.png
+/* Import creature art: any image -> background removed, cropped, 96 x 96 (or --size 48), navy outline, palette-snapped only for pixel art -> assets/creatures/<id>.png
    The game picks the file up by itself (no `art:` line needed). The picture is processed in a headless Chrome with the same palette code the game uses.
 
    node tools/import-art.js <image> [id] [options]     one picture; the id defaults to the file name (badgerCub.jpg -> badgerCub)
@@ -12,12 +12,13 @@
              --no-outline     no navy outline
              --flip           mirror the picture (the game never flips a creature: it is drawn as you drew it)
              --force          allow an id that is not in data/m3-data.js
+             --size 96        the PNG is size x size (default 96; 48 also works; the game shows both at the same on-screen size)
              --out <folder>   write somewhere else (default assets/creatures)
    No Node + Playwright? Open tools/import-art.html in a browser instead: the same thing, with a preview, no install. */
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const root = path.join(__dirname, '..');
 const args = process.argv.slice(2), flag = n => args.includes(n), val = n => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null; };
-const valued = ['--tol', '--bg', '--out'], pos = args.filter((a, i) => !a.startsWith('--') && !valued.includes(args[i - 1]));
+const valued = ['--tol', '--bg', '--out', '--size'], pos = args.filter((a, i) => !a.startsWith('--') && !valued.includes(args[i - 1]));
 if (!pos.length || flag('--help')) { console.log(fs.readFileSync(__filename, 'utf8').split('*/')[0].replace(/^#!.*\n/, '').replace(/^\/\* ?/, '')); process.exit(pos.length ? 0 : 1); }
 let chromium; try { ({ chromium } = require('playwright')); } catch (e) { console.error('Playwright is not installed (npm i -D playwright && npx playwright install chromium). Or open tools/import-art.html in a browser: same result, no install.'); process.exit(1); }
 
@@ -28,7 +29,7 @@ const src = pos[0], jobs = [];
 if (fs.statSync(src).isDirectory()) for (const f of fs.readdirSync(src).sort()) { const e = path.extname(f).toLowerCase(); if (MIME[e]) jobs.push({ file: path.join(src, f), id: path.basename(f, e) }); }
 else jobs.push({ file: src, id: pos[1] || path.basename(src, path.extname(src)) });
 const outDir = path.resolve(val('--out') || path.join(root, 'assets/creatures')); fs.mkdirSync(outDir, { recursive: true });
-const opts = { tol: val('--tol') != null ? +val('--tol') : 42, bg: val('--bg') || undefined, noBg: flag('--no-bg'), snap: flag('--snap') ? true : flag('--no-snap') ? false : 'auto', outline: !flag('--no-outline'), flip: flag('--flip') };
+const opts = { tol: val('--tol') != null ? +val('--tol') : 42, bg: val('--bg') || undefined, noBg: flag('--no-bg'), snap: flag('--snap') ? true : flag('--no-snap') ? false : 'auto', outline: !flag('--no-outline'), flip: flag('--flip'), size: val('--size') ? +val('--size') : 96 };
 
 (async () => {
   const b = await chromium.launch(), page = await b.newPage();
@@ -41,7 +42,7 @@ const opts = { tol: val('--tol') != null ? +val('--tol') : 42, bg: val('--bg') |
     const url = 'data:' + (MIME[path.extname(j.file).toLowerCase()] || 'image/png') + ';base64,' + fs.readFileSync(j.file).toString('base64');
     const r = await page.evaluate(async ([url, opts]) => {
       const img = new Image(); img.src = url; try { await img.decode(); } catch (e) { return { err: 'cannot read the image' }; }
-      try { const cv = ArtCore.process(img, opts), d = cv.getContext('2d').getImageData(0, 0, 48, 48).data, cols = new Set(); let px = 0;
+      try { const cv = ArtCore.process(img, opts), d = cv.getContext('2d').getImageData(0, 0, opts.size, opts.size).data, cols = new Set(); let px = 0;
         for (let i = 0; i < d.length; i += 4) if (d[i + 3]) { px++; cols.add(d[i] + ',' + d[i + 1] + ',' + d[i + 2]); }
         return { png: cv.toDataURL('image/png'), info: cv.__info, px, cols: cols.size }; } catch (e) { return { err: e.message }; }
     }, [url, opts]);

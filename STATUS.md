@@ -50,7 +50,7 @@ Latest state is always: this file + `CHARACTERS.md` (every person and line, gene
 ## Launch tooling (added before Mon 23 Nov)
 - **`?dev=day&date=2026-11-23`**: a test day that respects release days and locks and never sends anything (`?dev=all` still unlocks everything). `tests/m3-monday.js` plays Monday this way, including all five hero fights with Tue/Wed drug-form teams.
 - **Save code** (pause menu, and the brief of a save mission, also on a phone with no save): the save as a text code (~2.6 k characters, fits one Telegram message; "Save as file" if it ever gets longer) with checksum. Import on the other phone with the same player name; replacing an existing save needs a second tap. Needs **nothing** in the Apps Script.
-- **Creature art by file name:** `assets/creatures/<id>.png` is picked up automatically (no `art:` line). `node tools/import-art.js <image> <id>` (or `tools/import-art.html`, no install) turns any picture into the 48 × 48 PNG: background removed, cropped, palette-snapped, navy outline.
+- **Creature art by file name:** `assets/creatures/<id>.png` is picked up automatically (no `art:` line). `node tools/import-art.js <image> <id>` (or `tools/import-art.html`, no install) turns any picture into a 96 × 96 PNG (`--size 48` for the old format): background removed, cropped, thick navy outline; original colours are kept unless the picture already looks like pixel art. Creatures with 96 px art are drawn at the same on-screen size as 48 px art, smoothed (48 and 96 can be mixed).
 - **Apps Script, the only thing to do:** re-paste `backend/claims.gs` (starter ids changed) and deploy a NEW version. Details at the top of that file.
 
 ## Balance pass (simulated, see BALANCE.md; `node tools/balance.js` re-runs it from the data)

@@ -122,8 +122,8 @@ const fs = require('fs'), os = require('os'), path = require('path'), { spawnSyn
   fs.writeFileSync(path.join(tmp, 'in', 'badgerCub.png'), Buffer.from(png.split(',')[1], 'base64'));
   fs.writeFileSync(path.join(tmp, 'in', 'nope.png'), Buffer.from(png.split(',')[1], 'base64'));
   const run = (...a) => spawnSync('node', [path.join(__dirname, '..', 'tools', 'import-art.js'), ...a], { encoding: 'utf8' });
-  let r = run(path.join(tmp, 'in', 'badgerCub.png'), '--out', outDir, '--snap');
-  ok(r.status === 0 && /ok\s+badgerCub\.png/.test(r.stdout) && fs.existsSync(path.join(outDir, 'badgerCub.png')), 'import-art.js: a picture becomes <id>.png (' + (r.stdout || r.stderr).split('\n')[0].slice(0, 130) + ')');
+  let r = run(path.join(tmp, 'in', 'badgerCub.png'), '--out', outDir, '--snap', '--size', '48');
+  ok(r.status === 0 && /ok\s+badgerCub\.png/.test(r.stdout) && fs.existsSync(path.join(outDir, 'badgerCub.png')), 'import-art.js --size 48: a picture becomes <id>.png (' + (r.stdout || r.stderr).split('\n')[0].slice(0, 130) + ')');
   const back = await pg.evaluate(async url => { const img = new Image(); img.src = url; await img.decode(); const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, c.width, c.height).data;
     const pal = new Set(Object.values(PX.palette).filter(Boolean).map(h => parseInt(h.slice(1, 3), 16) + ',' + parseInt(h.slice(3, 5), 16) + ',' + parseInt(h.slice(5, 7), 16))); let opaque = 0, offPal = 0, navy = 0, semi = 0, bottom = 0, top = 0, minx = 99, maxx = 0;
     for (let i = 0; i < c.width * c.height; i++) { const a = d[i * 4 + 3], X = i % c.width, Y = (i / c.width) | 0; if (a === 0) continue; if (a !== 255) semi++; opaque++; const k = d[i * 4] + ',' + d[i * 4 + 1] + ',' + d[i * 4 + 2]; if (!pal.has(k)) offPal++; if (k === '31,42,68') navy++; if (Y === c.height - 1) bottom++; if (Y === 0) top++; minx = Math.min(minx, X); maxx = Math.max(maxx, X); }
@@ -133,6 +133,10 @@ const fs = require('fs'), os = require('os'), path = require('path'), { spawnSyn
   ok(back.offPal === 0 && back.semi === 0, 'every pixel is a palette colour and fully opaque or fully transparent');
   ok(back.navy > 60, 'there is a navy outline (' + back.navy + ' navy pixels)');
   ok(back.bottom > 0 && back.top === 0 && back.minx >= 0 && back.maxx <= 47 && Math.abs((back.minx + back.maxx) / 2 - 23.5) <= 2, 'cropped, scaled to fit, bottom-centred in the square');
+  r = run(path.join(tmp, 'in', 'badgerCub.png'), '--out', path.join(tmp, 'big'));
+  const big = await pg.evaluate(async url => { const img = new Image(); img.src = url; await img.decode(); const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, c.width, c.height).data; let navy = 0, bottom = 0, top = 0, left = 0, right = 0; const W = c.width;
+    for (let i = 0; i < W * W; i++) { if (!d[i * 4 + 3]) continue; const X = i % W, Y = (i / W) | 0; if (d[i * 4] === 31 && d[i * 4 + 1] === 42 && d[i * 4 + 2] === 68) navy++; if (Y === W - 1) bottom++; if (Y === 0) top++; if (X === 0) left++; if (X === W - 1) right++; } return { w: img.width, h: img.height, navy, bottom, top, left, right }; }, 'data:image/png;base64,' + fs.readFileSync(path.join(tmp, 'big', 'badgerCub.png')).toString('base64'));
+  ok(big.w === 96 && big.h === 96 && big.navy > 300 && big.bottom > 0 && big.top === 0, 'the default size is 96 × 96 with a 2-pixel outline, bottom-centred in the square (' + JSON.stringify(big) + ')');
   r = run(path.join(tmp, 'in', 'badgerCub.png'), '--out', path.join(tmp, 'auto'));
   const auto = await pg.evaluate(async url => { const img = new Image(); img.src = url; await img.decode(); const c = document.createElement('canvas'); c.width = 48; c.height = 48; const x = c.getContext('2d'); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, 48, 48).data, cols = new Set(); for (let i = 0; i < d.length; i += 4) if (d[i + 3]) cols.add(d[i] + ',' + d[i + 1] + ',' + d[i + 2]); return cols.size; }, 'data:image/png;base64,' + fs.readFileSync(path.join(tmp, 'auto', 'badgerCub.png')).toString('base64'));
   ok(/original colours kept/.test(r.stdout) && auto > 12, 'by default a large smooth picture keeps its own colours, no palette snap (' + auto + ' colours)');
@@ -154,6 +158,18 @@ const fs = require('fs'), os = require('os'), path = require('path'), { spawnSyn
   ok(g.ready && !g.ratReady && g.ratArt === null, 'it is loaded as a sprite; creatures without a file keep the placeholder');
   ok(g.warn === 0, 'a missing file is not a warning (' + g.warn + ' warnings)');
   ok(g.wraith, 'an explicit art: line still works (the Wraith)');
+  // a 96 px file is shown at the size a 48 px file would have, smoothed
+  const art96 = fs.readFileSync(path.join(tmp, 'big', 'badgerCub.png'));
+  const q = await open(b, '?dev=all&date=2026-11-23', { route: async z => z.route(/assets\/creatures\/badgerCub\.png/, route => route.fulfill({ status: 200, contentType: 'image/png', body: art96 })) });
+  await play(q); await q.waitForTimeout(800);
+  await E(q, () => { window.__calls = []; const o = PX.drawSprite; PX.drawSprite = function (ctx, id, anim, t, x, y, opt) { if (id === 'cr:badgerCub') window.__calls.push({ scale: opt.scale, exact: opt.exact, smooth: opt.smooth }); return o.apply(this, arguments); }; });
+  await E(q, () => { const m = window.__m3; m.G.party = [m.mk('badgerCub', 5)]; m.startWild(m.ZONES.find(z => z.id === 'parking')); });
+  await q.waitForTimeout(900);
+  const cl = await E(q, () => ({ size: PX.sprites.size('cr:badgerCub'), calls: window.__calls.slice(-3), sc: window.__m3.spots.sc }));
+  ok(cl.size.join() === '96,96' && cl.calls.length > 0 && cl.calls.every(c => c.exact && c.smooth && Math.abs(c.scale - cl.sc / 2) < .01), 'a 96 px creature is drawn at half scale, smoothed: the same on-screen size as 48 px art (' + JSON.stringify(cl) + ')');
+  await E(q, () => { const m = window.__m3; m.B.over = true; m.B.result = 'run'; });
+  ok(q.errs.length === 0, 'no page errors (96 px art)' + (q.errs.length ? ': ' + q.errs.join(' | ') : ''));
+  await q.close();
   ok(p.errs.length === 0, 'no page errors (art)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
   await p.close(); await pg.close(); await b.close();
   fs.rmSync(tmp, { recursive: true, force: true });
