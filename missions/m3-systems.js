@@ -31,48 +31,141 @@ function registerFillers() {
   for (const id in (G().fillers || {})) { const f = G().fillers[id]; SP['n_' + id] = { kind: 'npc', ref: id, name: f.name, type: 'MIND', rarity: 'H', stats: [52, 50, 50, 52], moves: [['slam', 1], ['peck', 1]], likes: f.likes, epitaph: f.epitaph }; }
 }
 
-/* ===================== TRAPS ===================== */
+/* ===================== TRAPS: three ladders (ground / water / air). A trap opens the POSSIBILITY of its tier; it never promises the catch ===================== */
 const trapReady = tr => now() - tr.at >= ITEMS[tr.item].waitMin * 60000 / Math.max(1e-6, K.trapSpeed);
+const SIZES = ['S', 'M', 'L', 'XL'], sizeRank = z => Math.max(0, SIZES.indexOf(z || 'S'));
+const TR = () => CFG.TRAP, TXT = () => R.trapText || {};
+const waterAround = (tx, ty) => { for (const [a, b] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) { const t = K.tile(tx + a, ty + b); if (t === '~' || t === 'V') return t; } return null; };
 async function placeTrap(id) {
   const g = G(), it = ITEMS[id];
   if (g.traps.length >= 3) { await K.say('You only have hands for three traps at a time.', { auto: false }); return; }
-  const [tx, ty] = [Math.floor(g.p.x / T), Math.floor((g.p.y - 4) / T)];
-  if (it.shore && ![[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]].some(([a, b]) => ['~', 'V'].includes(K.tile(tx + a, ty + b)))) { await K.say('There is no water here. Find a shore.', { auto: false }); return; }
+  const [tx, ty] = [Math.floor(g.p.x / T), Math.floor((g.p.y - 4) / T)], here = K.tile(tx, ty), water = waterAround(tx, ty);
+  if (it.place === 'shore' && !water) { await K.say('There is no water here. Find a shore.', { auto: false }); return; }
+  if (it.place === 'deep' && !(here === 'V' || (here === 'P' && ty <= 3))) { await K.say('This one needs deep water: the end of the pier, or a boat.', { auto: false }); return; }
+  if (it.place === 'boat' && here !== 'V') { await K.say('A trawl only works from a boat, out on the big lake.', { auto: false }); return; }
+  if (it.place === 'ground' && ['~', 'V', 'P'].includes(here)) { await K.say('Not on the water. Find some ground.', { auto: false }); return; }
+  if (it.night && !K.PPL.isNight()) { await K.say('This one only works after dark (' + CFG.NIGHT[0] + ':00 to 0' + CFG.NIGHT[1] + ':00).', { auto: false }); return; }
   if (g.traps.some(t => Math.abs(t.tx - tx) + Math.abs(t.ty - ty) < 2)) { await K.say('There is already a trap right here.', { auto: false }); return; }
-  K.take(id);
-  g.traps.push({ item: id, tx, ty, x: g.p.x, y: g.p.y - 2, zone: K.zoneAt(g.p.x, g.p.y).id, at: now() });
+  let bait = null, drug = null;
+  if (it.ladder) {
+    const baits = Object.keys(ITEMS).filter(b => ITEMS[b].kind === 'bait' && K.has(b)), drugs = Object.keys(ITEMS).filter(d => ITEMS[d].feed && K.has(d));
+    const pickBait = !baits.length ? 'none' : await K.ask('Bait? The right one lifts the odds. Nothing is ever certain.', [{ label: 'No bait', value: 'none' }].concat(baits.map(b => K.itemOpt(b, { sub: (g.known[b] ? ITEMS[b].learnedNote : '') + (g.known[b] ? '' : ''), unk: false }))).concat([K.BACK('‹ Cancel')]));
+    if (!pickBait) return;
+    if (pickBait !== 'none') bait = pickBait;
+    if (drugs.length) {
+      const pd = await K.ask('Put a drug in the bait? Something may sit in it very happy. Or leave with the bait.', [{ label: 'No drug', value: 'none' }].concat(drugs.map(d => K.itemOpt(d, { unk: false }))).concat([K.BACK('‹ Cancel')]));
+      if (!pd) return; if (pd !== 'none') drug = pd;
+    }
+  }
+  K.take(id); if (bait) K.take(bait); if (drug) K.take(drug);
+  const z = K.zoneAt(g.p.x, g.p.y), lake = water === 'V' ? 'biglake' : water === '~' ? 'oldlake' : null;
+  g.traps.push({ item: id, tx, ty, x: g.p.x, y: g.p.y - 2, zone: z.id, hab: it.ladder === 'water' ? (lake || 'oldlake') : (z.hab || null), at: now(), bait, drug });
   g.trapsUsed[id] = 1; K.learnItem(id);
-  LOD.tone(520, .08, 'square', .05); LOD.toast(it.em + ' ' + it.name, 1.8);
+  LOD.tone(520, .08, 'square', .05); LOD.toast(it.em + ' ' + it.name + (bait ? ' + ' + ITEMS[bait].em : ''), 1.8);
 }
+/* the minimum level a form has (the level it evolves into) and the highest it can have before it evolves again */
+const evoMin = id => { for (const k in R.creatures) { const e = R.creatures[k].evolve; if (e && e.to === id) return e.lv; } return 1; };
+const evoMax = id => { const e = SP[id].evolve; return e ? e.lv - 1 : CFG.LV_MAX; };
+/* which forms can sit at this tier in this trap, here and now (habitat, time of day, size) */
+function candidates(it, hab, tier, reveal, night, ignoreSize) {
+  const out = [];
+  for (const id in R.creatures) {
+    const f = SP[id]; if (!f || f.kind !== 'creature' || f.stage === 'drug' || f.starter || f.trapOnly || !rel(f) || !f.trap || !f.trap.includes(it.ladder)) continue;
+    if (![].concat(f.tier == null ? [] : f.tier).includes(tier)) continue;
+    if (f.hab && hab && !f.hab.includes(hab)) continue; if (f.hab && !hab) continue;
+    if (f.night && !night) continue; if (f.day && night) continue;
+    if (f.needs && !(f.needs === 'reveal' && reveal)) continue;
+    if (!ignoreSize && sizeRank(f.size) > sizeRank(it.cap)) continue;
+    out.push(id);
+  }
+  return out;
+}
+function pickWeighted(ids, tr) {
+  const rw = { C: 3, U: 2, R: 1, E: .4, L: .2, M: .1 };
+  return PX.data.weighted(ids.map(id => [id, (rw[SP[id].rarity] || 1) * (tr.bait && (SP[id].bait || []).includes(tr.bait) ? 4 : 1)]));
+}
+/* what a ready trap holds. Returns { wife } | { nothing } | { junk } | { sp, lv, higher, drugForm } */
 function trapCatch(tr) {
   const it = ITEMS[tr.item], g = G(), z = K.ZONES.find(q => q.id === tr.zone) || {};
-  if (it.spawn) return !g.caught[it.spawn] && !g.dead[it.spawn] && rel(SP[it.spawn]) ? { sp: it.spawn } : null;
+  if (it.spawn) return !g.caught[it.spawn] && !g.dead[it.spawn] && rel(SP[it.spawn]) ? { sp: it.spawn } : { nothing: true };
   if (it.lure === 'WIFE') {
     const ids = Object.keys(PARTNERS).filter(id => rel(PARTNERS[id]) && !K.gone('w_' + id));
-    const fresh = ids.filter(id => !g.solved.includes(id)); return ids.length ? { wife: pick(fresh.length ? fresh : ids) } : null;
+    const fresh = ids.filter(id => !g.solved.includes(id)); return ids.length ? { wife: pick(fresh.length ? fresh : ids) } : { nothing: true };
   }
-  if (Math.random() < .12) return null;
-  if (it.catch) { const tab = it.catch.filter(([sp]) => SP[sp] && rel(SP[sp])); if (tab.length) return { sp: PX.data.weighted(tab) }; }
-  for (const [sp, w] of it.rare || []) if (SP[sp] && rel(SP[sp]) && Math.random() < w / 100) return { sp };
-  const reveal = EF.has(g.me, 'reveal'), ok = sp => SP[sp] && SP[sp].kind === 'creature' && rel(SP[sp]) && SP[sp].type === it.lure && !SP[sp].trapOnly && (!SP[sp].needs || reveal) && SP[sp].rarity !== 'L';
-  let tab = (z.enc || []).filter(([sp]) => ok(sp));
-  if (!tab.length) tab = Object.keys(SP).filter(sp => ok(sp) && ['C', 'U'].includes(SP[sp].rarity)).map(sp => [sp, 1]);
-  return tab.length ? { sp: PX.data.weighted(tab) } : null;
+  const C = TR(), T0 = it.tier, night = K.PPL.isNight();
+  const reveal = EF.has(g.me, 'reveal') || g.party.some(c => { const t = K.tripOf(c); return (t && t.reveal) || (SP[c.sp] && SP[c.sp].ability === 'reveal'); });
+  const own = candidates(it, tr.hab, T0, reveal, night), low = T0 > 1 ? candidates(it, tr.hab, T0 - 1, reveal, night) : [], high = candidates(it, tr.hab, T0 + 1, reveal, night, true);
+  // rare spawns roll first, only when their condition is true (Trippopotamus: only while you are tripping)
+  const rare = own.filter(id => SP[id].needs); if (rare.length && Math.random() < .35) return fin(rare[0], false);
+  const normal = own.filter(id => !SP[id].needs);
+  const matches = tr.bait && normal.some(id => (SP[id].bait || []).includes(tr.bait)), steps = Math.max(0, T0 - 1);
+  let nothing = C.nothing - (matches ? C.bait : 0) - C.step * steps + (tr.drug ? C.drugNothing : 0); nothing = Math.max(0, nothing);
+  let pOwn = Math.min(C.ownCap, 1 - nothing - C.lower - C.higher); nothing = 1 - pOwn - C.lower - C.higher;
+  let pLow = C.lower, pHigh = C.higher;
+  if (!normal.length) { nothing += pOwn; pOwn = 0; } if (!low.length && T0 > 1) { nothing += pLow; pLow = 0; } if (!high.length) { nothing += pHigh; pHigh = 0; }
+  const r = Math.random();
+  if (r < nothing) return { nothing: true };
+  if (r < nothing + pLow) return T0 === 1 ? { junk: true } : fin(pickWeighted(low, tr), false);      // tier 1: the "lower" result is a piece of junk
+  if (r < nothing + pLow + pOwn) return fin(pickWeighted(normal, tr), false);
+  return fin(pickWeighted(high, tr), true);
+  function fin(id, higher) {
+    let sp = id, lvBase = z.lv ? rand(z.lv[0], z.lv[1]) : 4 + T0 * 4;
+    if (!higher && tr.drug) {   // drugged bait: an own-tier catch may be that line's drug form
+      const teen = Object.keys(R.creatures).find(k => SP[k].line === SP[id].line && SP[k].feed && SP[k].feed[tr.drug]);
+      if (teen && Math.random() < C.drug) { sp = SP[teen].feed[tr.drug]; lvBase = Math.max(lvBase, SP[teen].feedLv || 1); return { sp, lv: Math.round(clamp(lvBase + T0 + Math.min(5, g.beat.length), SP[teen].feedLv || 1, CFG.LV_MAX)), higher, drugForm: true }; }
+    }
+    return { sp, lv: Math.round(clamp(lvBase + T0 * 2 + Math.min(5, g.beat.length), evoMin(sp), Math.max(evoMin(sp), evoMax(sp)))), higher };
+  }
 }
 async function trapInteract(tr) {
   const g = G(), it = ITEMS[tr.item];
   if (!trapReady(tr)) {
-    const a = await K.ask(it.em + ' ' + it.name + '. Nothing yet.', [{ label: '🪤 Pick it up', value: 'up' }, K.BACK('‹ Leave')]);
-    if (a === 'up') { g.traps.splice(g.traps.indexOf(tr), 1); K.give(tr.item); }
+    const a = await K.ask(it.em + ' ' + it.name + (tr.bait ? ' + ' + ITEMS[tr.bait].em : '') + '. Nothing yet.', [{ label: '🪤 Pick it up', value: 'up' }, K.BACK('‹ Leave')]);
+    if (a === 'up') { g.traps.splice(g.traps.indexOf(tr), 1); K.give(tr.item); if (tr.bait) K.give(tr.bait); if (tr.drug) K.give(tr.drug); }
     return;
   }
   g.traps.splice(g.traps.indexOf(tr), 1);
-  const r = trapCatch(tr);
-  if (!r) { await K.say(it.em + ' Empty. Something ate the bait and left.', { auto: false }); return; }
+  const r = trapCatch(tr), reusable = !!it.ladder;
+  if (reusable && !r.higher) K.give(tr.item);                                      // the trap itself comes back with you (the bait is gone)
+  if (r.nothing) { await K.say(it.em + ' ' + pick(TXT().nothing || ['Empty.']), { auto: false }); return; }
+  if (r.junk) { await K.say(it.em + ' ' + pick(TXT().junk || ['Junk.']), { auto: false }); return; }
   K.hideBox();
   if (r.wife) { K.startPartner(r.wife); const B = K.B; if (B) { const f = B.foes[0]; f.hp = Math.round(f.hp * (1 - it.catchBonus * .6)); B.dazed = 0; } return; }
-  const z = K.ZONES.find(q => q.id === tr.zone), lv = Math.round((z && z.lv ? rand(z.lv[0], z.lv[1]) : rand(4, 8)) + it.tier * 2 + Math.min(5, g.beat.length) + (SP[r.sp].rarity === 'M' ? 10 : 0));
-  K.startBattle({ kind: 'trap', foes: [K.mk(r.sp, lv)], dazed: it.catchBonus, trapItem: tr.item });
+  if (r.higher) { g.wrecks = g.wrecks || {}; g.wrecks[tr.item] = (g.wrecks[tr.item] || 0) + 1; await K.say('💥 ' + (TXT().higher || 'Too big. The trap is wrecked.') + ' Trapper Tore can repair it.', { auto: false }); K.hideBox(); }
+  const lv = r.lv || Math.round(rand(4, 8));
+  const foe = K.mk(r.sp, lv); if (!it.spawn && CFG.WILD_STAT && CFG.WILD_STAT !== 1) { foe.sm = CFG.WILD_STAT; foe.hp = K.maxHp(foe); }
+  K.startBattle({ kind: 'trap', foes: [foe], dazed: r.higher ? .05 : (it.catchBonus || .25 + .05 * it.tier), trapItem: tr.item });
+}
+/* ---------- Trapper Tore: upgrades (kr + materials) and repairs (half price) ---------- */
+const costLine = c => Object.keys(c).map(k => k === 'kr' ? c.kr + ' kr' : c[k] + ' × ' + ITEMS[k].name).join(' + ');
+const canPay = c => Object.keys(c).every(k => k === 'kr' ? g0().kr >= c.kr : K.has(k) && g0().items[k] >= c[k]);
+const g0 = () => G();
+async function trapper(n) {
+  const g = G(), who = n.d.name;
+  if (K.PPL.refuses(n.id)) { await K.say2(who, 'We are done. Go away.'); return; }
+  const tk = await K.PPL.talk(n.id, { name: who, fallback: 'Traps. Upgrades. Repairs.' });
+  if (tk.fight) { K.hideBox(); K.startNpcFight(n.id); return; }
+  for (;;) {
+    const mine = Object.keys(ITEMS).filter(id => ITEMS[id].kind === 'trap' && ITEMS[id].upgradesTo && K.has(id)), wr = Object.keys(g.wrecks || {}).filter(id => g.wrecks[id] > 0);
+    const opts = [
+      { label: '⬆️ Upgrade a trap', value: 'up', cls: 'hot', sub: mine.length ? mine.length + ' kinds in the bag' : 'You carry no upgradeable trap', dis: !mine.length },
+      { label: '🔧 Repair a wreck', value: 'fix', sub: wr.length ? wr.reduce((a, id) => a + g.wrecks[id], 0) + ' wrecked · half price' : 'Nothing wrecked', dis: !wr.length }];
+    if (n.d.shop && n.d.shop.length) opts.push({ label: '🛒 Bait', value: 'shop' });
+    opts.push(K.BACK('‹ Leave'));
+    const a = await K.ask(who + ' · ' + g.kr + ' kr', opts, { who });
+    if (!a) return;
+    if (a === 'shop') { await K.shop(n.d, n.id); continue; }
+    if (a === 'up') {
+      const t = await K.ask('Upgrade which?', mine.map(id => { const it = ITEMS[id], c = it.upgradeCost; return { label: it.em + ' ' + it.name + ' → ' + ITEMS[it.upgradesTo].em + ' ' + ITEMS[it.upgradesTo].name, sub: costLine(c) + ' · ' + (ITEMS[it.upgradesTo].learnedNote || ''), value: id, dis: !canPay(c) }; }).concat([K.BACK()]), { who });
+      if (!t) continue;
+      const it = ITEMS[t], c = it.upgradeCost; K.take(t); for (const k in c) { if (k === 'kr') g.kr -= c.kr; else K.take(k, c[k]); }
+      K.give(it.upgradesTo); K.SFX.buy(); K.learnItem(it.upgradesTo); await K.say2(who, 'There. ' + ITEMS[it.upgradesTo].name + '. Do not lose it.');
+    } else if (a === 'fix') {
+      const t = await K.ask('Repair which?', wr.map(id => { const kr = Math.round((ITEMS[id].value || 30) / 2); return { label: ITEMS[id].em + ' ' + ITEMS[id].name + ' ×' + g.wrecks[id], sub: kr + ' kr', value: id, dis: g.kr < kr }; }).concat([K.BACK()]), { who });
+      if (!t) continue;
+      const kr = Math.round((ITEMS[t].value || 30) / 2); g.kr -= kr; g.wrecks[t]--; K.give(t); K.SFX.buy(); await K.say2(who, 'Fixed. Half price. Because you look sad.');
+    }
+  }
 }
 
 /* ===================== CEMETERY: graves, resurrection, the grave reward ===================== */
@@ -88,7 +181,7 @@ function addGrave(foe) {
   g.graves.push(gr); return gr;
 }
 function graveSpot(i) { const a = R.graves.area, cols = Math.floor(a[2] / 2) + 1; return [a[0] + (i % cols) * 2, a[1] + Math.floor(i / cols) * 2 % a[3]]; }
-const likesOf = gr => (SP[gr.sp] && SP[gr.sp].likes) || 'buns';
+const likesOf = gr => (SP[gr.sp] && (SP[gr.sp].likes || (SP[gr.sp].bait && SP[gr.sp].bait[0]))) || 'buns';   // creatures like their bait; people like what the data says
 const matches = (id, likes) => id === likes || (ITEMS[id] && ITEMS[id].lure === likes);
 function rewardGraveSp() { const r = R.graves.reward; return K.heroId() === r.rewardGrave ? 'n_' + r.rewardGraveIfSelf : 'h_' + r.rewardGrave; }
 async function graveInteract(gr) {
@@ -201,6 +294,7 @@ async function dealer(n) {
     const stock = dealerStock();
     const opts = [{ label: '🤝 Trade a creature', value: 'trade', cls: 'hot', dis: !(g.party.length + g.box.length > 1) }]
       .concat(stock.map((s, i) => K.itemOpt(s.id, { label: ITEMS[s.id].em + ' ' + ITEMS[s.id].name + ' · ' + s.price + ' ✦' + (s.rare ? ' 🔥' : ''), value: 'buy:' + i, dis: g.dealer.bought[i] || g.dealer.pts < s.price })));
+    if (DL.book && !K.has(DL.book.item)) opts.push({ label: '📕 Fältboken · ' + DL.book.price + ' ✦', value: 'book', sub: DL.book.line, dis: g.dealer.pts < DL.book.price });
     if (g.dealer.pen.length) opts.push({ label: '🔙 His creatures', value: 'pen', sub: g.dealer.pen.length + ' in the back' });
     if (!stock.length) opts.push({ label: DL.empty, value: null, dis: true });
     opts.push(K.BACK('‹ Leave'));
@@ -218,6 +312,8 @@ async function dealer(n) {
       K.SFX.buy(); K.learn('dealer'); await K.say2(who, 'Pleasure. +' + v + ' ✦');
     } else if (a.startsWith('buy:')) {
       const i = +a.slice(4), s = stock[i]; g.dealer.pts -= s.price; g.dealer.bought[i] = 1; K.give(s.id); K.SFX.buy();
+    } else if (a === 'book') {
+      g.dealer.pts -= DL.book.price; K.give(DL.book.item); K.SFX.buy(); LOD.haptic('success'); await K.say2(who, DL.book.line + ' Do not spill anything on it.');
     } else if (a === 'pen') {
       const k = await K.ask('Buy one back?', g.dealer.pen.map((c, j) => { const kr = DL.buyBack * (DL.rates[SP[c.sp].rarity] || 1); return { label: K.cname(c) + ' Lv ' + c.lv, img: K.creatureIcon(c.sp), sub: kr + ' kr', value: j, dis: g.kr < kr }; }).concat([K.BACK()]), { one: true });
       if (k == null) continue;
@@ -289,13 +385,13 @@ function tick(dt) {
 /* ===================== COMPLETION % (100 % takes far longer than the score) ===================== */
 function completion() {
   const g = G();
-  const crs = Object.keys(R.creatures).filter(id => rel(R.creatures[id]) || g.caught[id]);
+  const lines = K.WILD_LINES().filter(l => K.LINES[l].some(id => rel(SP[id]) || g.caught[id]));
   const people = Object.keys(SP).filter(sp => SP[sp].kind !== 'creature' && SP[sp].kind !== 'boss' && (SP[sp].kind !== 'hero' || SP[sp].ref !== K.heroId()));
   const apps = Object.keys(R.apps).filter(id => rel(R.apps[id])), traps = Object.keys(ITEMS).filter(id => ITEMS[id].kind === 'trap' && rel(ITEMS[id]));
   const items = Object.keys(ITEMS).filter(id => !ITEMS[id].list && rel(ITEMS[id]) && ITEMS[id].kind !== 'app');
   const parts = [
-    crs.filter(id => g.caught[id]).length / Math.max(1, crs.length),
-    (new Set(g.graves.map(q => q.sp)).size + Object.keys(g.dead).length * 0) / Math.max(1, crs.length + people.length),
+    Object.keys(g.lines || {}).length / Math.max(1, lines.length),
+    new Set(g.graves.map(q => q.sp)).size / Math.max(1, lines.length + people.length),
     Object.keys(g.caughtP).length / Math.max(1, people.length),
     apps.filter(id => g.apps[id]).length / Math.max(1, apps.length),
     traps.filter(id => g.trapsUsed[id]).length / Math.max(1, traps.length),
@@ -307,6 +403,6 @@ function completion() {
 return {
   newGame() { const g = G(); g.fillers = makeFillers(); registerFillers(); },
   afterLoad() { const g = G(); if (!g.fillers || !Object.keys(g.fillers).length) g.fillers = makeFillers(); registerFillers(); if (trainOpen()) train(); },
-  placeTrap, addGrave, resurrect, board, dealer, dealerStock, phone, mapObjects, interact, drawMap, tick, completion, blocked, train, tierCap, trapReady, trapCatch, valueOf, graveSpot
+  placeTrap, trapper, candidates, addGrave, resurrect, board, dealer, dealerStock, phone, mapObjects, interact, drawMap, tick, completion, blocked, train, tierCap, trapReady, trapCatch, valueOf, graveSpot
 };
 };

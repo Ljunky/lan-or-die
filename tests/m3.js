@@ -49,7 +49,7 @@ async function drive(p, prefer, until = 'map', max = 400) {
   }
   return 'timeout';
 }
-const strong = lv => E(p0, lv => { const m = window.__m3, G = m.G; G.party = ['frog', 'cuke', 'peng', 'bear'].map(s => m.mk(s, lv)); }, lv);
+const strong = lv => E(p0, lv => { const m = window.__m3, G = m.G; G.party = ['badger', 'lynx', 'toad', 'hedgehog'].map(s => m.mk(s, lv)); }, lv);
 let p0;
 
 // the opening: blink, thoughts, then the stranger walks up and you pick a starter
@@ -76,15 +76,15 @@ async function pickStarter(p, name) {
   await E(p, () => localStorage.removeItem('lod.save.m3.Ljunky'));
   ok(await toBrief(p, 'ljunky'), 'menus reach the brief');
   ok(await E(p, () => document.getElementById('brief-go').textContent === 'Go' && !document.getElementById('brief-new')), 'no save yet: brief says Go, no New game button');
-  ok(await E(p, () => !/FIZZ|Easter|crit|%/.test(document.getElementById('scr-brief').textContent) && document.getElementById('scr-brief').classList.contains('m3solid')), 'brief: solid start screen, no type chart, odds, abilities or easter-egg text');
+  ok(await E(p, () => !/FANG|Easter|crit|%/.test(document.getElementById('scr-brief').textContent) && document.getElementById('scr-brief').classList.contains('m3solid')), 'brief: solid start screen, no type chart, odds, abilities or easter-egg text');
   await p.click('#brief-go'); await p.waitForTimeout(600);
   await E(p, () => { window.__m3.speed = 20; });
   ok(await E(p, () => window.__m3.G.scene === 'talk' && window.__m3.wakeT > 0 && !document.getElementById('scr-brief').textContent.includes('spiked')), 'new game opens with the wake-up (eyes blinking), no story text on the brief');
   await p.screenshot({ path: OUT + '/M3_wake.png' });
-  ok(await pickStarter(p, 'Cucumber Dragon'), 'the stranger walks up and you choose a starter');
+  ok(await pickStarter(p, 'Badger Cub'), 'the stranger walks up and you choose a starter');
   let g = await E(p, () => { const G = window.__m3.G; return { party: G.party.map(c => c.sp + c.lv), caught: Object.keys(G.caught), score: G.score }; });
-  ok(g.party.join() === 'cuke5' && g.caught.join() === 'cuke', 'starter chosen: ' + g.party.join());
-  ok(g.score === 2000, 'score = goals only: 1 species, levels give nothing (' + g.score + ')');
+  ok(g.party.join() === 'badgerCub5' && g.caught.join() === 'badgerCub', 'starter chosen: ' + g.party.join());
+  ok(g.score === 0, 'score = goals only: a starter is not a species, levels give nothing (' + g.score + ')');
   ok(await E(p, () => document.querySelector('#btn-fire').hidden && !document.querySelector('#m3ui .m3bag').hidden), 'no fire button, bag button shown');
   await p.screenshot({ path: OUT + '/M3_map.png' });
 
@@ -109,7 +109,7 @@ async function pickStarter(p, name) {
   await p.waitForTimeout(900); await p.screenshot({ path: OUT + '/M3_battle.png' });
   await strong(14);
   const xp0 = await E(p, () => window.__m3.G.party[0].xp + window.__m3.G.party[0].lv * 1000);
-  ok(await drive(p, ['Pull up', 'Walk away', 'Fight', 'Pickle|Dill|Peck|Body']) === 'done', 'fight until the battle ends');
+  ok(await drive(p, ['Pull up', 'Walk away', 'Fight', 'Claw|Bite|Maul|Body']) === 'done', 'fight until the battle ends');
   ok(await E(p, () => window.__m3.G.party[0].xp + window.__m3.G.party[0].lv * 1000) > xp0, 'the winner gained XP');
 
   // ---------- catching ----------
@@ -117,13 +117,13 @@ async function pickStarter(p, name) {
   for (let i = 0; i < 6 && !caught; i++) {
     await E(p, () => { const m = window.__m3; m.G.kr = 500; m.startWild(m.ZONES.find(z => z.id === 'charger')); });
     await p.waitForTimeout(200);
-    await E(p, () => { const m = window.__m3; const f = m.B.foes[0]; f.hp = 1; m.B.lure = 50; f.sp = 'snake'; });
-    await drive(p, ['^🎯 Throw', 'Carrier bag', 'Catch', 'Fight', 'Body|Zap|Pickle']);
-    caught = await E(p, () => !!window.__m3.G.caught.snake);
+    await E(p, () => { const m = window.__m3; const f = m.B.foes[0]; f.hp = 1; m.B.lure = 50; f.sp = 'cockroach'; });
+    await drive(p, ['^🎯 Throw', 'Carrier bag', 'Catch', 'Fight', 'Body|Claw|Bite']);
+    caught = await E(p, () => !!window.__m3.G.caught.cockroach);
   }
   ok(caught, 'a weakened, lured creature goes in the bag');
   g = await E(p, () => ({ kr: window.__m3.G.kr, n: Object.keys(window.__m3.G.caught).length, inParty: window.__m3.G.party.length + window.__m3.G.box.length }));
-  ok(g.n === 2, 'the species counts once (' + g.n + ' species)');
+  ok(g.n === 2 && (await E(p, () => Object.keys(window.__m3.G.lines).join())) === 'cockroach', 'the species counts once, by line (' + g.n + ' forms seen)');
 
   // ---------- Systembolaget: buy a drink by tapping the cashier ----------
   await E(p, () => { const m = window.__m3, [x, y] = m.tc(42, 31); m.G.p.x = x; m.G.p.y = y; m.G.kr = 100; });
@@ -152,7 +152,7 @@ async function pickStarter(p, name) {
     await strong(20); await E(p, () => { for (const c of window.__m3.G.party) c.hp = 999; });
     await E(p, id => window.__m3.startBoss(id), id); await p.waitForTimeout(200);
     if (id === 'bigwman') { await p.waitForTimeout(900); await p.screenshot({ path: OUT + '/M3_boss.png' }); }
-    await drive(p, ['Pull up', 'Let it go', 'Fight', 'Burp|Dill|Peas|Hug|Patty|Can|Pickle|Body']);
+    await drive(p, ['Pull up', 'Let it go', 'Fight', 'Claw|Body|Bite|Maul|Nip']);
     ok(await E(p, id => window.__m3.G.beat.includes(id), id), 'beat ' + id);
   }
   ok(await E(p, () => !window.__m3.walkable(...window.__m3.tc(16, 27))), 'beating the 4 heroes is not enough: the stock room stays shut until you have seen the heroes\' houses');
@@ -177,7 +177,7 @@ async function pickStarter(p, name) {
   await strong(50); await E(p, () => { window.__m3.speed = 20; for (const c of window.__m3.G.party) c.hp = 9999; });
   await E(p, () => { window.__m3.startDev(); }); await p.waitForTimeout(1200);
   await p.screenshot({ path: OUT + '/M3_dev.png' });
-  const r = await drive(p, ['Fight', 'Burp|Dill|Peas|Hug|Patty|Can|Pickle|Body'], 'map', 800);
+  const r = await drive(p, ['Fight', 'Claw|Body|Bite|Maul|Nip'], 'map', 800);
   ok(await E(p, () => !!window.__m3.G.dev), 'Dev Ljunky beaten (' + r + ')');
   for (let i = 0; i < 40; i++) { await p.waitForTimeout(250); if (await E(p, () => !document.getElementById('scr-result').hidden)) break; await E(p, () => { const b = document.querySelector('.cut [data-a="skip"]'); if (b) b.click(); const t = document.querySelector('.tbc'); if (t) t.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); }); }
   await p.waitForTimeout(400);
@@ -203,7 +203,8 @@ async function pickStarter(p, name) {
   await toBrief(q, 'bigwman');
   await q.click('#brief-go'); await q.waitForTimeout(500);
   await E(q, () => { window.__m3.speed = 20; });
-  await pickStarter(q, 'Freezer');
+  await pickStarter(q, 'Hoglet');
+  await E(q, () => { window.__m3.G.lines.rat = 1; });   // a starter is not a species: catch one real line for the first 2000
   await E(q, () => { window.__lod.G.saveT = 9.9; }); await q.waitForTimeout(400);
   ok(posts.length === 1 && posts[0].mission === 3 && posts[0].score === 2000 && posts[0].name === 'BigWman', 'autosave sends the new best (' + JSON.stringify(posts[0] || {}) + ')');
   await E(q, () => { window.__lod.G.saveT = 9.9; }); await q.waitForTimeout(400);

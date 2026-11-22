@@ -16,7 +16,7 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
 
 ## Knowledge (things you only learn from people)
 
-- `types` **How the types work**: FIZZ › GRUB › WILD › TECH › FROST › RUSTLE › FIZZ. The move list shows what is strong. — told by: freja
+- `types` **How the types work**: FANG › WING › ROOT › WATER › STONE › SHELL › FANG. The move list shows what is strong. — told by: freja
 - `tranq` **The Barber has a tranquilizer gun**: Under the chair. He sells it. — told by: jonas
 - `ring` **Fia keeps a ring box for desperate husbands**: Behind the counter. Pricey. — told by: fia
 - `wife:cicci` **What Cicci wants**: Someone who talks about the budget out loud. Honestly. — told by: berit
@@ -32,11 +32,37 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
 - `herbs` **Jrohn's brew** [release tue]: Fern, then mushroom, then moss. Never the other way. — told by: guide
 - `boat` **Boat-Bengt** [release wed]: Trades boats for vans. On the big lake shore. — told by: folke
 - `ferry` **A ferry creature** [release wed]: A big lake creature that knows Ferry can carry you across the water. — told by: folke
+- `tore` **Trapper Tore** [release tue]: Upgrades and repairs traps. A clearing at the forest edge, by the dirt road. Bring fur. — told by: jonas, guide
+- `recipe:xanadger` **Badger + Xanax** [release tue]: Feed a Badger (Lv 24+) Xanax and it becomes Xanadger. Sleepy but tough. Naps in the middle of fights. — told by: nobody yet
+- `recipe:ecstadger` **Badger + Molly** [release tue]: Feed a Badger (Lv 24+) Molly and it becomes Ecstadger. Hugs everyone. Including the thing that is trying to eat it. — told by: doorman
+- `recipe:ketadger` **Badger + Ketamine** [release tue]: Feed a Badger (Lv 24+) Ketamine and it becomes Ketadger. Is it here? Is it there? It is behind you. Huge hit. — told by: doorman
+- `recipe:ladger` **Badger + LSD** [release tue]: Feed a Badger (Lv 24+) LSD and it becomes Ladger. Sees every colour. Hits with the one that hurts most. — told by: hasse
+- `recipe:mollynx` **Lynx + Molly** [release tue]: Feed a Lynx (Lv 22+) Molly and it becomes MolLynx. Big Eyes. Nobody can bring themselves to attack it. — told by: doorman
+- `recipe:dmtoad` **Toad + DMT** [release wed]: Feed a Toad (Lv 26+) DMT and it becomes DMToad. It has met the machine elves. They said hi. — told by: cauldron
+- `recipe:sporecupine` **Hedgehog + Shrooms** [release tue]: Feed a Hedgehog (Lv 24+) Shrooms and it becomes Sporecupine. Mushrooms grow on its back. It is fine with that. — told by: dealer
+- `recipe:stonedeer` **Deer + Weed** [release mon]: Feed a Deer (Lv 22+) Weed and it becomes Stonedeer. Chill Out. Everybody at the fight is a bit more chill. — told by: nobody yet
+- `recipe:cokeroach` **Cockroach + Coke** [release mon]: Feed a Cockroach (Lv 18+) Coke and it becomes Cokeroach. Always first. Always sniffing. Never sleeps. — told by: dealer
+- `recipe:ketacrow` **Crow + Ketamine** [release tue]: Feed a Crow (Lv 20+) Ketamine and it becomes Ketacrow. Stares into the void. The void stares back and apologises. — told by: doorman
+- `recipe:laddybug` **Ladybug + LSD** [release tue]: Feed a Ladybug (Lv 12+) LSD and it becomes Ladd-ybug. Seven Spots of Truth. Shows you what is really there. — told by: hasse
+- `recipe:trancequirrel` **Squirrel + Molly** [release tue]: Feed a Squirrel (Lv 20+) Molly and it becomes Trancequirrel. Drop the Bass. Sets up in the golf rough at night. — told by: doorman
+- `recipe:speedbeetle` **Stag Beetle + Speed** [release tue]: Feed a Stag Beetle (Lv 18+) Speed and it becomes Speedbeetle. Tweak. Doesn't blink. Doesn't stop. — told by: doorman
+- `recipe:snortoise` **Tortoise + Coke** [release tue]: Feed a Tortoise (Lv 22+) Coke and it becomes Snortoise. Line Dash. The fastest tortoise alive. It will tell you. — told by: dealer
+- `recipe:snapskrafta` **Crayfish + Snaps** [release tue]: Feed a Crayfish (Lv 18+) Snaps and it becomes Snapskräfta. Sings Helan Går. Hits harder when you join in. — told by: nobody yet
+- `recipe:mollipike` **Pike + Molly** [release tue]: Feed a Pike (Lv 24+) Molly and it becomes Mollipike. Love Bite. Drains you gently and tells you it is nothing personal. — told by: doorman
+- `recipe:mantisShroom` **Mantis Shrimp + Shrooms** [release tue]: Feed a Mantis Shrimp (Lv 26+) Shrooms and it becomes Mantis Shroom. Sporepunch. Hits first, confuses second. — told by: nobody yet
+- `recipe:xanaxfox` **Fox + Xanax** [release tue]: Feed a Fox (Lv 22+) Xanax and it becomes Xanaxfox. Unbothered. Was chasing a mouse. Forgot why. — told by: nobody yet
+- `recipe:shroomboar` **Wild Boar + Shrooms** [release tue]: Feed a Wild Boar (Lv 26+) Shrooms and it becomes Shroomboar. Truffle Rage. The lower its HP, the harder it hits. — told by: nobody yet
+- `recipe:blowboar` **Wild Boar + Coke** [release tue]: Feed a Wild Boar (Lv 26+) Coke and it becomes Blowboar. Nose Charge. Huge hit. It will feel that tomorrow. — told by: dealer
+- `recipe:methmoth` **Moth + Meth** [release wed]: Feed a Moth (Lv 20+) Meth and it becomes Methmoth. Lamp Frenzy. Has not slept since Tuesday. Fights the street lamp. — told by: camper
+- `recipe:ketamoose` **Moose + Ketamine** [release tue]: Feed a Moose (Lv 32+) Ketamine and it becomes Ketamoose. Moose in the Void. Is it still here? Define "here". — told by: nobody yet
+- `recipe:shroomoose` **Moose + Shrooms** [release tue]: Feed a Moose (Lv 32+) Shrooms and it becomes Shroomoose. Antler Bloom. A spore cloud with an opinion. — told by: nobody yet
+- `recipe:psilocybear` **Brown Bear + Shrooms** [release tue]: Feed a Brown Bear (Lv 34+) Shrooms and it becomes Psilocybear. Third Eye Maul. Never misses. Sees you from three angles. — told by: nobody yet
+- `recipe:acidadder` **Adder + LSD** [release tue]: Feed a Adder (Lv 24+) LSD and it becomes Acidadder. Melt. Everything is liquid and it is your fault. — told by: hasse
 
 ## The five heroes (bosses; you play one of them)
 
 ### BigWman (`bigwman`)
-- Team: bat, banshee, ghost
+- Team: trancequirrel, blowboar, psilocybear
 - Ultimate: **YES!** (+50 % ATK for the whole party for 3 turns)
 - After losing: "I need to update the spreadsheet. YES… no."
 - Epitaph: "Balanced the budget. Not the life."
@@ -57,7 +83,7 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
   -  "Every single package is accounted for. YES."
 
 ### Wizcudi (`wizcudi`)
-- Team: snake, ghost, peng
+- Team: methmoth, speedbeetle, mantisShroom
 - Ultimate: **Lights Out** (the enemy misses 2 turns)
 - After losing: "Fine. But turn the light off on your way out."
 - Epitaph: "Finally, the lights are off."
@@ -77,7 +103,7 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
   -  "Who left that light on?!"
 
 ### Jrohn (`jrohn`)
-- Team: cuke, slime, bear
+- Team: acidadder, shroomboar, shroomoose
 - Ultimate: **I Love This!** (heals the party 50 % and charms the enemy)
 - After losing: "I LOVE THIS! Losing, I mean. Hug?"
 - Epitaph: "Here lies Jrohn. Shirt not included."
@@ -92,12 +118,12 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
   -  _(if flag="edge:jrohn")_ "Everything is so... soft. What were we doing? Oh! A hug!"
   -  _(if metMin=1)_ "You came back! I have been telling the ferns about you."
   -  _(if killed="monika")_ "Monika... the ferns are very quiet today."
-  -  _(if carry="walter")_ "WALTER! You found him! I love this! I love you! Where is my shirt?"
+  -  _(if carry="toad")_ "A TOAD! Hug it for me! I love this! I love you! Where is my shirt?"
   -  _(if state="high")_ "We are in the same garden right now. Do you see it? The same one."
   -  "Walk with me. Or fight me. Whichever has more hugs."
 
 ### Löken (`loken`)
-- Team: crow, golem, bear
+- Team: snortoise, mollipike, ketamoose
 - Ultimate: **Stick Together, Boys!** (every creature in the party attacks at once)
 - After losing: "Good fight. Now get off the lawn. Gently."
 - Epitaph: "Stuck together. Alone, for once."
@@ -117,7 +143,7 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
   -  "I dropped 400 kr on the way here. Pick it up, I dare you."
 
 ### Ljunky (`ljunky`)
-- Team: frog, mummy, snake
+- Team: cokeroach, laddybug, ketacrow
 - Ultimate: **Buy the Dip** (50 %: double damage. 50 %: zero.)
 - After losing: "Unrealised loss. It does not count."
 - Epitaph: "Bought the dip. The dip bought him."
@@ -132,7 +158,7 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
   -  _(if flag="edge:ljunky")_ "Why am I so tired already? I did not even start. WHY IS THE ROWER WARM?"
   -  _(if metMin=1)_ "Back for more? I have patched the game since you left."
   -  _(if killed="maadmads")_ "You... deleted my wife? That is not in the patch notes."
-  -  _(if carry="cat")_ "You have my cats! Give them back. They do not like you. They like me."
+  -  _(if carry="lynx")_ "A lynx. My cats are lynx-adjacent. They like me. They do not like you."
   -  _(if debtMin=3)_ "Three promise debts. I could make a coin out of that."
   -  "Buy the dip, my friend. Buy it."
 
@@ -205,12 +231,12 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
   -  _(if met=0, hero="wizcudi")_ "Wizcudi. Lovely to see you. I am sorry about the lights. Everyone is."
   -  _(if met=0, hero="loken")_ "Löken. The lawn man. Please tell me my husband is not on it."
   -  _(if met=0, hero="ljunky")_ "Ljunky. Are those cats following you, or are you following them?"
-  -  _(if carry="walter")_ "WALTER! Oh. Oh, you have him. Do you know what that means?"
+  -  _(if carry="toad")_ "A TOAD! Oh. Oh, you have it. Do you know what that means?"
   -  "Walter ran away AGAIN."
   - (once solved) "Walter is home and the shirt is on. Mostly. Tell him I love him. Nicely."
 - **Reacts to the hero you play:** jrohn ×1.5 +1 turn, bigwman ×0.8, wizcudi ×0.9, loken ×0.8, ljunky ×1
 - **Lines you can say** (RIGHT = the conditions under which it is THE right one; the others are always wrong):
-  - "I have Walter right here. He is fine. He is FINE." **RIGHT** _(if carry="walter")_
+  - "I have the toad right here. He is fine. He is FINE." **RIGHT** _(if carry="toad")_
   - "Fia gave him his flowers. I will miss her." **RIGHT** _(if killed="fia")_
   - "No more drinks for you. Have a sandwich." **RIGHT** _(if state="drunk")_
   - "It is true, I promised. I will fix it." **RIGHT** _(if debtMin=2)_
@@ -264,7 +290,7 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
   - (once solved) "The cats are fed. I saved the coins. Please tell him to text me."
 - **Reacts to the hero you play:** ljunky ×1.5 +1 turn, bigwman ×0.8, wizcudi ×1, jrohn ×0.9, loken ×0.9
 - **Lines you can say** (RIGHT = the conditions under which it is THE right one; the others are always wrong):
-  - "The cats are with you? Thank god. Give them tuna." **RIGHT** _(if carry="cat")_
+  - "A lynx with you? Thank god. Give it tuna. A lot of tuna." **RIGHT** _(if carry="lynx")_
   - "I heard what happened at The Box. I am not angry. Honestly." **RIGHT** _(if flag="ljunkyDone")_
   - "You smell of beer. Go and drink some water. Then we talk." **RIGHT** _(if state="drunk")_
   - "I know the promises. I will not take another." **RIGHT** _(if debtMin=2)_
@@ -362,25 +388,25 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 
 ### Freezer Freja (`freja`), role merchant, release mon
 - At [15,34], wanders in [14,34,7,1]
-- Sells: meatballs, frostMk1
+- Sells: meatballs, jam
 - Party: none
-- Can die: true, catchable: true, likes: FROST
+- Can die: true, catchable: true, likes: meatballs
 - Epitaph: "Finally warm."
 - **Personality:** dry (flat, short, deadpan); friends: berit
 - **What they say** (best match first, no repeats until the pool is used up):
-  -  _(if step="freja_penguin:0")_ "Have you found a penguin yet? Any penguin. It does not have to like me."
-  -  _(if metMin=2, questNot="freja_penguin")_ "It is lonely in here. Bring me a Freezer Penguin. Just so I can see it. Do not tell the peas."
+  -  _(if step="freja_penguin:0")_ "Have you found a rat yet? Any rat. It does not have to like me."
+  -  _(if metMin=2, questNot="freja_penguin")_ "Something is living in the freezer pipes. Bring me a Rat. Just so I can see it. Do not tell the peas."
       - you: "I will find one." → "Mm. Thanks." [tone:"kind"]
-      - you: "Penguins have jobs." → "Mm." [tone:"funny"]
-  -  _(if questDone="freja_penguin")_ "It stood by the peas for a whole minute. I will remember that forever."
+      - you: "Rats have jobs." → "Mm." [tone:"funny"]
+  -  _(if questDone="freja_penguin")_ "It sat by the peas for a whole minute. I will remember that forever."
   -  _(if met=0)_ "Cold in here. Colder out there. You want something, or are you just standing in my draught?"
       - you: "Just looking." → "Mm. Everyone is." [tone:"kind"]
       - you: "Your freezers are lovely." → "Please do not." [tone:"flirt"]
-  -  _(if metMin=1)_ "Listen. FIZZ beats GRUB, GRUB beats WILD, WILD beats TECH, TECH beats FROST, FROST beats RUSTLE, RUSTLE beats FIZZ. Write it down. Or do not. I am only a freezer." [tell:"types"]
-  -  _(if carry="peng")_ "A penguin. Is it warm? Why is it not shivering?"
+  -  _(if metMin=1)_ "Listen. FANG beats WING, WING beats ROOT, ROOT beats WATER, WATER beats STONE, STONE beats SHELL, SHELL beats FANG. Teeth catch birds, birds eat plants, roots drink water, water wears stone, stones crack shells, shells break teeth. Write it down. Or do not. I am only a freezer." [tell:"types"]
+  -  _(if carry="rat")_ "A rat. In MY freezer aisle? Name it. Not Gunnar. I knew a Gunnar."
   -  _(if killed="berit")_ "Berit and I shared the lunch room. It is very quiet at the lunch table now."
   -  _(if state="high")_ "Your eyes are the size of dinner plates. Lie down by the peas."
-  -  "Penguins hate it when you leave the freezer door open. Or love it. I forget."
+  -  "Rats love it when you leave the freezer door open. Or hate it. I forget."
 
 ### Hallucinating Hasse (`hasse`), role talker, release mon
 - At [16,13], wanders in [13,10,10,5]
@@ -393,6 +419,7 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
   -  _(if met=0)_ "Can you smell purple? No? Then you have not lived."
       - you: "Smells blue to me." → "BLUE! Yes! You see it too!" [tone:"funny"]
       - you: "No." → "Honest. Sad. Honest." [tone:"honest"]
+  -  _(if relMin=2, notFlag="got:lsd")_ "Psst. You are okay. I like you. Take this: a little rainbow. Put it on a ladybug. Do not ask me how I know." [tell:["recipe:laddybug","recipe:ladger","recipe:acidadder"] set:{"got:lsd":true} give:{"lsd":1}]
   -  _(if state="high")_ "YOU can see them too! The shapes! Tell no one. Tell everyone."
   -  _(if hero="jrohn")_ "Jrohn! That is you. Wait. That is me? Which one of us is wearing the shirt?"
   -  _(if from="tue", metMin=1)_ "There is a cave halfway up the mountain. A shaman lives in it. Half plant, half man, no shirt. I do not know who he is." [tell:"house:jrohn"]
@@ -404,7 +431,7 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - At [38,68], wanders in [35,66,10,3]
 - Sells: tranq, stache
 - Party: none
-- Can die: true, catchable: true, likes: WILD
+- Can die: true, catchable: true, likes: stache
 - Epitaph: "Took a little off the top. All of it."
 - **Personality:** salesman (friendly, always selling); friends: maadmads, jonas
 - **What they say** (best match first, no repeats until the pool is used up):
@@ -424,12 +451,13 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 
 ### Hardware Jonas (`jonas`), role merchant, release mon
 - At [10,57], wanders in [9,56,3,2]
-- Sells: rock, bottle, fizzMk1, grubMk1, wildMk1, techMk1, rustleMk1, fizzMk2, grubMk2, wildMk2, fizzMk3, grubMk3, wildMk3
+- Sells: rock, bottle, mouseTrap, jamJar, rodTrap, cheese, nuts, jam, bread, meat
 - Party: none
-- Can die: true, catchable: true, likes: TECH
+- Can die: true, catchable: true, likes: rock
 - Epitaph: "Always had the right tool. Except this time."
 - **Personality:** grumpy (complains, hates small talk); friends: anna, barber; gives {"rock":3} when liked (rel ≥ 4)
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if metMin=1)_ "Anything above a mouse trap is Tore. Forest edge, a clearing by the dirt road. He bites. Not literally. Mostly." [tell:"tore"]
   -  _(if step="jonas_bulbs:1")_ "Well? How was she about the bill?"
   -  _(if step="jonas_bulbs:0")_ "Anna. The light bill. Go and talk to her. She yells less at strangers."
   -  _(if metMin=3, questNot="jonas_bulbs")_ "Anna buys the cheap bulbs, then yells at me about the bill. Talk to her about it? For me?"
@@ -479,13 +507,15 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 
 ### Pharmacist (`apotek`), role merchant, release mon
 - At [40,37]
-- Sells: fizztab
+- Sells: fizztab, xanax
 - Party: none
 - Can die: false, catchable: true, likes: -
 - Epitaph: ""
 - **Personality:** dry (flat, short, deadpan)
 - **What they say** (best match first, no repeats until the pool is used up):
   -  _(if met=0)_ "Everyone is fully healed. Take care out there."
+  -  _(if step="xanax_rx:0")_ "A Signal Crayfish. From the big lake. Show me one and the doctor will sign."
+  -  _(if metMin=2, notFlag="xanaxRx", questNot="xanax_rx")_ "Something for the nerves? I need a prescription. The doctor wants a Signal Crayfish. I do not ask. I just pass it on."
   -  _(if state="blurred")_ "You are swaying. Sit. Breathe. Do not mix any more."
   -  _(if debtMin=2)_ "There is no medicine for promise debt. Only payment."
   -  "Take two Fizz tablets and call me in the morning. I am here at night too."
@@ -494,19 +524,19 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - At [6,71]
 - Sells: burger
 - Party: none
-- Can die: true, catchable: true, likes: GRUB
+- Can die: true, catchable: true, likes: buns
 - Epitaph: "Well done. Finally."
 - **Personality:** hothead (loud, proud, short fuse)
 - **What they say** (best match first, no repeats until the pool is used up):
   -  _(if met=0)_ "ORDER UP! Oh. You are not an order."
-  -  _(if carry="bear")_ "Is that a BURGER BEAR? Do not bring it near my grill. It knows."
+  -  _(if carry="bear")_ "Is that a BEAR? In my kitchen? It is always hungry. Do not bring it near my grill."
   -  "The secret ingredient is rage. And mayonnaise."
 
 ### Pizzeria Berga (`pizzaiolo`), role merchant, release mon
 - At [17,71]
 - Sells: kebabpizza
 - Party: none
-- Can die: true, catchable: true, likes: GRUB
+- Can die: true, catchable: true, likes: buns
 - Epitaph: "Extra sauce, extra dead."
 - **Personality:** flirty (warm, teasing, a bit much)
 - **What they say** (best match first, no repeats until the pool is used up):
@@ -518,12 +548,12 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - At [28,71]
 - Sells: sushi
 - Party: none
-- Can die: true, catchable: true, likes: FROST
+- Can die: true, catchable: true, likes: sushi
 - Epitaph: "Rolled away."
 - **Personality:** dry (flat, short, deadpan)
 - **What they say** (best match first, no repeats until the pool is used up):
   -  _(if met=0)_ "Fresh today. Probably."
-  -  _(if carry="salmon")_ "That salmon roll walks. That is not on my menu. Please take it away."
+  -  _(if carry="perch")_ "That perch is staring at my fish tank. Please keep it away from my fish tank."
   -  "Soy sauce is not a personality."
 
 ### Guy behind the bottle machines (`dealer`), role dealer, release mon
@@ -534,6 +564,8 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - Epitaph: "Out of stock."
 - **Personality:** paranoid (whispers, suspects everyone)
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if relMin=1)_ "Coke on a roach, a boar, a tortoise: they get FAST. Shrooms on a hedgehog: spores. I did not say anything." [tell:["recipe:cokeroach","recipe:blowboar","recipe:snortoise","recipe:sporecupine"]]
+  -  _(if metMin=1, notCarry="faltboken")_ "I also sell a book. Field research. Very academic. Four points."
   -  _(if met=0)_ "Psst. You didn't see me."
   -  _(if relMin=2)_ "You again. Good. You are not a cop. Cops have worse shoes."
   -  _(if night=true)_ "Nighttime is good for business. And for hiding."
@@ -542,7 +574,7 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 ### Coach Kenta (`kenta`), role gym, release mon
 - At [43,15]
 - Sells: protein
-- Party: bear Lv9, golem Lv10, frog Lv11
+- Party: bear Lv9, boar Lv10, fox Lv11
 - Can die: true, catchable: true, likes: protein
 - Epitaph: "Did one more rep."
 - **Personality:** hothead (loud, proud, short fuse); friends: trainer1, trainer2
@@ -555,7 +587,7 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 ### Protein Patrik (`trainer1`), role trainer, release mon
 - At [39,14]
 - Sells: nothing
-- Party: bear Lv8, slime Lv8
+- Party: bear Lv8, cockroach Lv8
 - Can die: true, catchable: true, likes: protein
 - Epitaph: "Skipped leg day. Permanently."
 - **Personality:** hothead (loud, proud, short fuse); friends: kenta
@@ -567,7 +599,7 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 ### Kettlebell Kim (`trainer2`), role trainer, release mon
 - At [44,11]
 - Sells: nothing
-- Party: golem Lv9, crow Lv8
+- Party: boar Lv9, crow Lv8
 - Can die: true, catchable: true, likes: protein
 - Epitaph: "Swung too hard."
 - **Personality:** dry (flat, short, deadpan); friends: kenta
@@ -578,7 +610,7 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 ### AI-Ljunky (`aiLjunky`), role trainer, release tue
 - At [44,12]
 - Sells: nothing
-- Party: wraith Lv18, snake Lv19, frog Lv19, mummy Lv20
+- Party: wraith Lv18, methmoth Lv19, ketacrow Lv19, cokeroach Lv20
 - Can die: true, catchable: true, likes: bitcoin
 - Epitaph: "SEGMENTATION FAULT (core dumped)."
 - **Personality:** robot (ALL CAPS, glitchy)
@@ -644,20 +676,22 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - Epitaph: "Slipped on the way up."
 - **Personality:** grumpy (complains, hates small talk)
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if metMin=2)_ "Tore lives where the trees thin. Makes traps. Hates visitors. Likes fur." [tell:"tore"]
   -  _(if metMin=1)_ "Jrohn brews in the cave. The order matters: fern first, then the mushroom, then moss. Do not ask me how I know. I carried the herbs." [tell:"herbs"]
   -  _(if met=0)_ "Hiking boots? No? You will regret that. Everyone does."
-  -  _(if carry="peng")_ "A freezer penguin on a mountain. It looks at home, at least."
+  -  _(if carry="hare")_ "A mountain hare. Still in its winter coat. Suspicious."
   -  _(if night=true)_ "Nobody goes up at night. Except the shaman. And he floats."
   -  "The trail is long and the rocks are rude. Halfway up there is a cave. Do not touch the boulder."
 
-### Doorman Dragan (`doorman`), role talker, release tue
+### Doorman Dragan (`doorman`), role merchant, release tue
 - At [143,59], wanders in [141,58,6,2]
-- Sells: nothing
+- Sells: molly, speed, keta
 - Party: none
 - Can die: true, catchable: true, likes: coke
 - Epitaph: "Not tonight. Not ever."
 - **Personality:** hothead (loud, proud, short fuse)
 - **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if relMin=1)_ "Molly on a badger, a lynx, a squirrel, a pike. Ketamine on a crow. Speed on a beetle. I said NOTHING. Move along." [tell:["recipe:mollynx","recipe:ecstadger","recipe:trancequirrel","recipe:mollipike","recipe:ketadger","recipe:ketacrow","recipe:speedbeetle"]]
   -  _(if met=0)_ "Name? Not on the list. Move along."
   -  _(if night=true)_ "THE BASS IS UP. It is night. Do you feel it in your teeth?"
   -  _(if hero="bigwman")_ "Oh, it is you. The owner. I did not recognise you with the shirt on."
@@ -665,9 +699,9 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 
 ### Fisherman Folke (`folke`), role merchant, release tue
 - At [72,19], wanders in [68,18,8,2]
-- Sells: net, netTrap
+- Sells: net, netTrap, worms
 - Party: none
-- Can die: true, catchable: true, likes: FROST
+- Can die: true, catchable: true, likes: worms
 - Epitaph: "The big one got away. And back."
 - **Personality:** dreamer (drifting, half in another world); friends: bengt
 - **What they say** (best match first, no repeats until the pool is used up):
@@ -684,7 +718,7 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
       - you: "What are you fishing for?" → "The one with the crown. He always gets away." [tone:"kind"]
       - you: "Any luck?" → "Luck is for lottery winners. I have patience." [tone:"funny"]
   -  _(if metMin=1, from="wed")_ "You want to reach the castle? Over the big lake? Then you want Boat-Bengt, down on the western shore. He trades boats. For vans, strangely." [tell:"boat"]
-  -  _(if carry="pike", from="wed")_ "THAT is a Pikezilla! Feed it, level it. At the right size it can ferry you across the water on its back. Do not ask how I know." [tell:"ferry"]
+  -  _(if carry="pikezilla", from="wed")_ "THAT is a Pikezilla! Feed it, level it. At the right size it can ferry you across the water on its back. Do not ask how I know." [tell:"ferry"]
   -  _(if night=true)_ "Night fishing is the best. The lake breathes."
   -  "Nets, traps, patience. Two of those are for sale."
 
@@ -712,7 +746,7 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
   -  _(if met=0)_ "Shh. Night shift. I watch the lot. Somebody has to, and it is never the day shift."
       - you: "What do you see?" → "Bats. Mostly. And once, a trolley that walked on its own." [tone:"kind"]
       - you: "Nothing happens here." → "That is exactly what they want you to think." [tone:"rude"]
-  -  _(if carry="bat")_ "A bat in a bag. Good. Do not let it near the lights."
+  -  _(if carry="moth")_ "A moth in a bag. Good. Do not let it near the lights."
   -  "The rave in the deep forest is louder at night. You can feel it in the bags."
   -  "Day people have no idea. I could tell them. They would not listen."
 
@@ -741,6 +775,17 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
   -  _(if relMin=2)_ "You are a good customer. I will pay a bit above the going rate. A bit."
   -  "Creatures? I know a guy in Norrtälje. He knows a guy."
 
+### Trapper Tore (`tore`), role trapper, release tue
+- At [50,58], wanders in [49,57,3,3]
+- Sells: honey, salt, meat, worms, cheese
+- Party: none
+- Can die: true, catchable: true, likes: honey
+- Epitaph: "Caught in his own trap. Fitting."
+- **Personality:** grumpy (complains, hates small talk)
+- **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if met=0)_ "Traps. I make them better. Fur and kronor. Mostly fur. Do not touch the pit."
+  -  "A good trap is a patient trap. Bring me fur, scales, shells. And kronor."
+
 ### Inkasso-Ingvar (`ingvar`), role trainer, release wed
 - At [0,0]
 - Sells: nothing
@@ -766,17 +811,17 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
   1. Bring the pirate an empty bottle (Hardware Jonas sells them). (hand in to pirate) _(if carry="bottle")_
   - reward: rel:{"pirate":2} give:{"surstromming":1} — "The pirate cries a little."
 - **Company for the freezer** (`freja_penguin`, given by freja, release tue)
-  1. Show Freja a Freezer Penguin. (hand in to freja) _(if carry="peng")_
-  - reward: rel:{"freja":2} give:{"meatballs":3,"frostMk1":1} — "She cannot stop smiling. Cold smile."
-- **The cat hair** (`barber_fur`, given by barber, release tue)
-  1. Bring the Barber one of Ljunky's cats (it has to be a real one). (hand in to barber) _(if carry="cat")_
+  1. Show Freja a Rat (there is something in her pipes). (hand in to freja) _(if carry="rat")_
+  - reward: rel:{"freja":2} give:{"meatballs":3,"jamJar":1} — "She cannot stop smiling. Cold smile."
+- **The fox fur** (`barber_fur`, given by barber, release tue)
+  1. Bring the Barber a Fox. He says it is for the moustache wax. (hand in to barber) _(if carry="fox")_
   - reward: rel:{"barber":2,"maadmads":1} give:{"ringbox":1} kr:300 — "He weeps over the fur. Pays well."
 - **Anna's light bill** (`jonas_bulbs`, given by jonas, release tue)
   1. Talk to Anna about the light bill. _(if flag="talked:anna")_
   2. Tell Jonas how it went. (hand in to jonas)
-  - reward: rel:{"jonas":2,"anna":2} tell:"wife:anna" give:{"techMk1":1} — "Jonas finally understands the meter."
+  - reward: rel:{"jonas":2,"anna":2} tell:"wife:anna" give:{"mouseTrap":1} — "Jonas finally understands the meter."
 - **The one with the crown** (`folke_pike`, given by folke, release tue)
-  1. Show Folke a Pikezilla. (hand in to folke) _(if carry="pike")_
+  1. Show Folke a Pikezilla. (hand in to folke) _(if carry="pikezilla")_
   - reward: rel:{"folke":3} give:{"netTrap":1} — "Folke whispers: "It is real." And gives you a trap."
 - **The perfect cast** (`folke_cast`, given by folke, release tue)
   1. Fish with a perfect timing (every reel in the gold). _(if flag="fish:perfect")_
@@ -786,6 +831,9 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
   1. Make par on the first hole (the tee is by the pond). _(if flag="golf:par")_
   2. Tell Caddy Calle. (hand in to caddy)
   - reward: rel:{"caddy":3} give:{"beer6":1} kr:250 — "Calle shakes your hand. It is damp."
+- **The prescription** (`xanax_rx`, given by apotek, release tue)
+  1. Show the pharmacist a Signal Crayfish (big lake, a tier 3 water trap at night). (hand in to apotek) _(if carry="signalCrayfish")_
+  - reward: rel:{"apotek":2} tell:["recipe:xanadger","recipe:xanaxfox"] set:{"xanaxRx":true} — "Prescription granted. Xanax is on the shelf."
 - **The WOD** (`box_wod`, given by kb1, release mon)
   1. Warm up in The Box: the kettlebells, light to heavy. _(if flag="wod3")_
   2. Finish on the rower. _(if flag="edge:ljunky")_
@@ -822,10 +870,12 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - `fern` 🌿 A fern at [136,24] — says: "A fern, growing out of the cave wall. It looks strangely proud."
 - `mush` 🍄 A mushroom at [145,27] — says: "A mushroom. It tastes of Thursdays. You pick it." / "A mushroom, cold. The cave coughs. Something about the order…"
 - `moss` 🪨 Moss at [136,28] — says: "Moss. Soft. It purrs. You pick it." / "Moss, too soon. It sulks. The order matters."
-- `cauldron` 🍲 The cauldron at [141,24] — says: "The brew bubbles. Jrohn will be very, very relaxed." / "You add the herbs. The cauldron hums. Somewhere, Jrohn loses track of what a fight is." / "A cold cauldron. It wants herbs, in the right order. Someone on the mountain knows it."
+- `cauldron` 🍲 The cauldron at [141,24] — says: "The cauldron bubbles. The elves wave from inside." / "The brew bubbles. Jrohn will be very, very relaxed." / "You add the herbs. The cauldron hums. Somewhere, Jrohn loses track of what a fight is." / "A cold cauldron. It wants herbs, in the right order. Someone on the mountain knows it."
 - `throne` 👑 The throne at [141,6] — says: "The throne is quiet. For now." / "An empty throne. Dusty. Löken guards it from the lawn, gently."
 - `bar` 🍹 The bar at [139,64] — says: "The bartender shrugs. You already have yours." / "The bartender hands you a glow stick without a word. 🍹"
 - `dj` 🎧 The DJ booth at [148,64] — says: "The beat is perfect. Nobody can count it now." / "The DJ sees the glow stick. "You. Up here." You drop the beat on the seven. Somewhere, BigWman loses count of everything." / "The DJ is in the zone. Bring something that glows." / "The DJ is asleep under the decks. Come back after dark."
+- `camper` 🚐 A camper van at [121,58] — says: "The camper is empty. The smell stays. Do not touch the thermos." / "Under the bunk, in a sock: a small bag of bright crystals and a note: "for the Methmoth guy. Do NOT." You take it. It glows a little." / "A dented camper van, curtains drawn. On the dashboard: a thermos, a lamp (lit) and a coffee- and weed-stained book. FÄLTBOKEN – Nordens Djur, med anteckningar. Nobody is coming back for it."
+- `alley` 🗑️ A city alley at [92,43], only when {"night":true} — says: "A bin. A smell. Nothing else tonight." / "Behind a bin, a very small, very cold bag. You are not sure what it is. You are sure what it is."
 - `balloons` 🎈 Balloon stand at [27,47], only when {"day":"mon"} — says: "Out of balloons. Monday is for balloons." / "A man gives you a balloon and a Fizz tablet. "Monday!" he says. That is all he says."
 - `wallet` 👛 A lost wallet at [30,18], only when {"day":"wed"} — says: "Empty now. A photo of a cat." / "A lost wallet. 200 kr and a photo of a cat. You keep the money. The cat judges you."
 

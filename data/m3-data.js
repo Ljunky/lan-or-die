@@ -21,95 +21,227 @@ tuning: {
   KO_CATCH: { C: .7, U: .55, R: .4, E: .3, L: .22, M: .3, H: .35 },    // catch chance after a knockout, by rarity (H = heroes, wives, NPCs)
   CATCH_R: { C: .7, U: .5, R: .32, E: .22, L: .15, M: .1, H: .2 },     // carrier-bag multiplier before a knockout
   RARITY_STAT: { C: 1, U: 1.06, R: 1.12, E: 1.2, L: 1.25, M: 1.35, H: 1.15 },
+  NIGHT: [20, 6],                     // real clock: night runs from 20:00 to 06:00 (people, traps, rave, moths)
+  WILD_STAT: 1.2,                     // stat multiplier for wild creatures (also from traps and fishing): the lower the easier the wild
+  BOSS_STAT: .6,                      // stat multiplier for hero teams and trainer drug forms: they are drug forms (×1.3, rarer) fighting your youngling-stage party, plus their trip traits
+  TRIP_MIN: 30,                       // a bad trip: the creature is 'sketchy' (cannot fight) for this many REAL minutes, also while the game is closed
+  BOSS_AT_GATE: false,                // false: hero teams follow the old ladder (BOSS_LV + steps). true: levels = the house gate −2 / ±0 / +2 (use once the heroes live in their houses)
+  TRAP: { nothing: .25, lower: .25, own: .4, higher: .1, bait: .1, step: .05, ownCap: .6, drug: .3, drugNothing: .1 },   // what a ready trap rolls (see M3_CREATURES.md §7)
   PTS: { item: 2500, species: 2000, speciesMax: 20, hero: 30000, partner: 4000, dev: 50000, egg: 50000 }  // goals only, max 300 000. Levels give no points
 },
 
-/* ---------- types: each beats the next one in the list (×strong), loses to the previous (×weak). MIND is neutral ---------- */
+/* ---------- types: each beats the next one in the list (×strong), loses to the previous (×weak). MIND is neutral (people, Dev, the Wraith).
+   FANG › WING › ROOT › WATER › STONE › SHELL › FANG: predators catch birds, birds strip plants, roots drink water, water wears stone, stones crack shells, shells break teeth ---------- */
 types: {
-  cycle: ['FIZZ', 'GRUB', 'WILD', 'TECH', 'FROST', 'RUSTLE'], strong: 1.5, weak: .67,
-  colors: { FIZZ: '#e8b820', GRUB: '#5fae3e', WILD: '#c0692e', TECH: '#2fa3d8', FROST: '#7fd3f0', RUSTLE: '#9b8fb8', MIND: '#e05cc4', NONE: '#9aa4ad' }
+  cycle: ['FANG', 'WING', 'ROOT', 'WATER', 'STONE', 'SHELL'], strong: 1.5, weak: .67,
+  colors: { FANG: '#b5651d', WING: '#5ec2f2', ROOT: '#4cae4f', WATER: '#2f6fe4', STONE: '#8e949c', SHELL: '#e3a02c', MIND: '#e05cc4', NONE: '#9aa4ad' }
 },
 
-/* ---------- moves. p = power (0 = status), acc, hits, stun (chance), self/foe = stat stages, say = extra line, special = scripted ---------- */
+/* ---------- moves. p = power (0 = status), acc, hits (number or [min,max]), stun (chance), self/foe = stat stages, say = extra line.
+   Move extras (all optional): heal (self, fraction) · partyHeal (every creature on your side) · selfStun (the user skips n turns; stunText = what is said then) · foeLose (foe skips n turns, once per battle) · vanish (turn 1: hides, turn 2: hits)
+   cute (foe can't attack it for n turns) · confuse (chance; on a status move = always, 3 turns) · confuseAll · poison (turns) · drain (heal by this share of the damage) · recoil · rage (stronger the lower its HP)
+   bestType (uses the type that hits hardest) · sure (never misses) · team ({stat: n}, +1 more at night) · special = scripted (Dev Ljunky) ---------- */
 moves: {
   slam: { name: 'Body Slam', type: null, p: 40 },
-  foam: { name: 'Foam Spray', type: 'FIZZ', p: 45 }, can: { name: 'Can Toss', type: 'FIZZ', p: 55 }, burp: { name: 'Burp Blast', type: 'FIZZ', p: 75, acc: .88 },
-  pickle: { name: 'Pickle Breath', type: 'GRUB', p: 50 }, dill: { name: 'Dill Whip', type: 'GRUB', p: 72, acc: .9 },
-  frz: { name: 'Freezer Burn', type: 'FROST', p: 50 }, peas: { name: 'Pea Avalanche', type: 'FROST', p: 72, acc: .9 },
-  wonky: { name: 'Wonky Wheel', type: 'RUSTLE', p: 95, acc: .62, say: 'The wheel spins the wrong way!' }, rattle: { name: 'Rattle', type: 'RUSTLE', p: 45 },
-  unexp: { name: 'Unexpected Item', type: 'TECH', p: 30, stun: .5, say: 'UNEXPECTED ITEM IN BAGGING AREA.' }, beep: { name: 'Error Beep', type: 'TECH', p: 58 },
-  sugar: { name: 'Sugar Rush', type: 'GRUB', p: 0, self: { spd: 2 } }, goo: { name: 'Sticky Goo', type: 'GRUB', p: 52 },
-  flutter: { name: 'Flutter', type: 'RUSTLE', p: 42 }, wrap: { name: 'Bag Wrap', type: 'RUSTLE', p: 62 },
-  cin: { name: 'Cinnamon Wrap', type: 'GRUB', p: 55, foe: { spd: -1 } },
-  bargain: { name: 'BARGAIN!', type: 'RUSTLE', p: 0, foe: { def: -2 }, say: 'An ear-splitting scream about prices!' }, price: { name: 'Price Cut', type: 'RUSTLE', p: 62 },
-  peck: { name: 'Pant Peck', type: 'WILD', p: 52 }, charge: { name: 'Fast Charge', type: 'TECH', p: 0, self: { atk: 2 } }, zap: { name: 'Plug Zap', type: 'TECH', p: 62 },
-  patty: { name: 'Double Patty', type: 'GRUB', p: 36, hits: 2 }, hug: { name: 'Bear Hug', type: 'WILD', p: 66 },
-  swarm: { name: 'Swarm', type: 'WILD', p: 18, hits: 4 }, tonic: { name: 'Tonic Wish', type: 'FIZZ', p: 0, self: { def: 1 }, heal: .3 },
-  stare: { name: 'Smoky Stare', type: 'FIZZ', p: 0, foe: { atk: -2 } }, drowsy: { name: 'Drowsy', type: 'MIND', p: 20, stun: .6, say: 'A sticky, sleepy cloud…' },
-  garlic: { name: 'Garlic Sauce', type: 'GRUB', p: 60 }, wasabi: { name: 'Wasabi Kick', type: 'FROST', p: 64 }, trim: { name: 'Trim', type: 'WILD', p: 40, foe: { atk: -1 } },
-  bite: { name: 'Lake Bite', type: 'WILD', p: 85, acc: .85 }, card: { name: 'Golden Member Card', type: 'MIND', p: 70 },
-  fetch: { name: 'Fetch!', type: 'WILD', p: 55 }, knock: { name: 'Knock It Off The Shelf', type: 'RUSTLE', p: 60, foe: { def: -1 } },
-  curse: { name: 'Forgotten Item', type: 'MIND', p: 70, say: 'You forgot the milk. Again.' }, neon: { name: 'Neon Antlers', type: 'WILD', p: 80, stun: .3 },
-  receipt: { name: 'Endless Receipt', type: 'RUSTLE', p: 24, hits: 4 }, seed: { name: 'Seed Phrase', type: 'MIND', p: 95, acc: .9, say: 'Twelve words echo. You forgot all of them.' },
-  ferry: { name: 'Ferry', type: 'WILD', p: 0, say: 'It paddles on, steady as a ferry.' },   // a creature that knows this can carry you over the big lake (once someone has taught you)
+  // FANG
+  nip: { name: 'Nip', type: 'FANG', p: 38 }, gnaw: { name: 'Gnaw', type: 'FANG', p: 26, hits: 2 }, bite: { name: 'Bite', type: 'FANG', p: 48 }, claw: { name: 'Claw Swipe', type: 'FANG', p: 55 },
+  pounce: { name: 'Pounce', type: 'FANG', p: 64 }, snap: { name: 'Snap', type: 'FANG', p: 68, acc: .95 }, tusk: { name: 'Tusk Charge', type: 'FANG', p: 72, stun: .25 },
+  maul: { name: 'Maul', type: 'FANG', p: 84, acc: .9 }, rend: { name: 'Rend', type: 'FANG', p: 92, acc: .85 }, hug: { name: 'Bear Hug', type: 'FANG', p: 66 },
+  growl: { name: 'Growl', type: 'FANG', p: 0, foe: { atk: -1 } },
+  // WING
+  flap: { name: 'Flap', type: 'WING', p: 40 }, peck: { name: 'Pant Peck', type: 'WING', p: 52 }, gust: { name: 'Gust', type: 'WING', p: 50, foe: { spd: -1 } }, swoop: { name: 'Swoop', type: 'WING', p: 58 },
+  dive: { name: 'Dive Bomb', type: 'WING', p: 74, acc: .9 }, talon: { name: 'Talon Strike', type: 'WING', p: 82, acc: .88 }, screech: { name: 'Screech', type: 'WING', p: 0, foe: { def: -1 } },
+  // ROOT
+  nibble: { name: 'Nibble', type: 'ROOT', p: 40 }, vine: { name: 'Vine Whip', type: 'ROOT', p: 52 }, thorn: { name: 'Thorn Shot', type: 'ROOT', p: 62 },
+  stomp: { name: 'Stomp', type: 'ROOT', p: 72 }, gore: { name: 'Antler Gore', type: 'ROOT', p: 80, acc: .9 }, bloomup: { name: 'Bloom', type: 'ROOT', p: 0, heal: .3 },
+  // WATER
+  splash: { name: 'Splash', type: 'WATER', p: 42 }, bubble: { name: 'Bubble Beam', type: 'WATER', p: 54 }, wave: { name: 'Wave', type: 'WATER', p: 62 }, jet: { name: 'Water Jet', type: 'WATER', p: 72 },
+  torrent: { name: 'Torrent', type: 'WATER', p: 86, acc: .88 }, lbite: { name: 'Lake Bite', type: 'WATER', p: 85, acc: .85 },
+  ferry: { name: 'Ferry', type: 'WATER', p: 0, say: 'It paddles on, steady as a ferry.' },   // a creature that knows this can carry you over the big lake (once someone has taught you)
+  // STONE
+  pebble: { name: 'Pebble Toss', type: 'STONE', p: 42 }, crush: { name: 'Crush', type: 'STONE', p: 64 }, slide: { name: 'Rockslide', type: 'STONE', p: 78, acc: .9 }, boulder: { name: 'Boulder', type: 'STONE', p: 92, acc: .78 },
+  // SHELL
+  shell: { name: 'Shell Bash', type: 'SHELL', p: 48 }, quill: { name: 'Quill Jab', type: 'SHELL', p: 52 }, spike: { name: 'Spike Roll', type: 'SHELL', p: 60 }, pinch: { name: 'Pinch', type: 'SHELL', p: 56 },
+  roll: { name: 'Roll Out', type: 'SHELL', p: 68 }, chitin: { name: 'Chitin Crash', type: 'SHELL', p: 76 }, harden: { name: 'Harden', type: 'SHELL', p: 0, self: { def: 2 } },
+  // drug-form signature moves (one each; see trips for the passive side)
+  dgaf: { name: "Doesn't Care", type: 'FANG', p: 74, say: 'It does not care about your stat drops either.' },
+  nap: { name: 'Benzo Nap', type: 'FANG', p: 0, heal: .4, selfStun: 1, stunText: 'is still asleep. Zzz.', say: 'It dozes off. Zzz.' },
+  hug2: { name: 'Group Hug', type: 'FANG', p: 0, partyHeal: .15, foe: { atk: -1 }, say: 'Everyone gets a hug. Everyone.' },
+  khole: { name: 'K-Hole', type: 'FANG', p: 125, vanish: true, say: 'It slips out of reality…' },
+  kclaw: { name: 'Kaleidoscope Claw', type: 'FANG', p: 80, bestType: true },
+  eyes: { name: 'Big Eyes', type: 'STONE', p: 0, cute: 2, say: 'Those eyes. Nobody can attack that.' },
+  brk: { name: 'Breakthrough', type: 'WATER', p: 0, foeLose: 3, say: 'The foe meets the machine elves. They have a lot to say.' },
+  spores: { name: 'Spore Quills', type: 'SHELL', p: 22, hits: [3, 5], confuse: .35 },
+  chill: { name: 'Chill Out', type: 'ROOT', p: 0, heal: .25, self: { atk: -1 }, foe: { atk: -1 }, say: 'Everybody takes it easy.' },
+  rail: { name: 'Rail', type: 'SHELL', p: 58, say: 'Sniff. Fast.' },
+  dissoc: { name: 'Dissociate', type: 'WING', p: 64 },
+  spots: { name: 'Seven Spots of Truth', type: 'WING', p: 50 },
+  bass: { name: 'Drop the Bass', type: 'ROOT', p: 0, team: { spd: 1 }, say: 'THE BASS. Your team speeds up.' },
+  tweak: { name: 'Tweak', type: 'SHELL', p: 20, hits: [4, 6] },
+  dash: { name: 'Line Dash', type: 'SHELL', p: 66 },
+  sing: { name: 'Helan Går', type: 'SHELL', p: 56, self: { atk: 1 }, say: '🎶 Helan går, sjung hopp faderallan lallan lej!' },
+  lovebite: { name: 'Love Bite', type: 'WATER', p: 72, drain: .5 },
+  sporepunch: { name: 'Sporepunch', type: 'WATER', p: 78, confuse: .4 },
+  unbothered: { name: 'Unbothered', type: 'FANG', p: 0, self: { def: 2 }, heal: .15, say: 'It simply does not care.' },
+  truffle: { name: 'Truffle Rage', type: 'FANG', p: 72, rage: true },
+  nose: { name: 'Nose Charge', type: 'FANG', p: 108, acc: .9, recoil: .3 },
+  lamp: { name: 'Lamp Frenzy', type: 'WING', p: 0, self: { atk: 2 }, say: 'It sees the lamp. It sees ONLY the lamp.' },
+  void: { name: 'Moose in the Void', type: 'ROOT', p: 0, heal: .5, selfStun: 1, stunText: 'is somewhere else entirely.', say: 'The moose is not here. The moose is also not not here.' },
+  bloom: { name: 'Antler Bloom', type: 'ROOT', p: 0, confuse: 1, say: 'A spore cloud blooms from the antlers.' },
+  eye: { name: 'Third Eye Maul', type: 'FANG', p: 88, sure: true, confuse: .35 },
+  melt: { name: 'Melt', type: 'FANG', p: 42, foe: { def: -2 }, poison: 4 },
+  badtrip: { name: 'Bad Trip', type: 'WATER', p: 0, confuseAll: true, say: 'Everything melts. Including the hippo.' },
+  // people (heroes, wives, NPCs) and the Wraith: MIND is neutral
+  rattle: { name: 'Rattle', type: 'MIND', p: 45 }, zap: { name: 'Plug Zap', type: 'MIND', p: 62 }, beep: { name: 'Error Beep', type: 'MIND', p: 58 }, dill: { name: 'Dill Whip', type: 'MIND', p: 72, acc: .9 },
+  drowsy: { name: 'Drowsy', type: 'MIND', p: 20, stun: .6, say: 'A sticky, sleepy cloud…' }, card: { name: 'Golden Member Card', type: 'MIND', p: 70 },
+  curse: { name: 'Forgotten Item', type: 'MIND', p: 70, say: 'You forgot the milk. Again.' }, seed: { name: 'Seed Phrase', type: 'MIND', p: 95, acc: .9, say: 'Twelve words echo. You forgot all of them.' },
   // heroes and wives as party members
-  yes: { name: 'YES!', type: 'MIND', p: 0, self: { atk: 2 } }, lights: { name: 'Lights Out', type: 'TECH', p: 40, stun: .5 }, love: { name: 'I Love This!', type: 'MIND', p: 0, heal: .4 },
-  stick: { name: 'Stick Together', type: 'WILD', p: 30, hits: 3 }, dip: { name: 'Buy the Dip', type: 'MIND', p: 90, acc: .5 }, guilt: { name: 'Guilt Trip', type: 'MIND', p: 55, foe: { def: -1 } },
+  yes: { name: 'YES!', type: 'MIND', p: 0, self: { atk: 2 } }, lights: { name: 'Lights Out', type: 'MIND', p: 40, stun: .5 }, love: { name: 'I Love This!', type: 'MIND', p: 0, heal: .4 },
+  stick: { name: 'Stick Together', type: 'FANG', p: 30, hits: 3 }, dip: { name: 'Buy the Dip', type: 'MIND', p: 90, acc: .5 }, guilt: { name: 'Guilt Trip', type: 'MIND', p: 55, foe: { def: -1 } },
   // Dev Ljunky + AI-Ljunky
   patch: { name: 'Patch Notes', type: 'MIND', p: 0, special: 'patch' }, hotfix: { name: 'Hotfix', type: 'MIND', p: 0, special: 'hotfix' },
   spawn: { name: 'Spawn Bug', type: 'MIND', p: 0, special: 'spawn' }, rage: { name: 'Rage Quit', type: 'MIND', p: 110, special: 'rage' }, glitch: { name: 'Glitch Slap', type: 'MIND', p: 62 }
 },
 
-/* ---------- creatures. stats = [HP, ATK, DEF, SPD]. moves = [[move, learn level]]. rarity C U R E(epic) L M(mythic) H(person)
-   art = 48x48 PNG (transparent). likes = an item id or lure tag; sacrificing a matching item at its grave brings it back.
-   needs: 'reveal' = only appears while something reveals it (magic mushrooms). trapOnly: item id = can only be caught from that trap. ---------- */
+/* ---------- trip traits: what a drug does to a creature that was grown on it (creature field  trip: 'xanax').
+   Numbers: defMul/spdMul/atkMul = stat multipliers · skipP = chance to lose the turn (skipText = what is said; halfDmg = takes half damage that turn) · healSelf / healParty = share of max HP per turn · drainSelf = loses this share per turn
+   first = always moves first · crit = extra crit chance · immune = [drops, status, confuse] · extraHits / accPenalty = multi-hit moves · atkStep/defStep = stat steps per turn · confuseOnHit · foeAtkEvery2 · lsd = type changes each turn
+   catchBonus = wild foes are easier to catch while it is in the party · reveal = shows hidden creatures while in the party · badTrip = chance per feeding (5–12 %) that the creature goes sketchy for TRIP_MIN minutes ---------- */
+trips: {
+  xanax: { name: 'Benzo Calm', up: 'DEF ×1.4, immune to confusion and guilt', down: '15 % to doze off for a turn', defMul: 1.4, immune: ['confuse'], skipP: .15, skipText: 'dozes off. Zzz.', badTrip: .06 },
+  molly: { name: 'Love Everyone', up: 'heals the party 5 % every turn; wild foes are easier to catch', down: '20 % to refuse to attack ("too much love")', healParty: .05, catchBonus: .15, skipP: .2, skipText: 'is too full of love to attack.', badTrip: .09 },
+  keta: { name: 'Dissociate', up: 'immune to stat drops and status', down: 'sometimes K-hole: skips a turn and takes half damage', immune: ['drops', 'status', 'confuse'], skipP: .2, halfDmg: true, skipText: 'drifts into a K-hole.', badTrip: .1 },
+  lsd: { name: 'Kaleidoscope', up: 'its type changes every turn (often super-effective); reveals Epic creatures', down: 'its own type is random too, so it can turn weak', lsd: true, reveal: true, badTrip: .12 },
+  shrooms: { name: 'Spore Mind', up: 'moves can confuse; heals 5 % a turn; reveals Epic creatures', down: 'SPD ×0.85', confuseOnHit: .3, healSelf: .05, spdMul: .85, reveal: true, badTrip: .08 },
+  coke: { name: 'Rail', up: 'always moves first, +crit', down: 'loses 5 % HP every turn', first: true, crit: .15, drainSelf: .05, badTrip: .1 },
+  speed: { name: 'Tweak', up: 'multi-hit moves hit 2 extra times', down: 'accuracy −15 %', extraHits: 2, accPenalty: .15, badTrip: .07 },
+  meth: { name: 'Lamp Frenzy', up: 'ATK +1 every turn', down: 'DEF −1 every turn', atkStep: 1, defStep: -1, badTrip: .12 },
+  dmt: { name: 'Breakthrough', up: 'once per battle the foe loses 3 turns', down: 'uses its whole turn doing it', badTrip: .11 },
+  weed: { name: 'Chill', up: 'heals 8 % a turn; the foe\'s ATK drops every other turn', down: 'SPD ×0.7', healSelf: .08, foeAtkEvery2: -1, spdMul: .7, badTrip: .05 },
+  snaps: { name: 'Helan Går', up: '+crit', down: 'sings at the wrong moments', crit: .1, badTrip: .05 }
+},
+
+/* ---------- creatures: ONE ENTRY PER FORM (96 forms). Full design: M3_CREATURES.md.  stats = [HP, ATK, DEF, SPD]. moves = [[move, learn level]] (the last 4 learned are used).
+   line = the family (all forms of an animal). stage = 1 youngling · 2 teen · 3 adult · 'drug' = a form you only get by feeding. evolve = { lv, to } (automatic).
+   Drug forms: the teen has feed = { drugItem: formId } and feedLv; the form has trip (see trips), feedFrom = the teen. ability: noDrops | reveal.
+   size: S (a carrier bag works) · M (bag only as a youngling) · L / XL (trap only). Traps: tier 1-5 = how deep/big (a number or [a, b]), trap = the ladders that can hold it (ground | water | air), hab = places, day / night, bait = what it likes, mat = what Finish off drops.
+   starter: true = only ever a starter, never wild. wild: true on a drug form = it can also appear in the wild (zone lists name it). needs: 'reveal' = only while something reveals it.
+   Zones, trainer parties and quests name a LINE (the game picks the form for the level) or an exact form id. art: add  art: 'assets/creatures/<id>.png'  (48 × 48) when you have drawn it; until then the game shows ❔. ---------- */
 creatures: {
-  frog: { no: 1, name: 'Folköl Frog', type: 'FIZZ', rarity: 'C', stats: [56, 56, 50, 62], moves: [['foam', 1], ['slam', 1], ['can', 8], ['burp', 13]], desc: 'A frog with a can for a body. Foams when nervous.', art: 'assets/creatures/frog.png', likes: 'FIZZ', release: 'mon' },
-  cuke: { no: 2, name: 'Cucumber Dragon', type: 'GRUB', rarity: 'C', stats: [60, 60, 52, 54], moves: [['pickle', 1], ['slam', 1], ['dill', 9], ['peck', 14]], desc: 'Breathes pickle. Votes AIK.', art: 'assets/creatures/cuke.png', likes: 'GRUB', release: 'mon' },
-  peng: { no: 3, name: 'Freezer Penguin', type: 'FROST', rarity: 'C', stats: [64, 52, 62, 46], moves: [['frz', 1], ['slam', 1], ['peas', 9], ['flutter', 14]], desc: 'Wrapped in frozen peas. Never thaws.', art: 'assets/creatures/peng.png', likes: 'FROST', release: 'mon' },
-  golem: { no: 4, name: 'Trolley Golem', type: 'RUSTLE', rarity: 'U', stats: [72, 74, 72, 30], moves: [['rattle', 1], ['wonky', 1], ['slam', 6]], desc: 'One wheel always spins the wrong way.', art: 'assets/creatures/golem.png', likes: 'RUSTLE', release: 'mon' },
-  ghost: { no: 5, name: 'Self-scan Ghost', type: 'TECH', rarity: 'U', stats: [50, 60, 48, 72], moves: [['beep', 1], ['unexp', 1], ['zap', 12]], desc: 'Please place the item in the bagging area.', art: 'assets/creatures/ghost.png', likes: 'TECH', release: 'mon' },
-  slime: { no: 6, name: 'Pick-and-mix Slime', type: 'GRUB', rarity: 'C', stats: [62, 50, 56, 50], moves: [['goo', 1], ['sugar', 1], ['pickle', 10]], desc: '7.90 kr per hectogram. Sticky.', art: 'assets/creatures/slime.png', likes: 'GRUB', release: 'mon' },
-  bat: { no: 7, name: 'Plastic-bag Bat', type: 'RUSTLE', rarity: 'C', stats: [46, 52, 42, 70], moves: [['flutter', 1], ['wrap', 6], ['peck', 12]], desc: 'Costs 2 kr. Lives forever.', art: 'assets/creatures/bat.png', likes: 'RUSTLE', release: 'mon' },
-  mummy: { no: 8, name: 'Cinnamon-bun Mummy', type: 'GRUB', rarity: 'U', stats: [70, 62, 64, 40], moves: [['cin', 1], ['slam', 1], ['dill', 11]], desc: 'Baked in 1987. Still warm.', art: 'assets/creatures/mummy.png', likes: 'buns', release: 'mon' },
-  banshee: { no: 9, name: 'Bargain Banshee', type: 'RUSTLE', rarity: 'U', stats: [54, 64, 46, 66], moves: [['bargain', 1], ['price', 1], ['wrap', 10]], desc: 'Screams when something is 3 for 2.', art: 'assets/creatures/banshee.png', likes: 'RUSTLE', release: 'mon' },
-  fly: { no: 10, name: 'Fruit-fly Swarm', type: 'WILD', rarity: 'C', stats: [44, 58, 40, 74], moves: [['swarm', 1], ['peck', 6]], desc: 'Arrived with the bananas. Never left.', art: 'assets/creatures/fly.png', likes: 'WILD', release: 'tue' },
-  crow: { no: 11, name: 'Bottle-return Crow', type: 'WILD', rarity: 'C', stats: [52, 62, 46, 68], moves: [['peck', 1], ['can', 5], ['flutter', 10]], desc: 'Steals cans. Returns them. Keeps the 1 kr.', art: 'assets/creatures/crow.png', likes: 'WILD', release: 'mon' },
-  genie: { no: 12, name: 'Gin Genie', type: 'FIZZ', rarity: 'R', stats: [58, 66, 54, 70], moves: [['tonic', 1], ['foam', 1], ['burp', 10]], desc: 'Grants three wishes. All of them are tonic.', art: 'assets/creatures/genie.png', likes: 'FIZZ', release: 'tue' },
-  owl: { no: 13, name: 'Whisky Owl', type: 'FIZZ', rarity: 'R', stats: [64, 70, 62, 52], moves: [['stare', 1], ['peck', 1], ['can', 10]], desc: 'Peated. Judges your life choices.', art: 'assets/creatures/owl.png', likes: 'FIZZ', release: 'tue' },
-  snail: { no: 14, name: 'Cough-syrup Snail', type: 'MIND', rarity: 'U', stats: [66, 48, 70, 30], moves: [['drowsy', 1], ['goo', 1], ['slam', 8]], desc: 'Take two spoons. Then take a nap.', art: 'assets/creatures/snail.png', likes: 'shrooms', release: 'tue' },
-  snake: { no: 15, name: 'Charging-cable Snake', type: 'TECH', rarity: 'U', stats: [56, 66, 50, 64], moves: [['zap', 1], ['charge', 1], ['beep', 9]], desc: 'Always the wrong plug.', art: 'assets/creatures/snake.png', likes: 'TECH', release: 'mon' },
-  bear: { no: 16, name: 'Burger Bear', type: 'GRUB', rarity: 'U', stats: [78, 70, 62, 38], moves: [['patty', 1], ['hug', 1], ['slam', 8]], desc: 'Sesame-seed ears. Smells amazing.', art: 'assets/creatures/bear.png', likes: 'GRUB', release: 'mon' },
-  lizard: { no: 17, name: 'Kebab-pizza Lizard', type: 'GRUB', rarity: 'U', stats: [66, 68, 56, 54], moves: [['garlic', 1], ['slam', 1], ['dill', 10]], desc: 'Extra sauce. Extra spines.', art: 'assets/creatures/lizard.png', likes: 'GRUB', release: 'tue' },
-  salmon: { no: 18, name: 'Salmon Roll', type: 'FROST', rarity: 'U', stats: [58, 64, 58, 60], moves: [['wasabi', 1], ['frz', 1], ['peas', 10]], desc: 'Walks on chopsticks. Hates soy sauce.', art: 'assets/creatures/salmon.png', likes: 'FROST', release: 'tue' },
-  moth: { no: 19, name: 'Moustache Moth', type: 'WILD', rarity: 'R', stats: [52, 64, 50, 76], moves: [['trim', 1], ['flutter', 1], ['peck', 9]], desc: 'Lives in barber shops. Eats wax.', art: 'assets/creatures/moth.png', likes: 'WILD', release: 'tue' },
-  pike: { no: 20, name: 'Pikezilla', type: 'WILD', rarity: 'R', stats: [80, 82, 64, 56], moves: [['bite', 1], ['slam', 1], ['ferry', 30]], desc: 'The king of the lake. Wears reeds like a crown.', art: 'assets/creatures/pike.png', likes: 'WILD', release: 'tue' },
-  loyal: { no: 21, name: 'The Loyal Customer', type: 'MIND', rarity: 'L', stats: [86, 80, 76, 70], moves: [['card', 1], ['slam', 1], ['tonic', 1]], desc: 'Has collected stamps since 1972.', art: 'assets/creatures/loyal.png', likes: 'buns', release: 'tue', requires: 'loyalReady' },
-  walter: { no: 22, name: 'Walter', type: 'WILD', rarity: 'R', stats: [60, 66, 52, 80], moves: [['fetch', 1], ['peck', 1]], desc: 'Jrohn\'s dog. Ran away again.', art: 'assets/creatures/walter.png', likes: 'buns', release: 'tue' },
-  cat: { no: 23, name: 'The Cats', type: 'RUSTLE', rarity: 'R', stats: [56, 70, 50, 78], moves: [['knock', 1], ['peck', 1]], desc: 'Ljunky\'s. They knock things off shelves on purpose.', art: 'assets/creatures/cat.png', likes: 'WILD', release: 'tue' },
-  // EPIC: only while magic mushrooms reveal them
-  lich: { no: 30, name: 'Shopping-list Lich', type: 'MIND', rarity: 'E', stats: [84, 84, 72, 64], moves: [['curse', 1], ['glitch', 1]], desc: 'Every item you ever forgot. Alive.', art: 'assets/creatures/lich.png', likes: 'shrooms', needs: 'reveal', release: 'tue' },
-  elk: { no: 31, name: 'Neon Shroom Elk', type: 'WILD', rarity: 'E', stats: [90, 86, 68, 66], moves: [['neon', 1], ['hug', 1]], desc: 'Only visible to the enlightened. Or the very high.', art: 'assets/creatures/elk.png', likes: 'shrooms', needs: 'reveal', release: 'tue' },
-  serpent: { no: 32, name: 'Receipt Serpent', type: 'RUSTLE', rarity: 'E', stats: [80, 78, 66, 76], moves: [['receipt', 1], ['wrap', 1]], desc: '14 metres long. You do not want a copy.', art: 'assets/creatures/serpent.png', likes: 'shrooms', needs: 'reveal', release: 'tue' },
-  // MYTHIC: spawns after the grave reward, only caught with the Mythic Trap
-  wraith: { no: 40, name: 'Cold Wallet Wraith', type: 'MIND', rarity: 'M', stats: [96, 92, 80, 80], moves: [['seed', 1], ['glitch', 1], ['hotfix', 12]], desc: 'Holds 3,000 bitcoin. Forgot the password.', art: 'assets/creatures/wraith.png', likes: 'mythicTrap', trapOnly: 'mythicTrap', release: 'wed', requires: 'mythicSpawned' }
+  badgerCub: {line:'badger',stage:1,no:1,name:'Badger Cub',type:'FANG',rarity:'C',size:'S',stats:[50,53,48,42],moves:[['claw',1],['slam',1],['bite',8],['maul',20]],desc:'A cub with the confidence of a bear. Hisses at vacuum cleaners.',evolve:{lv:16,to:'badger'},starter:true,release:'mon',mat:'fur',bait:['honey']},
+  badger: {line:'badger',stage:2,no:2,name:'Badger',type:'FANG',rarity:'U',size:'M',stats:[66,70,64,56],moves:[['claw',1],['slam',1],['bite',8],['maul',20]],desc:'Sturdy, grumpy, and surprisingly good at digging.',evolve:{lv:32,to:'honeyBadger'},starter:true,release:'mon',mat:'fur',bait:['honey'],feedLv:24,feed:{xanax:'xanadger',molly:'ecstadger',keta:'ketadger',lsd:'ladger'}},
+  honeyBadger: {line:'badger',stage:3,no:3,name:'Honey Badger',type:'FANG',rarity:'R',size:'M',stats:[83,88,80,70],moves:[['claw',1],['slam',1],['bite',8],['maul',20],['dgaf',1]],desc:'Doesn\'t care. About anything. Ever.',ability:'noDrops',starter:true,release:'mon',mat:'fur',bait:['honey']},
+  xanadger: {line:'badger',stage:'drug',no:4,name:'Xanadger',type:'FANG',rarity:'R',size:'M',stats:[86,91,83,73],moves:[['claw',1],['slam',1],['bite',8],['maul',20],['nap',1]],desc:'Sleepy but tough. Naps in the middle of fights.',trip:'xanax',feedFrom:'badger',mat:'fur',release:'tue'},
+  ecstadger: {line:'badger',stage:'drug',no:5,name:'Ecstadger',type:'FANG',rarity:'R',size:'M',stats:[86,91,83,73],moves:[['claw',1],['slam',1],['bite',8],['maul',20],['hug2',1]],desc:'Hugs everyone. Including the thing that is trying to eat it.',trip:'molly',feedFrom:'badger',mat:'fur',release:'tue'},
+  ketadger: {line:'badger',stage:'drug',no:6,name:'Ketadger',type:'FANG',rarity:'R',size:'M',stats:[86,91,83,73],moves:[['claw',1],['slam',1],['bite',8],['maul',20],['khole',1]],desc:'Is it here? Is it there? It is behind you. Huge hit.',trip:'keta',feedFrom:'badger',mat:'fur',release:'tue'},
+  ladger: {line:'badger',stage:'drug',no:7,name:'Ladger',type:'FANG',rarity:'R',size:'M',stats:[86,91,83,73],moves:[['claw',1],['slam',1],['bite',8],['maul',20],['kclaw',1]],desc:'Sees every colour. Hits with the one that hurts most.',trip:'lsd',feedFrom:'badger',mat:'fur',release:'tue'},
+  lynxKitten: {line:'lynx',stage:1,no:8,name:'Lynx Kitten',type:'STONE',rarity:'C',size:'S',stats:[44,51,42,57],moves:[['pebble',1],['claw',1],['crush',9],['slide',22]],desc:'Tufted ears, enormous paws, no idea how to use either.',evolve:{lv:16,to:'lynx'},starter:true,release:'mon',mat:'fur',bait:['meat']},
+  lynx: {line:'lynx',stage:2,no:9,name:'Lynx',type:'STONE',rarity:'U',size:'M',stats:[58,68,56,76],moves:[['pebble',1],['claw',1],['crush',9],['slide',22]],desc:'Silent on stone. Stares at you from rooftops.',evolve:{lv:32,to:'mountainLynx'},starter:true,release:'mon',mat:'fur',bait:['meat'],feedLv:22,feed:{molly:'mollynx'}},
+  mountainLynx: {line:'lynx',stage:3,no:10,name:'Mountain Lynx',type:'STONE',rarity:'R',size:'M',stats:[73,85,70,95],moves:[['pebble',1],['claw',1],['crush',9],['slide',22]],desc:'King of the high rocks. Looks bored, is not.',starter:true,release:'mon',mat:'fur',bait:['meat']},
+  mollynx: {line:'lynx',stage:'drug',no:11,name:'MolLynx',type:'STONE',rarity:'R',size:'M',stats:[75,88,73,99],moves:[['pebble',1],['claw',1],['crush',9],['slide',22],['eyes',1]],desc:'Big Eyes. Nobody can bring themselves to attack it.',trip:'molly',feedFrom:'lynx',mat:'fur',release:'tue'},
+  toadlet: {line:'toad',stage:1,no:12,name:'Toadlet',type:'WATER',rarity:'C',size:'S',stats:[53,44,47,36],moves:[['splash',1],['slam',1],['bubble',9],['jet',22]],desc:'Fits on a thumbnail. Sings at 3 a.m.',evolve:{lv:14,to:'toad'},starter:true,release:'mon',mat:'scale',bait:['worms']},
+  toad: {line:'toad',stage:2,no:13,name:'Toad',type:'WATER',rarity:'U',size:'S',stats:[70,58,62,48],moves:[['splash',1],['slam',1],['bubble',9],['jet',22]],desc:'Warts: yes. Charm: also yes.',evolve:{lv:30,to:'giantToad'},starter:true,release:'mon',mat:'scale',bait:['worms'],feedLv:26,feed:{dmt:'dmtoad'}},
+  giantToad: {line:'toad',stage:3,no:14,name:'Giant Toad',type:'WATER',rarity:'R',size:'M',stats:[88,73,78,60],moves:[['splash',1],['slam',1],['bubble',9],['jet',22]],desc:'Sits on the lake like a boulder with opinions.',starter:true,release:'mon',mat:'scale',bait:['worms']},
+  dmtoad: {line:'toad',stage:'drug',no:15,name:'DMToad',type:'WATER',rarity:'R',size:'S',stats:[91,75,81,62],moves:[['splash',1],['slam',1],['bubble',9],['jet',22],['brk',1]],desc:'It has met the machine elves. They said hi.',trip:'dmt',feedFrom:'toad',mat:'scale',release:'wed'},
+  hoglet: {line:'hedgehog',stage:1,no:16,name:'Hoglet',type:'SHELL',rarity:'C',size:'S',stats:[42,42,60,33],moves:[['shell',1],['quill',1],['spike',9],['roll',20]],desc:'Rolls into a ball when you say hello.',evolve:{lv:16,to:'hedgehog'},starter:true,release:'mon',mat:'shell',bait:['jam']},
+  hedgehog: {line:'hedgehog',stage:2,no:17,name:'Hedgehog',type:'SHELL',rarity:'U',size:'S',stats:[56,56,80,44],moves:[['shell',1],['quill',1],['spike',9],['roll',20]],desc:'Crosses roads with a courage nobody asked for.',evolve:{lv:30,to:'porcupine'},starter:true,release:'mon',mat:'shell',bait:['jam'],feedLv:24,feed:{shrooms:'sporecupine'}},
+  porcupine: {line:'hedgehog',stage:3,no:18,name:'Porcupine',type:'SHELL',rarity:'R',size:'M',stats:[70,70,100,55],moves:[['shell',1],['quill',1],['spike',9],['roll',20]],desc:'Too many quills, too little personal space.',starter:true,release:'mon',mat:'shell',bait:['jam']},
+  sporecupine: {line:'hedgehog',stage:'drug',no:19,name:'Sporecupine',type:'SHELL',rarity:'R',size:'S',stats:[73,73,104,57],moves:[['shell',1],['quill',1],['spike',9],['roll',20],['spores',1]],desc:'Mushrooms grow on its back. It is fine with that.',trip:'shrooms',feedFrom:'hedgehog',mat:'shell',release:'tue'},
+  fawn: {line:'deer',stage:1,no:20,name:'Fawn',type:'ROOT',rarity:'C',size:'M',stats:[47,47,42,53],moves:[['nibble',1],['vine',1],['stomp',10],['gore',22]],desc:'Legs too long, ears too big. Falls over a lot.',evolve:{lv:16,to:'deer'},starter:true,release:'mon',mat:'antler',bait:['salt']},
+  deer: {line:'deer',stage:2,no:21,name:'Deer',type:'ROOT',rarity:'U',size:'M',stats:[62,62,56,70],moves:[['nibble',1],['vine',1],['stomp',10],['gore',22]],desc:'Looks at headlights like they owe it money.',evolve:{lv:32,to:'stag'},starter:true,release:'mon',mat:'antler',bait:['salt'],feedLv:22,feed:{weed:'stonedeer'}},
+  stag: {line:'deer',stage:3,no:22,name:'Stag',type:'ROOT',rarity:'R',size:'L',stats:[78,78,70,88],moves:[['nibble',1],['vine',1],['stomp',10],['gore',22]],desc:'Antlers like a chandelier. Bows to nobody.',starter:true,release:'mon',mat:'antler',bait:['salt']},
+  stonedeer: {line:'deer',stage:'drug',no:23,name:'Stonedeer',type:'ROOT',rarity:'R',size:'M',stats:[81,81,73,91],moves:[['nibble',1],['vine',1],['stomp',10],['gore',22],['chill',1]],desc:'Chill Out. Everybody at the fight is a bit more chill.',trip:'weed',feedFrom:'deer',mat:'antler',release:'mon'},
+  mouse: {line:'rat',stage:1,no:24,name:'Mouse',type:'FANG',rarity:'C',size:'S',stats:[36,42,33,50],moves:[['nip',1],['gnaw',1],['bite',10],['pounce',18]],desc:'Lives in the dumpster behind the pharmacy. Pays no rent.',evolve:{lv:12,to:'rat'},release:'mon',mat:'fur',bait:['cheese'],tier:1,trap:['ground'],hab:['maxi','lot','city']},
+  rat: {line:'rat',stage:2,no:25,name:'Rat',type:'FANG',rarity:'C',size:'S',stats:[48,56,44,66],moves:[['nip',1],['gnaw',1],['bite',10],['pounce',18]],desc:'Knows every pipe in the building. Has opinions about the cheese.',evolve:{lv:30,to:'ratKing'},release:'mon',mat:'fur',bait:['cheese'],tier:1,trap:['ground'],hab:['maxi','lot','city']},
+  ratKing: {line:'rat',stage:3,no:26,name:'Rat King',type:'FANG',rarity:'U',size:'S',stats:[60,70,55,83],moves:[['nip',1],['gnaw',1],['bite',10],['pounce',18]],desc:'Seven rats, one crown, zero regrets.',release:'mon',mat:'fur',bait:['cheese'],tier:2,trap:['ground'],hab:['maxi','lot','city']},
+  nymph: {line:'cockroach',stage:1,no:27,name:'Nymph',type:'SHELL',rarity:'C',size:'S',stats:[39,38,53,36],moves:[['shell',1],['nip',1],['spike',10],['chitin',20]],desc:'Smaller than a thumb. Survives anything.',evolve:{lv:14,to:'cockroach'},release:'mon',mat:'chitin',bait:['jam'],tier:1,trap:['ground'],hab:['maxi','city'],nightBoost:true},
+  cockroach: {line:'cockroach',stage:2,no:28,name:'Cockroach',type:'SHELL',rarity:'C',size:'S',stats:[52,50,70,48],moves:[['shell',1],['nip',1],['spike',10],['chitin',20]],desc:'Survived the 90s, the 00s and the last cleaning.',evolve:{lv:28,to:'giantCockroach'},release:'mon',mat:'chitin',bait:['jam'],tier:2,trap:['ground'],hab:['maxi','city'],nightBoost:true,feedLv:18,feed:{coke:'cokeroach'}},
+  giantCockroach: {line:'cockroach',stage:3,no:29,name:'Giant Cockroach',type:'SHELL',rarity:'U',size:'S',stats:[65,63,88,60],moves:[['shell',1],['nip',1],['spike',10],['chitin',20]],desc:'Size of a loaf. Faster than your anger.',release:'mon',mat:'chitin',bait:['jam'],tier:2,trap:['ground'],hab:['maxi','city'],nightBoost:true},
+  cokeroach: {line:'cockroach',stage:'drug',no:30,name:'Cokeroach',type:'SHELL',rarity:'U',size:'S',stats:[68,65,91,62],moves:[['shell',1],['nip',1],['spike',10],['chitin',20],['rail',1]],desc:'Always first. Always sniffing. Never sleeps.',trip:'coke',feedFrom:'cockroach',mat:'chitin',hab:['maxi','city'],release:'mon'},
+  crowling: {line:'crow',stage:1,no:31,name:'Crowling',type:'WING',rarity:'C',size:'S',stats:[39,47,35,51],moves:[['peck',1],['flap',1],['swoop',9],['talon',22]],desc:'Loud, scruffy, always hungry. Steals a fry and screams.',evolve:{lv:16,to:'crow'},release:'mon',mat:'feather',bait:['bread'],tier:2,trap:['air'],hab:['lot','lawn','city','golf','mountain']},
+  crow: {line:'crow',stage:2,no:32,name:'Crow',type:'WING',rarity:'C',size:'M',stats:[52,62,46,68],moves:[['peck',1],['flap',1],['swoop',9],['talon',22]],desc:'Knows your face. Holds a grudge for ten years.',evolve:{lv:32,to:'raven'},release:'mon',mat:'feather',bait:['bread'],tier:2,trap:['air'],hab:['lot','lawn','city','golf','mountain'],feedLv:20,feed:{keta:'ketacrow'}},
+  raven: {line:'crow',stage:3,no:33,name:'Raven',type:'WING',rarity:'U',size:'M',stats:[65,78,58,85],moves:[['peck',1],['flap',1],['swoop',9],['talon',22]],desc:'Sees everything from the lamp post. Says very little.',release:'mon',mat:'feather',bait:['bread'],tier:3,trap:['air'],hab:['lot','lawn','city','golf','mountain']},
+  ketacrow: {line:'crow',stage:'drug',no:34,name:'Ketacrow',type:'WING',rarity:'U',size:'M',stats:[68,81,60,88],moves:[['peck',1],['flap',1],['swoop',9],['talon',22],['dissoc',1]],desc:'Stares into the void. The void stares back and apologises.',trip:'keta',feedFrom:'crow',mat:'feather',hab:['lot','lawn','city','golf','mountain'],release:'tue'},
+  larva: {line:'ladybug',stage:1,no:35,name:'Larva',type:'WING',rarity:'C',size:'S',stats:[33,41,45,47],moves:[['flap',1],['nibble',1],['spike',10]],desc:'A spotty little caterpillar thing. Eats aphids all day.',evolve:{lv:12,to:'ladybug'},release:'mon',mat:'chitin',bait:['jam'],tier:1,trap:['air'],hab:['lawn','golf','maxi'],day:true},
+  ladybug: {line:'ladybug',stage:2,no:36,name:'Ladybug',type:'WING',rarity:'C',size:'S',stats:[48,59,66,68],moves:[['flap',1],['nibble',1],['spike',10]],desc:'Seven spots. Luck included. Warranty not.',release:'mon',mat:'chitin',bait:['jam'],tier:1,trap:['air'],hab:['lawn','golf','maxi'],day:true,feedLv:12,feed:{lsd:'laddybug'}},
+  laddybug: {line:'ladybug',stage:'drug',no:37,name:'Ladd-ybug',type:'WING',rarity:'U',size:'S',stats:[57,70,78,81],moves:[['flap',1],['nibble',1],['spike',10],['spots',1]],desc:'Seven Spots of Truth. Shows you what is really there.',trip:'lsd',feedFrom:'ladybug',ability:'reveal',mat:'chitin',hab:['lawn','golf','maxi'],release:'tue'},
+  perchFry: {line:'perch',stage:1,no:38,name:'Perch Fry',type:'WATER',rarity:'C',size:'S',stats:[42,42,41,44],moves:[['splash',1],['nip',1],['bubble',10],['wave',20]],desc:'Striped, curious, bites at anything.',evolve:{lv:12,to:'perch'},release:'mon',mat:'scale',bait:['worms'],tier:1,trap:['water'],hab:['oldlake','biglake']},
+  perch: {line:'perch',stage:2,no:39,name:'Perch',type:'WATER',rarity:'C',size:'S',stats:[56,56,54,58],moves:[['splash',1],['nip',1],['bubble',10],['wave',20]],desc:'The fish your uncle always catches. Nobody else does.',evolve:{lv:26,to:'bigPerch'},release:'mon',mat:'scale',bait:['worms'],tier:2,trap:['water'],hab:['oldlake','biglake']},
+  bigPerch: {line:'perch',stage:3,no:40,name:'Big Perch',type:'WATER',rarity:'U',size:'S',stats:[70,70,68,73],moves:[['splash',1],['nip',1],['bubble',10],['wave',20]],desc:'Fat, old, wise. Refuses to bite on Mondays.',release:'mon',mat:'scale',bait:['worms'],tier:3,trap:['water'],hab:['oldlake','biglake']},
+  squirrelKit: {line:'squirrel',stage:1,no:41,name:'Squirrel Kit',type:'ROOT',rarity:'C',size:'S',stats:[38,42,35,56],moves:[['nibble',1],['vine',1],['swoop',12],['thorn',18]],desc:'Hides nuts. Forgets where. Plants forests by accident.',evolve:{lv:14,to:'squirrel'},release:'tue',mat:'fur',bait:['nuts'],tier:2,trap:['ground'],hab:['golf','lawn','forest'],day:true},
+  squirrel: {line:'squirrel',stage:2,no:42,name:'Squirrel',type:'ROOT',rarity:'U',size:'S',stats:[50,56,46,74],moves:[['nibble',1],['vine',1],['swoop',12],['thorn',18]],desc:'Steals golf balls. Pretends it was the crow.',evolve:{lv:30,to:'flyingSquirrel'},release:'tue',mat:'fur',bait:['nuts'],tier:2,trap:['ground'],hab:['golf','lawn','forest'],day:true,feedLv:20,feed:{molly:'trancequirrel'}},
+  flyingSquirrel: {line:'squirrel',stage:3,no:43,name:'Flying Squirrel',type:'ROOT',rarity:'R',size:'S',stats:[63,70,58,93],moves:[['nibble',1],['vine',1],['swoop',12],['thorn',18]],desc:'Glides between pines. Landing: optional.',release:'tue',mat:'fur',bait:['nuts'],tier:3,trap:['ground'],hab:['golf','lawn','forest'],day:true},
+  trancequirrel: {night:true,line:'squirrel',stage:'drug',no:44,name:'Trancequirrel',type:'ROOT',rarity:'R',size:'S',stats:[65,73,60,96],moves:[['nibble',1],['vine',1],['swoop',12],['thorn',18],['bass',1]],desc:'Drop the Bass. Sets up in the golf rough at night.',trip:'molly',feedFrom:'squirrel',mat:'fur',hab:['golf','lawn','forest'],wild:true,release:'tue'},
+  grub: {line:'beetle',stage:1,no:45,name:'Grub',type:'SHELL',rarity:'C',size:'S',stats:[44,48,54,30],moves:[['shell',1],['pinch',1],['spike',10],['chitin',20]],desc:'A fat white worm with an attitude.',evolve:{lv:18,to:'stagBeetle'},release:'tue',mat:'chitin',bait:['jam'],tier:1,trap:['air','ground'],hab:['golf','forest','lawn']},
+  stagBeetle: {line:'beetle',stage:2,no:46,name:'Stag Beetle',type:'SHELL',rarity:'U',size:'S',stats:[64,70,79,44],moves:[['shell',1],['pinch',1],['spike',10],['chitin',20]],desc:'Antlers on a bug. Fights other bugs for fun.',release:'tue',mat:'chitin',bait:['jam'],tier:1,trap:['air','ground'],hab:['golf','forest','lawn'],feedLv:18,feed:{speed:'speedbeetle'}},
+  speedbeetle: {line:'beetle',stage:'drug',no:47,name:'Speedbeetle',type:'SHELL',rarity:'R',size:'S',stats:[75,83,94,52],moves:[['shell',1],['pinch',1],['spike',10],['chitin',20],['tweak',1]],desc:'Tweak. Doesn\'t blink. Doesn\'t stop.',trip:'speed',feedFrom:'stagBeetle',mat:'chitin',hab:['golf','forest','lawn'],release:'tue'},
+  hatchling: {line:'tortoise',stage:1,no:48,name:'Hatchling',type:'SHELL',rarity:'U',size:'S',stats:[54,36,62,20],moves:[['shell',1],['slam',1],['harden',12],['roll',24]],desc:'Escaped from a living room in 2009.',evolve:{lv:22,to:'tortoise'},release:'tue',mat:'shell',bait:['nuts'],tier:2,trap:['ground'],hab:['golf','castle']},
+  tortoise: {line:'tortoise',stage:2,no:49,name:'Tortoise',type:'SHELL',rarity:'U',size:'M',stats:[72,48,82,26],moves:[['shell',1],['slam',1],['harden',12],['roll',24]],desc:'Lives by the pond. Has seen four owners come and go.',evolve:{lv:40,to:'elderTortoise'},release:'tue',mat:'shell',bait:['nuts'],tier:3,trap:['ground'],hab:['golf','castle'],feedLv:22,feed:{coke:'snortoise'}},
+  elderTortoise: {line:'tortoise',stage:3,no:50,name:'Elder Tortoise',type:'SHELL',rarity:'R',size:'L',stats:[90,60,103,33],moves:[['shell',1],['slam',1],['harden',12],['roll',24]],desc:'Older than the golf club. Judges your swing.',release:'tue',mat:'shell',bait:['nuts'],tier:4,trap:['ground'],hab:['golf','castle']},
+  snortoise: {line:'tortoise',stage:'drug',no:51,name:'Snortoise',type:'SHELL',rarity:'R',size:'M',stats:[94,62,107,34],moves:[['shell',1],['slam',1],['harden',12],['roll',24],['dash',1]],desc:'Line Dash. The fastest tortoise alive. It will tell you.',trip:'coke',feedFrom:'tortoise',mat:'shell',hab:['golf','castle'],release:'tue'},
+  crayling: {line:'crayfish',stage:1,no:52,name:'Crayling',type:'SHELL',rarity:'U',size:'S',stats:[42,50,51,33],moves:[['pinch',1],['shell',1],['spike',12],['chitin',22]],desc:'A tiny crayfish. Pinches your finger on principle.',evolve:{lv:18,to:'crayfish'},release:'tue',mat:'shell',bait:['worms','meat'],tier:2,trap:['water'],hab:['oldlake','biglake'],night:true},
+  crayfish: {line:'crayfish',stage:2,no:53,name:'Crayfish',type:'SHELL',rarity:'U',size:'S',stats:[56,66,68,44],moves:[['pinch',1],['shell',1],['spike',12],['chitin',22]],desc:'Red in the pot, brown in the lake.',evolve:{lv:34,to:'signalCrayfish'},release:'tue',mat:'shell',bait:['worms','meat'],tier:3,trap:['water'],hab:['oldlake','biglake'],night:true,feedLv:18,feed:{snaps:'snapskrafta'}},
+  signalCrayfish: {line:'crayfish',stage:3,no:54,name:'Signal Crayfish',type:'SHELL',rarity:'R',size:'M',stats:[70,83,85,55],moves:[['pinch',1],['shell',1],['spike',12],['chitin',22]],desc:'Invasive. Proud of it. Great with dill.',release:'tue',mat:'shell',bait:['worms','meat'],tier:3,trap:['water'],hab:['oldlake','biglake'],night:true},
+  snapskrafta: {line:'crayfish',stage:'drug',no:55,name:'Snapskräfta',type:'SHELL',rarity:'R',size:'S',stats:[73,86,88,57],moves:[['pinch',1],['shell',1],['spike',12],['chitin',22],['sing',1]],desc:'Sings Helan Går. Hits harder when you join in.',trip:'snaps',feedFrom:'crayfish',mat:'shell',hab:['biglake'],release:'tue',night:true},
+  pikeFry: {line:'pike',stage:1,no:56,name:'Pike Fry',type:'WATER',rarity:'U',size:'M',stats:[48,57,38,48],moves:[['splash',1],['lbite',1],['wave',14],['torrent',22],['ferry',30]],desc:'A toothy little torpedo.',evolve:{lv:22,to:'pike'},release:'tue',mat:'scale',bait:['worms','meat'],tier:1,trap:['water'],hab:['oldlake','biglake']},
+  pike: {line:'pike',stage:2,no:57,name:'Pike',type:'WATER',rarity:'R',size:'M',stats:[64,76,50,64],moves:[['splash',1],['lbite',1],['wave',14],['torrent',22],['ferry',30]],desc:'Lurks in the reeds. Patient. Unbothered. Toothy.',evolve:{lv:38,to:'pikezilla'},release:'tue',mat:'scale',bait:['worms','meat'],tier:[2,4],trap:['water'],hab:['oldlake','biglake'],feedLv:24,feed:{molly:'mollipike'}},
+  pikezilla: {line:'pike',stage:3,no:58,name:'Pikezilla',type:'WATER',rarity:'R',size:'L',stats:[80,95,63,80],moves:[['splash',1],['lbite',1],['wave',14],['torrent',22],['ferry',30]],desc:'The king of the lake. Wears reeds like a crown.',release:'tue',mat:'scale',bait:['worms','meat'],tier:5,trap:['water'],hab:['oldlake','biglake']},
+  mollipike: {line:'pike',stage:'drug',no:59,name:'Mollipike',type:'WATER',rarity:'E',size:'M',stats:[83,99,65,83],moves:[['splash',1],['lbite',1],['wave',14],['torrent',22],['ferry',30],['lovebite',1]],desc:'Love Bite. Drains you gently and tells you it is nothing personal.',trip:'molly',feedFrom:'pike',mat:'scale',hab:['biglake'],release:'tue'},
+  mantisLarva: {line:'mantis',stage:1,no:60,name:'Mantis Larva',type:'WATER',rarity:'R',size:'S',stats:[39,63,42,54],moves:[['jet',1],['pinch',1],['torrent',28]],desc:'Escaped from the city aquarium. Punches faster than the eye.',evolve:{lv:26,to:'mantisShrimp'},release:'wed',mat:'shell',bait:['meat'],tier:4,trap:['water'],hab:['oldlake','biglake']},
+  mantisShrimp: {line:'mantis',stage:2,no:61,name:'Mantis Shrimp',type:'WATER',rarity:'R',size:'S',stats:[57,92,62,79],moves:[['jet',1],['pinch',1],['torrent',28]],desc:'The fastest punch in the animal kingdom. In a lake.',release:'wed',mat:'shell',bait:['meat'],tier:4,trap:['water'],hab:['oldlake','biglake'],feedLv:26,feed:{shrooms:'mantisShroom'}},
+  mantisShroom: {line:'mantis',stage:'drug',no:62,name:'Mantis Shroom',type:'WATER',rarity:'E',size:'S',stats:[68,109,73,94],moves:[['jet',1],['pinch',1],['torrent',28],['sporepunch',1]],desc:'Sporepunch. Hits first, confuses second.',trip:'shrooms',feedFrom:'mantisShrimp',mat:'shell',hab:['biglake'],release:'tue'},
+  trippo: {line:'trippo',stage:1,no:63,name:'Trippopotamus',type:'WATER',rarity:'E',size:'XL',stats:[110,80,70,40],moves:[['splash',1],['badtrip',1],['wave',20],['torrent',30]],desc:'Only visible to the tripping. Everyone is confused. Itself too.',release:'wed',mat:'scale',tier:5,trap:['water'],hab:['biglake'],needs:'reveal'},
+  foxKit: {line:'fox',stage:1,no:64,name:'Fox Kit',type:'FANG',rarity:'U',size:'S',stats:[42,50,36,54],moves:[['nip',1],['claw',1],['pounce',14],['snap',22]],desc:'Rusty fluff, huge ears, no manners.',evolve:{lv:20,to:'fox'},release:'tue',mat:'fur',bait:['meat'],tier:2,trap:['ground'],hab:['forest','golf','city'],night:true},
+  fox: {line:'fox',stage:2,no:65,name:'Fox',type:'FANG',rarity:'U',size:'M',stats:[56,66,48,72],moves:[['nip',1],['claw',1],['pounce',14],['snap',22]],desc:'Raids bins in town after dark.',evolve:{lv:36,to:'silverFox'},release:'tue',mat:'fur',bait:['meat'],tier:3,trap:['ground'],hab:['forest','golf','city'],night:true,feedLv:22,feed:{xanax:'xanaxfox'}},
+  silverFox: {line:'fox',stage:3,no:66,name:'Silver Fox',type:'FANG',rarity:'R',size:'M',stats:[70,83,60,90],moves:[['nip',1],['claw',1],['pounce',14],['snap',22]],desc:'Silver fur, silver tongue, no conscience.',release:'tue',mat:'fur',bait:['meat'],tier:4,trap:['ground'],hab:['forest','golf','city'],night:true},
+  xanaxfox: {line:'fox',stage:'drug',no:67,name:'Xanaxfox',type:'FANG',rarity:'R',size:'M',stats:[73,86,62,94],moves:[['nip',1],['claw',1],['pounce',14],['snap',22],['unbothered',1]],desc:'Unbothered. Was chasing a mouse. Forgot why.',trip:'xanax',feedFrom:'fox',mat:'fur',hab:['forest','golf','city'],release:'tue',night:true},
+  boarlet: {line:'boar',stage:1,no:68,name:'Boarlet',type:'FANG',rarity:'U',size:'M',stats:[59,56,48,33],moves:[['bite',1],['slam',1],['tusk',14],['maul',26]],desc:'Stripes today. Tusks tomorrow.',evolve:{lv:24,to:'wildBoar'},release:'tue',mat:'fur',bait:['meat'],tier:3,trap:['ground'],hab:['forest']},
+  wildBoar: {line:'boar',stage:2,no:69,name:'Wild Boar',type:'FANG',rarity:'U',size:'L',stats:[78,74,64,44],moves:[['bite',1],['slam',1],['tusk',14],['maul',26]],desc:'Rolls in mud like it is a spa. Rams like a truck.',evolve:{lv:40,to:'tusker'},release:'tue',mat:'fur',bait:['meat'],tier:4,trap:['ground'],hab:['forest'],feedLv:26,feed:{shrooms:'shroomboar',coke:'blowboar'}},
+  tusker: {line:'boar',stage:3,no:70,name:'Tusker',type:'FANG',rarity:'R',size:'L',stats:[98,93,80,55],moves:[['bite',1],['slam',1],['tusk',14],['maul',26]],desc:'Tusks the length of your forearm. Do not stand in the way.',release:'tue',mat:'fur',bait:['meat'],tier:4,trap:['ground'],hab:['forest']},
+  shroomboar: {line:'boar',stage:'drug',no:71,name:'Shroomboar',type:'FANG',rarity:'R',size:'L',stats:[101,96,83,57],moves:[['bite',1],['slam',1],['tusk',14],['maul',26],['truffle',1]],desc:'Truffle Rage. The lower its HP, the harder it hits.',trip:'shrooms',feedFrom:'wildBoar',mat:'fur',hab:['forest'],release:'tue'},
+  blowboar: {line:'boar',stage:'drug',no:72,name:'Blowboar',type:'FANG',rarity:'R',size:'L',stats:[101,96,83,57],moves:[['bite',1],['slam',1],['tusk',14],['maul',26],['nose',1]],desc:'Nose Charge. Huge hit. It will feel that tomorrow.',trip:'coke',feedFrom:'wildBoar',mat:'fur',hab:['forest'],release:'tue'},
+  caterpillar: {line:'moth',stage:1,no:73,name:'Caterpillar',type:'WING',rarity:'U',size:'S',stats:[38,45,35,57],moves:[['flap',1],['nibble',1],['gust',12],['swoop',22]],desc:'Eats a leaf an hour. Dreams of lamps.',evolve:{lv:18,to:'moth'},release:'tue',mat:'chitin',bait:['jam'],tier:3,trap:['air'],hab:['forest','city'],night:true},
+  moth: {line:'moth',stage:2,no:74,name:'Moth',type:'WING',rarity:'U',size:'S',stats:[50,60,46,76],moves:[['flap',1],['nibble',1],['gust',12],['swoop',22]],desc:'Drawn to light. Cannot explain why.',evolve:{lv:34,to:'deathMoth'},release:'tue',mat:'chitin',bait:['jam'],tier:3,trap:['air'],hab:['forest','city'],night:true,feedLv:20,feed:{meth:'methmoth'}},
+  deathMoth: {line:'moth',stage:3,no:75,name:'Death\'s-head Moth',type:'WING',rarity:'R',size:'M',stats:[63,75,58,95],moves:[['flap',1],['nibble',1],['gust',12],['swoop',22]],desc:'A skull on its back. Shows up in bad dreams.',release:'tue',mat:'chitin',bait:['jam'],tier:3,trap:['air'],hab:['forest','city'],night:true},
+  methmoth: {line:'moth',stage:'drug',no:76,name:'Methmoth',type:'WING',rarity:'R',size:'S',stats:[65,78,60,99],moves:[['flap',1],['nibble',1],['gust',12],['swoop',22],['lamp',1]],desc:'Lamp Frenzy. Has not slept since Tuesday. Fights the street lamp.',trip:'meth',feedFrom:'moth',mat:'chitin',hab:['forest','city'],wild:true,release:'wed',night:true},
+  mooseCalf: {line:'moose',stage:1,no:77,name:'Moose Calf',type:'ROOT',rarity:'R',size:'L',stats:[69,57,53,30],moves:[['nibble',1],['stomp',1],['gore',16],['crush',24]],desc:'Knees like a table. Sulks when it rains.',evolve:{lv:30,to:'moose'},release:'tue',mat:'antler',bait:['salt'],tier:4,trap:['ground'],hab:['deepforest']},
+  moose: {line:'moose',stage:2,no:78,name:'Moose',type:'ROOT',rarity:'R',size:'XL',stats:[92,76,70,40],moves:[['nibble',1],['stomp',1],['gore',16],['crush',24]],desc:'Crosses roads without looking. Wins every time.',evolve:{lv:44,to:'bullMoose'},release:'tue',mat:'antler',bait:['salt'],tier:5,trap:['ground'],hab:['deepforest'],feedLv:32,feed:{keta:'ketamoose',shrooms:'shroomoose'}},
+  bullMoose: {line:'moose',stage:3,no:79,name:'Bull Moose',type:'ROOT',rarity:'E',size:'XL',stats:[115,95,88,50],moves:[['nibble',1],['stomp',1],['gore',16],['crush',24]],desc:'Antlers like a satellite dish. Bellows at 4 a.m.',release:'tue',mat:'antler',bait:['salt'],tier:5,trap:['ground'],hab:['deepforest']},
+  ketamoose: {line:'moose',stage:'drug',no:80,name:'Ketamoose',type:'ROOT',rarity:'E',size:'XL',stats:[120,99,91,52],moves:[['nibble',1],['stomp',1],['gore',16],['crush',24],['void',1]],desc:'Moose in the Void. Is it still here? Define \'here\'.',trip:'keta',feedFrom:'moose',mat:'antler',hab:['deepforest'],release:'tue'},
+  shroomoose: {line:'moose',stage:'drug',no:81,name:'Shroomoose',type:'ROOT',rarity:'E',size:'XL',stats:[120,99,91,52],moves:[['nibble',1],['stomp',1],['gore',16],['crush',24],['bloom',1]],desc:'Antler Bloom. A spore cloud with an opinion.',trip:'shrooms',feedFrom:'moose',mat:'antler',hab:['deepforest'],release:'tue'},
+  bearCub: {line:'bear',stage:1,no:82,name:'Bear Cub',type:'FANG',rarity:'R',size:'L',stats:[68,63,50,33],moves:[['bite',1],['claw',1],['hug',12],['maul',26]],desc:'Cute. Careful: mum is watching.',evolve:{lv:32,to:'brownBear'},release:'tue',mat:'fur',bait:['honey'],tier:4,trap:['ground'],hab:['deepforest','mountain']},
+  brownBear: {line:'bear',stage:2,no:83,name:'Brown Bear',type:'FANG',rarity:'R',size:'XL',stats:[90,84,66,44],moves:[['bite',1],['claw',1],['hug',12],['maul',26]],desc:'Eats honey, salmon, hikers. Not in that order.',evolve:{lv:46,to:'oldBear'},release:'tue',mat:'fur',bait:['honey'],tier:5,trap:['ground'],hab:['deepforest','mountain'],feedLv:34,feed:{shrooms:'psilocybear'}},
+  oldBear: {line:'bear',stage:3,no:84,name:'Old Bear',type:'FANG',rarity:'E',size:'XL',stats:[113,105,83,55],moves:[['bite',1],['claw',1],['hug',12],['maul',26]],desc:'Greyer, slower, meaner. Remembers every picnic.',release:'tue',mat:'fur',bait:['honey'],tier:5,trap:['ground'],hab:['deepforest','mountain']},
+  psilocybear: {line:'bear',stage:'drug',no:85,name:'Psilocybear',type:'FANG',rarity:'E',size:'XL',stats:[117,109,86,57],moves:[['bite',1],['claw',1],['hug',12],['maul',26],['eye',1]],desc:'Third Eye Maul. Never misses. Sees you from three angles.',trip:'shrooms',feedFrom:'brownBear',mat:'fur',hab:['deepforest','mountain'],release:'tue'},
+  adderling: {line:'adder',stage:1,no:86,name:'Adderling',type:'FANG',rarity:'U',size:'S',stats:[39,53,35,56],moves:[['nip',1],['snap',1],['bite',14],['pounce',24]],desc:'Zig-zag on its back. Bites if stepped on.',evolve:{lv:22,to:'adder'},release:'tue',mat:'scale',bait:['meat'],tier:2,trap:['ground'],hab:['mountain','forest'],day:true},
+  adder: {line:'adder',stage:2,no:87,name:'Adder',type:'FANG',rarity:'U',size:'S',stats:[52,70,46,74],moves:[['nip',1],['snap',1],['bite',14],['pounce',24]],desc:'Sunbathes on the warmest rock in the county.',evolve:{lv:36,to:'blackAdder'},release:'tue',mat:'scale',bait:['meat'],tier:3,trap:['ground'],hab:['mountain','forest'],day:true,feedLv:24,feed:{lsd:'acidadder'}},
+  blackAdder: {line:'adder',stage:3,no:88,name:'Black Adder',type:'FANG',rarity:'R',size:'M',stats:[65,88,58,93],moves:[['nip',1],['snap',1],['bite',14],['pounce',24]],desc:'All black, all venom, all attitude.',release:'tue',mat:'scale',bait:['meat'],tier:3,trap:['ground'],hab:['mountain','forest'],day:true},
+  acidadder: {line:'adder',stage:'drug',no:89,name:'Acidadder',type:'FANG',rarity:'R',size:'S',stats:[68,91,60,96],moves:[['nip',1],['snap',1],['bite',14],['pounce',24],['melt',1]],desc:'Melt. Everything is liquid and it is your fault.',trip:'lsd',feedFrom:'adder',mat:'scale',hab:['mountain','forest'],release:'tue'},
+  leveret: {line:'hare',stage:1,no:90,name:'Leveret',type:'ROOT',rarity:'U',size:'S',stats:[36,42,33,60],moves:[['nibble',1],['vine',1],['swoop',12]],desc:'A tuft of fur with eyes.',evolve:{lv:18,to:'mountainHare'},release:'tue',mat:'fur',bait:['nuts'],tier:2,trap:['ground'],hab:['mountain']},
+  mountainHare: {line:'hare',stage:2,no:91,name:'Mountain Hare',type:'ROOT',rarity:'U',size:'S',stats:[53,62,48,88],moves:[['nibble',1],['vine',1],['swoop',12]],desc:'White in winter, grey in summer, gone in a flash.',release:'tue',mat:'fur',bait:['nuts'],tier:3,trap:['ground'],hab:['mountain']},
+  eaglet: {line:'eagle',stage:1,no:92,name:'Eaglet',type:'WING',rarity:'R',size:'M',stats:[47,63,39,57],moves:[['flap',1],['peck',1],['dive',14],['talon',28]],desc:'Fluff and hunger. Mum is not far.',evolve:{lv:28,to:'eagle'},release:'tue',mat:'feather',bait:['meat'],tier:2,trap:['air','ground'],hab:['mountain'],day:true},
+  eagle: {line:'eagle',stage:2,no:93,name:'Eagle',type:'WING',rarity:'R',size:'L',stats:[62,84,52,76],moves:[['flap',1],['peck',1],['dive',14],['talon',28]],desc:'Spots your sandwich from two kilometres.',evolve:{lv:42,to:'goldenEagle'},release:'tue',mat:'feather',bait:['meat'],tier:4,trap:['air','ground'],hab:['mountain'],day:true},
+  goldenEagle: {line:'eagle',stage:3,no:94,name:'Golden Eagle',type:'WING',rarity:'E',size:'L',stats:[78,105,65,95],moves:[['flap',1],['peck',1],['dive',14],['talon',28]],desc:'Golden neck, golden eyes. Not for sale.',release:'tue',mat:'feather',bait:['meat'],tier:4,trap:['air','ground'],hab:['mountain'],day:true},
+  wolverineKit: {line:'wolverine',stage:1,no:95,name:'Wolverine Kit',type:'FANG',rarity:'R',size:'M',stats:[51,65,50,48],moves:[['bite',1],['claw',1],['maul',20],['rend',34]],desc:'Small, angry, already carrying a grudge.',evolve:{lv:34,to:'wolverine'},release:'tue',mat:'fur',bait:['meat'],tier:3,trap:['ground'],hab:['mountain']},
+  wolverine: {line:'wolverine',stage:2,no:96,name:'Wolverine',type:'FANG',rarity:'E',size:'M',stats:[75,95,73,70],moves:[['bite',1],['claw',1],['maul',20],['rend',34]],desc:'Not a bear. Not a badger. Will fight both.',release:'tue',mat:'fur',bait:['meat'],tier:4,trap:['ground'],hab:['mountain']},
+  wraith: { line: 'wraith', stage: 1, no: 97, name: 'Cold Wallet Wraith', type: 'MIND', rarity: 'M', size: 'M', stats: [96, 92, 80, 80], moves: [['seed', 1], ['glitch', 1], ['hotfix', 12]], desc: 'Holds 3,000 bitcoin. Forgot the password. The one creature that is not part of the roster: it belongs to the grave reward.', art: 'assets/creatures/wraith.png', likes: 'shrooms', trapOnly: 'mythicTrap', release: 'wed', requires: 'mythicSpawned' }
 },
 
 /* ---------- people as fighters (bosses you can catch, wives, NPCs). look = paper-doll spec, see dollParts ---------- */
 heroes: {
-  bigwman: { name: 'BigWman', col: '#3ddc84', team: ['bat', 'banshee', 'ghost'], at: [9, 44], ult: 'YES!', ultTxt: '+50 % ATK for the whole party for 3 turns', after: 'I need to update the spreadsheet. YES… no.',
+  bigwman: { name: 'BigWman', col: '#3ddc84', team: ['trancequirrel', 'blowboar', 'psilocybear'], at: [9, 44], ult: 'YES!', ultTxt: '+50 % ATK for the whole party for 3 turns', after: 'I need to update the spreadsheet. YES… no.',
     stats: [80, 72, 74, 46], moves: [['yes', 1], ['slam', 1], ['hug', 8]], likes: 'beer6', epitaph: 'Balanced the budget. Not the life.',
     look: { skin: '#e9b48c', hair: null, style: 'bald', top: '#1d1d24', topStyle: 'tee', legs: '#3d5f92', shoes: '#6b4a2b', prop: 'clip', big: 1 } },
-  wizcudi: { name: 'Wizcudi', col: '#8c6cff', team: ['snake', 'ghost', 'peng'], at: [41, 54], ult: 'Lights Out', ultTxt: 'the enemy misses 2 turns', after: 'Fine. But turn the light off on your way out.',
+  wizcudi: { name: 'Wizcudi', col: '#8c6cff', team: ['methmoth', 'speedbeetle', 'mantisShroom'], at: [41, 54], ult: 'Lights Out', ultTxt: 'the enemy misses 2 turns', after: 'Fine. But turn the light off on your way out.',
     stats: [64, 70, 60, 74], moves: [['lights', 1], ['zap', 1], ['beep', 8]], likes: 'beer6', epitaph: 'Finally, the lights are off.',
     look: { skin: '#e9b48c', hair: '#5a3a22', style: 'short', beard: '#5a3a22', glasses: 1, top: '#1d1d24', top2: '#f5c518', topStyle: 'stripe', legs: '#3d5f92', shoes: '#333' } },
-  jrohn: { name: 'Jrohn', col: '#ff4fa3', team: ['cuke', 'slime', 'bear'], at: [29, 32], ult: 'I Love This!', ultTxt: 'heals the party 50 % and charms the enemy', after: 'I LOVE THIS! Losing, I mean. Hug?',
+  jrohn: { name: 'Jrohn', col: '#ff4fa3', team: ['acidadder', 'shroomboar', 'shroomoose'], at: [29, 32], ult: 'I Love This!', ultTxt: 'heals the party 50 % and charms the enemy', after: 'I LOVE THIS! Losing, I mean. Hug?',
     stats: [70, 64, 58, 70], moves: [['love', 1], ['hug', 1], ['dill', 8]], likes: 'beer6', epitaph: 'Here lies Jrohn. Shirt not included.',
     look: { skin: '#e9b48c', hair: '#6b4226', style: 'short', top: '#4f6e3a', top2: '#2e4424', topStyle: 'plaid', legs: '#6b6247', shoes: '#4a3220', prop: 'plant' } },
-  loken: { name: 'Löken', col: '#f5c242', team: ['crow', 'golem', 'bear'], at: [24, 14], ult: 'Stick Together, Boys!', ultTxt: 'every creature in the party attacks at once', after: 'Good fight. Now get off the lawn. Gently.',
+  loken: { name: 'Löken', col: '#f5c242', team: ['snortoise', 'mollipike', 'ketamoose'], at: [24, 14], ult: 'Stick Together, Boys!', ultTxt: 'every creature in the party attacks at once', after: 'Good fight. Now get off the lawn. Gently.',
     stats: [76, 70, 78, 48], moves: [['stick', 1], ['slam', 1], ['rattle', 8]], likes: 'beer6', epitaph: 'Stuck together. Alone, for once.',
     look: { skin: '#e9b48c', hair: '#8a5a2b', style: 'cap', cap: '#f5c518', cap2: '#1d1d24', beard: '#8a5a2b', top: '#b9c1cc', topStyle: 'armor', legs: '#5a4a30', shoes: '#4a3220', prop: 'shield' } },
-  ljunky: { name: 'Ljunky', col: '#f7931a', team: ['frog', 'mummy', 'snake'], at: [41, 12], ult: 'Buy the Dip', ultTxt: '50 %: double damage. 50 %: zero.', after: 'Unrealised loss. It does not count.',
+  ljunky: { name: 'Ljunky', col: '#f7931a', team: ['cokeroach', 'laddybug', 'ketacrow'], at: [41, 12], ult: 'Buy the Dip', ultTxt: '50 %: double damage. 50 %: zero.', after: 'Unrealised loss. It does not count.',
     stats: [68, 76, 56, 72], moves: [['dip', 1], ['peck', 1], ['zap', 8]], likes: 'beer6', epitaph: 'Bought the dip. The dip bought him.',
     look: { skin: '#f0c4a0', hair: '#f0d878', style: 'short', top: '#1d1d24', topStyle: 'tee', legs: '#25252b', shoes: '#222', prop: 'bow' } }
 },
@@ -167,8 +299,8 @@ items: {
   // throwables (sold by Hardware Jonas, the freezer, the checkouts)
   rock: { kind: 'throwable', name: 'Rock', em: '🪨', price: 3, hit: .55, throw: [{ type: 'damage', value: 14 }], learnedNote: 'Cheap. Misses a lot.', release: 'mon' },
   bottle: { kind: 'throwable', name: 'Empty bottle', em: '🍾', price: 6, hit: .7, onMiss: 'near', koBelow: .35, throw: [{ type: 'damage', value: 18 }], learnedNote: 'A hit on a weak foe knocks it out. A miss lands next to it.', release: 'mon' },
-  meatballs: { kind: 'throwable', name: 'Frozen meatballs', em: '🧆', price: 12, hit: .8, throw: [{ type: 'damage', value: 16, vs: { FROST: 2.5 } }], learnedNote: 'Very strong against FROST.', release: 'mon' },
-  surstromming: { kind: 'throwable', name: 'Surströmming can', em: '🥫', price: 18, hit: 1, area: true, throw: [{ type: 'flee', vs: 'WILD', chance: .5 }, { type: 'stun', turns: 1 }, { type: 'catchBonus', value: .4, turns: 3 }], learnedNote: 'WILD ones may flee. Everything else is dazed.', release: 'mon' },
+  meatballs: { kind: 'throwable', name: 'Frozen meatballs', em: '🧆', price: 12, hit: .8, throw: [{ type: 'damage', value: 16, vs: { WATER: 2.5 } }], learnedNote: 'Very strong against WATER.', release: 'mon' },
+  surstromming: { kind: 'throwable', name: 'Surströmming can', em: '🥫', price: 18, hit: 1, area: true, throw: [{ type: 'flee', vs: 'FANG', chance: .5 }, { type: 'stun', turns: 1 }, { type: 'catchBonus', value: .4, turns: 3 }], learnedNote: 'FANG animals may flee. Everything else is dazed.', release: 'mon' },
   banana: { kind: 'throwable', name: 'Banana peel', em: '🍌', price: 5, hit: .9, throw: [{ type: 'loseTurn', turns: 1 }], learnedNote: 'They slip and lose a turn.', release: 'mon' },
   // for the women (sold by Flower Fia)
   bouquet: { kind: 'throwable', name: 'Chlorine bouquet', em: '💐', price: 25, hit: .9, wife: true, throw: [{ type: 'stun', turns: 2 }, { type: 'calm', value: 20 }], learnedNote: 'Sneezing fit. Stunned for 2 turns.', release: 'mon' },
@@ -176,24 +308,43 @@ items: {
   giftcard: { kind: 'throwable', name: 'Gift card', em: '🎁', price: 40, hit: 1, wife: true, throw: [{ type: 'catchBonus', value: .6, turns: 3 }, { type: 'loseTurn', turns: 1 }, { type: 'calm', value: 30 }], learnedNote: 'Distracted. Easier to catch.', release: 'mon' },
   ringbox: { requires: 'know:ring', kind: 'throwable', name: 'Ring box', em: '💍', price: 250, hit: 1, wife: true, throw: [{ type: 'calm', value: 60 }, { type: 'promiseDebt', value: 1 }], learnedNote: 'Big calm. Adds promise debt.', release: 'mon' },
   chores: { kind: 'throwable', name: 'Chore chart', em: '📋', price: 8, hit: 1, wife: true, throw: [{ type: 'anger', value: 30 }], learnedNote: 'Backfires. She gets angrier.', release: 'mon' },
-  // traps: place one on the map; after waitMin real minutes a dazed creature that likes the lure may sit in it
-  fizzMk1: { kind: 'trap', name: 'Open energy drink', em: '⚡', price: 30, lure: 'FIZZ', tier: 1, waitMin: 3, catchBonus: .3, rare: [['genie', 4], ['owl', 4]], learnedNote: 'Attracts FIZZ.', release: 'mon' },
-  grubMk1: { kind: 'trap', name: 'Half-eaten kebab', em: '🥙', price: 30, lure: 'GRUB', tier: 1, waitMin: 3, catchBonus: .3, rare: [['lizard', 5]], learnedNote: 'Attracts GRUB.', release: 'mon' },
-  wildMk1: { kind: 'trap', name: 'Laser pointer', em: '🔴', price: 30, lure: 'WILD', tier: 1, waitMin: 3, catchBonus: .3, rare: [['cat', 6], ['walter', 4]], learnedNote: 'Attracts WILD.', release: 'mon' },
-  techMk1: { kind: 'trap', name: 'Charger in the wall', em: '🔌', price: 30, lure: 'TECH', tier: 1, waitMin: 3, catchBonus: .3, learnedNote: 'Attracts TECH.', release: 'tue' },
-  frostMk1: { kind: 'trap', name: 'Freezer door left open', em: '🧊', price: 30, lure: 'FROST', tier: 1, waitMin: 3, catchBonus: .3, rare: [['salmon', 5]], learnedNote: 'Attracts FROST.', release: 'tue' },
-  rustleMk1: { kind: 'trap', name: 'Crisp bag', em: '🥔', price: 30, lure: 'RUSTLE', tier: 1, waitMin: 3, catchBonus: .3, learnedNote: 'Attracts RUSTLE.', release: 'tue' },
+  // ---- traps: three ladders (ground / water / air), tier 1-5. cap = biggest creature size it holds (S M L XL), waitMin = real minutes, place = ground | shore | deep (pier end or boat) | boat | night.
+  //      You never buy tier 2+: Trapper Tore upgrades a lower trap (upgradesTo + upgradeCost { kr, fur, feather, scale, chitin, shell, antler }). value = what it cost to build (repairs cost half) ----
+  mouseTrap: { kind: 'trap', name: 'Mouse trap', em: '🪤', price: 30, value: 30, ladder: 'ground', tier: 1, cap: 'S', waitMin: 4, place: 'ground', upgradesTo: 'liveBox', upgradeCost: { kr: 60, fur: 3 }, learnedNote: 'Ground trap, tier 1. Small things: mice, roaches, beetles.', release: 'mon' },
+  liveBox: { kind: 'trap', name: 'Live box', em: '📦', price: 0, notSold: true, value: 60, ladder: 'ground', tier: 2, cap: 'M', waitMin: 3.5, place: 'ground', upgradesTo: 'snare', upgradeCost: { kr: 100, fur: 4, chitin: 2 }, learnedNote: 'Ground trap, tier 2. Up to medium: squirrels, fox kits, crowlings.', release: 'mon' },
+  snare: { kind: 'trap', name: 'Snare', em: '➰', price: 0, notSold: true, value: 100, ladder: 'ground', tier: 3, cap: 'M', waitMin: 3, place: 'ground', upgradesTo: 'pitTrap', upgradeCost: { kr: 160, fur: 6, shell: 2 }, learnedNote: 'Ground trap, tier 3. Foxes, adders, boarlets.', release: 'mon' },
+  pitTrap: { kind: 'trap', name: 'Pit trap', em: '🕳️', price: 0, notSold: true, value: 160, ladder: 'ground', tier: 4, cap: 'L', waitMin: 2.5, place: 'ground', upgradesTo: 'moosePen', upgradeCost: { kr: 250, fur: 6, antler: 4 }, learnedNote: 'Ground trap, tier 4. Big ones: boars, deer-sized.', release: 'mon' },
+  moosePen: { kind: 'trap', name: 'Moose pen (with salt lick)', em: '🪵', price: 0, notSold: true, value: 250, ladder: 'ground', tier: 5, cap: 'XL', waitMin: 2, place: 'ground', learnedNote: 'Ground trap, tier 5. Moose and bears.', release: 'mon' },
+  rodTrap: { kind: 'trap', name: 'Rod & worm', em: '🎣', price: 35, value: 35, ladder: 'water', tier: 1, cap: 'S', waitMin: 4, place: 'shore', upgradesTo: 'netTrap', upgradeCost: { kr: 60, scale: 3 }, learnedNote: 'Water trap, tier 1. Set it on a shore: perch fry, crayling, pike fry.', release: 'mon' },
+  netTrap: { kind: 'trap', name: 'Fishing net', em: '🥅', price: 80, value: 80, ladder: 'water', tier: 2, cap: 'M', waitMin: 3.5, place: 'shore', upgradesTo: 'crayCage', upgradeCost: { kr: 120, scale: 3 }, learnedNote: 'Water trap, tier 2. Set it on a shore: the reeds. Pike, perch.', release: 'tue' },
+  crayCage: { kind: 'trap', name: 'Crayfish cage', em: '🧺', price: 0, notSold: true, value: 120, ladder: 'water', tier: 3, cap: 'M', waitMin: 3, place: 'shore', night: true, upgradesTo: 'longline', upgradeCost: { kr: 180, scale: 5, shell: 3 }, learnedNote: 'Water trap, tier 3. The lake bottom, at night. The crayfish line.', release: 'tue' },
+  longline: { kind: 'trap', name: 'Deep longline', em: '🪝', price: 0, notSold: true, value: 180, ladder: 'water', tier: 4, cap: 'L', waitMin: 2.5, place: 'deep', upgradesTo: 'trawl', upgradeCost: { kr: 300, scale: 8, shell: 4 }, learnedNote: 'Water trap, tier 4. Needs deep water: the pier end or a boat.', release: 'tue' },
+  trawl: { kind: 'trap', name: 'Trawl', em: '⚓', price: 0, notSold: true, value: 300, ladder: 'water', tier: 5, cap: 'XL', waitMin: 2, place: 'boat', learnedNote: 'Water trap, tier 5. Only from a boat, in the deepest water.', release: 'wed' },
+  jamJar: { kind: 'trap', name: 'Jam jar', em: '🍯', price: 20, value: 20, ladder: 'air', tier: 1, cap: 'S', waitMin: 4, place: 'ground', upgradesTo: 'mistNet', upgradeCost: { kr: 60, feather: 3 }, learnedNote: 'Air trap, tier 1. Ladybugs and beetles.', release: 'mon' },
+  mistNet: { kind: 'trap', name: 'Mist net', em: '🕸️', price: 0, notSold: true, value: 60, ladder: 'air', tier: 2, cap: 'M', waitMin: 3, place: 'ground', upgradesTo: 'lightTrap', upgradeCost: { kr: 100, feather: 4, chitin: 4 }, learnedNote: 'Air trap, tier 2. Crows and eaglets.', release: 'tue' },
+  lightTrap: { kind: 'trap', name: 'Light trap', em: '💡', price: 0, notSold: true, value: 100, ladder: 'air', tier: 3, cap: 'L', waitMin: 2.5, place: 'ground', night: true, learnedNote: 'Air trap, tier 3. Only after dark (20:00-06:00): moths.', release: 'tue' },
   saleSign: { kind: 'trap', name: '"70 % off" sign', em: '🏷️', price: 45, lure: 'WIFE', tier: 1, waitMin: 4, catchBonus: .3, learnedNote: 'Attracts wives.', release: 'tue' },
   samples: { kind: 'trap', name: 'Free-sample stand with bubbly', em: '🥂', price: 60, lure: 'WIFE', tier: 2, waitMin: 3, catchBonus: .5, learnedNote: 'Attracts wives. They stay longer.', release: 'wed' },
-  fizzMk2: { kind: 'trap', name: 'Energy drink Mk2', em: '⚡', price: 70, lure: 'FIZZ', tier: 2, waitMin: 2, catchBonus: .5, rare: [['genie', 10], ['owl', 10]], learnedNote: 'Faster, rarer FIZZ.', release: 'wed' },
-  fizzMk3: { kind: 'trap', name: 'Energy drink Mk3', em: '⚡', price: 140, lure: 'FIZZ', tier: 3, waitMin: 1, catchBonus: .8, rare: [['genie', 20], ['owl', 20], ['loyal', 2]], learnedNote: 'Fastest. Rare ones love it.', release: 'wed' },
-  grubMk2: { kind: 'trap', name: 'Kebab Mk2 (extra sauce)', em: '🥙', price: 70, lure: 'GRUB', tier: 2, waitMin: 2, catchBonus: .5, rare: [['lizard', 12]], learnedNote: 'Faster, rarer GRUB.', release: 'wed' },
-  grubMk3: { kind: 'trap', name: 'Kebab Mk3 (everything on it)', em: '🥙', price: 140, lure: 'GRUB', tier: 3, waitMin: 1, catchBonus: .8, rare: [['lizard', 20], ['loyal', 2]], learnedNote: 'Fastest. Rare ones love it.', release: 'wed' },
-  wildMk2: { kind: 'trap', name: 'Laser pointer Mk2', em: '🔴', price: 70, lure: 'WILD', tier: 2, waitMin: 2, catchBonus: .5, rare: [['cat', 12], ['walter', 10], ['moth', 8]], learnedNote: 'Faster, rarer WILD.', release: 'wed' },
-  wildMk3: { kind: 'trap', name: 'Laser pointer Mk3 (green)', em: '🟢', price: 140, lure: 'WILD', tier: 3, waitMin: 1, catchBonus: .8, rare: [['cat', 20], ['walter', 20], ['moth', 15], ['pike', 6]], learnedNote: 'Fastest. Rare ones love it.', release: 'wed' },
   mythicTrap: { kind: 'trap', name: 'Mythic Trap', em: '🔱', price: 0, lure: 'MYTHIC', tier: 3, waitMin: 2, catchBonus: 1, spawn: 'wraith', notSold: true, learnedNote: 'The only thing that holds the Wraith.', release: 'wed' },
+  // ---- bait (put one in a trap when you place it; the right bait lifts the odds) and drugs as bait: see tuning.TRAP ----
+  worms: { kind: 'bait', name: 'Worms', em: '🪱', price: 4, learnedNote: 'Bait: fish and toads.', release: 'mon' },
+  cheese: { kind: 'bait', name: 'Cheese', em: '🧀', price: 4, learnedNote: 'Bait: mice and rats.', release: 'mon' },
+  honey: { kind: 'bait', name: 'Honey', em: '🍯', price: 8, learnedNote: 'Bait: badgers and bears.', release: 'mon' },
+  nuts: { kind: 'bait', name: 'Nuts', em: '🥜', price: 5, learnedNote: 'Bait: squirrels, hares and tortoises.', release: 'mon' },
+  salt: { kind: 'bait', name: 'Salt lick', em: '🧂', price: 6, learnedNote: 'Bait: deer and moose.', release: 'mon' },
+  meat: { kind: 'bait', name: 'Meat scraps', em: '🥩', price: 5, learnedNote: 'Bait: foxes, adders, boars, eagles, lynx.', release: 'mon' },
+  jam: { kind: 'bait', name: 'Jam', em: '🍓', price: 5, learnedNote: 'Bait: ladybugs, beetles, roaches, moths, hedgehogs.', release: 'mon' },
+  bread: { kind: 'bait', name: 'Bread', em: '🍞', price: 3, learnedNote: 'Bait: crows.', release: 'mon' },
+  // ---- materials: dropped when you Finish off a creature. Spend them on trap upgrades at Trapper Tore ----
+  fur: { kind: 'material', name: 'Fur', em: '🧶', notSold: true, learnedNote: 'From fur-bearers. Trap upgrades.', release: 'mon' },
+  feather: { kind: 'material', name: 'Feather', em: '🪶', notSold: true, learnedNote: 'From birds. Trap upgrades.', release: 'mon' },
+  scale: { kind: 'material', name: 'Scale', em: '🐟', notSold: true, learnedNote: 'From fish and snakes. Trap upgrades.', release: 'mon' },
+  chitin: { kind: 'material', name: 'Chitin', em: '🪲', notSold: true, learnedNote: 'From bugs. Trap upgrades.', release: 'mon' },
+  shell: { kind: 'material', name: 'Shell', em: '🐚', notSold: true, learnedNote: 'From shells and crabs. Trap upgrades.', release: 'mon' },
+  antler: { kind: 'material', name: 'Antler', em: '🦌', notSold: true, learnedNote: 'From deer and moose. Trap upgrades.', release: 'mon' },
+  faltboken: { kind: 'key', name: 'Fältboken', em: '📕', notSold: true, learnedNote: 'Coffee-stained, weed-stained. Notes about every animal in the margins.', release: 'mon' },
   // lures: use on the map for 60 s; also what the dead like at the cemetery
-  buns: { kind: 'lure', name: 'Free cinnamon buns', em: '🥐', price: 15, lure: 'GRUB', use: [{ type: 'attract', value: 'GRUB', duration: 60 }], learnedNote: 'GRUB comes running for 60 s. Everyone loves them.', release: 'tue' },
+  buns: { kind: 'lure', name: 'Free cinnamon buns', em: '🥐', price: 15, lure: 'BUNS', use: [{ type: 'attract', value: 'FANG', duration: 60 }], learnedNote: 'FANG animals come running for 60 s. Everyone loves buns.', release: 'tue' },
   furniture: { kind: 'lure', name: '"Furniture 70 % off" flyer', em: '🛋️', price: 20, lure: 'WIFE', use: [{ type: 'attract', value: 'WIFE', duration: 60 }], learnedNote: 'A wife shows up. Fast.', release: 'tue' },
   beer6: { kind: 'lure', name: 'Six-pack', em: '🍻', price: 60, lure: 'HERO', use: [{ type: 'attract', value: 'HERO', duration: 60 }], learnedNote: 'A hero smells it from across the parking lot.', release: 'tue' },
   // weapon: the tranquilizer gun (in the Throw menu). upgradesTo + cost = buy the next tier at the same shop
@@ -203,23 +354,30 @@ items: {
   // drugs and drinks: use = on you; throw = on the opponent. Drinks count towards the blur.
   folkol: { kind: 'drug', name: 'Folköl', em: '🍺', price: 10, drink: true, use: [{ type: 'stat', value: { spd: 1 }, duration: 60 }], lureMul: 1.25, learnedNote: '+SPD a little.', release: 'mon' },
   lager: { kind: 'drug', name: 'Lager', em: '🍺', price: 20, drink: true, use: [{ type: 'stat', value: { atk: 1 }, duration: 60 }], lureMul: 1.5, learnedNote: '+ATK.', release: 'mon' },
-  ipa: { kind: 'drug', name: 'IPA', em: '🍻', price: 30, drink: true, use: [{ type: 'stat', value: { atk: 2, acc: -.15 }, duration: 60 }], lureMul: 1.5, good: 'WILD', learnedNote: '+ATK ++, −accuracy.', release: 'mon' },
-  gt: { kind: 'drug', name: 'Gin & tonic', em: '🍸', price: 35, drink: true, use: [{ type: 'stat', value: { spd: 1 }, duration: 60 }, { type: 'cure' }], lureMul: 1.5, good: 'TECH', learnedNote: '+SPD, clears your head.', release: 'mon' },
+  ipa: { kind: 'drug', name: 'IPA', em: '🍻', price: 30, drink: true, use: [{ type: 'stat', value: { atk: 2, acc: -.15 }, duration: 60 }], lureMul: 1.5, good: 'FANG', learnedNote: '+ATK ++, −accuracy.', release: 'mon' },
+  gt: { kind: 'drug', name: 'Gin & tonic', em: '🍸', price: 35, drink: true, use: [{ type: 'stat', value: { spd: 1 }, duration: 60 }, { type: 'cure' }], lureMul: 1.5, good: 'WING', learnedNote: '+SPD, clears your head.', release: 'mon' },
   whisky: { kind: 'drug', name: 'Whisky', em: '🥃', price: 50, drink: true, use: [{ type: 'stat', value: { def: 1 }, duration: 60 }, { type: 'guard', duration: 60 }], lureMul: 2, learnedNote: '+DEF, immune to guilt.', release: 'mon' },
-  glogg: { kind: 'drug', name: 'Glögg', em: '🍷', price: 25, drink: true, use: [{ type: 'heal', value: .3 }, { type: 'stat', value: { atk: 1, acc: -.12 }, duration: 60 }], lureMul: 1.5, good: 'FROST', learnedNote: 'Heals 30 %. Brave, but worse aim.', release: 'mon' },
-  snaps: { kind: 'drug', name: 'Snaps', em: '🥂', price: 40, drink: true, use: [{ type: 'stat', value: { crit: 1 }, duration: 60 }, { type: 'say', value: '🎶 "Helan går, sjung hopp faderallan lallan lej!"' }], lureMul: 0, learnedNote: '+crit. You sing.', release: 'mon' },
+  glogg: { kind: 'drug', name: 'Glögg', em: '🍷', price: 25, drink: true, use: [{ type: 'heal', value: .3 }, { type: 'stat', value: { atk: 1, acc: -.12 }, duration: 60 }], lureMul: 1.5, good: 'STONE', learnedNote: 'Heals 30 %. Brave, but worse aim.', release: 'mon' },
+  snaps: { kind: 'drug', feed: true, name: 'Snaps', em: '🥂', price: 40, drink: true, use: [{ type: 'stat', value: { crit: 1 }, duration: 60 }, { type: 'say', value: '🎶 "Helan går, sjung hopp faderallan lallan lej!"' }], lureMul: 0, learnedNote: '+crit. You sing.', release: 'mon' },
   fizztab: { kind: 'drug', name: 'Fizz tablet', em: '💊', price: 15, use: [{ type: 'heal', value: .5 }], learnedNote: 'Heals 50 %.', release: 'mon' },
   burger: { kind: 'drug', name: 'IRON Burger', em: '🍔', price: 40, use: [{ type: 'stat', value: { atk: 1 }, duration: 60 }], learnedNote: '+ATK for 60 s.', release: 'mon' },
   kebabpizza: { kind: 'drug', name: 'Kebab pizza', em: '🍕', price: 45, use: [{ type: 'heal', value: .3 }, { type: 'stat', value: { def: 1 }, duration: 60 }], learnedNote: 'Heals 30 % and +DEF.', release: 'mon' },
   sushi: { kind: 'drug', name: 'Salmon roll', em: '🍣', price: 50, use: [{ type: 'stat', value: { spd: 1 }, duration: 60 }], learnedNote: '+SPD for 60 s.', release: 'mon' },
   snus: { kind: 'drug', name: 'Snus', em: '🫙', price: 20, use: [{ type: 'stat', value: { atk: 1, def: 1 }, duration: 90 }], throw: [{ type: 'stat', value: { atk: -1 }, turns: 3 }], learnedNote: 'Small buff. Lasts a while.', release: 'mon' },
-  coke: { kind: 'drug', name: 'Coke', em: '❄️', price: 0, use: [{ type: 'speed', value: 1, duration: 60, stacks: true, maxStacks: 3, onOverdose: { type: 'heartAttack' } }], throw: [{ type: 'stat', value: { spd: 2, atk: 1 }, turns: 3 }], train: [{ type: 'xpRate', value: 1, duration: 600, stacks: true, maxStacks: 3, onOverdose: { type: 'heartAttack' } }], learnedNote: 'Everything is faster. Your heart disagrees after 3.', release: 'mon' },
-  weed: { kind: 'drug', name: 'Weed', em: '🌿', price: 0, use: [{ type: 'speed', value: -.4, duration: 60 }, { type: 'catchBonus', value: .4, duration: 60 }, { type: 'attract', value: 'GRUB', duration: 60 }], throw: [{ type: 'sleep', turns: 2 }], learnedNote: 'Slow-mo, easier catches, GRUB gets curious. Thrown: they fall asleep.', release: 'mon' },
-  shrooms: { kind: 'drug', name: 'Magic mushrooms', em: '🍄', price: 0, use: [{ type: 'reveal', duration: 90 }, { type: 'tint', value: 'rainbow', duration: 90 }], throw: [{ type: 'confuse', turns: 3 }], learnedNote: 'You see things that were always there.', release: 'tue' },
+  coke: { kind: 'drug', feed: true, name: 'Coke', em: '❄️', price: 0, use: [{ type: 'speed', value: 1, duration: 60, stacks: true, maxStacks: 3, onOverdose: { type: 'heartAttack' } }], throw: [{ type: 'stat', value: { spd: 2, atk: 1 }, turns: 3 }], train: [{ type: 'xpRate', value: 1, duration: 600, stacks: true, maxStacks: 3, onOverdose: { type: 'heartAttack' } }], learnedNote: 'Everything is faster. Your heart disagrees after 3.', release: 'mon' },
+  weed: { kind: 'drug', feed: true, name: 'Weed', em: '🌿', price: 0, use: [{ type: 'speed', value: -.4, duration: 60 }, { type: 'catchBonus', value: .4, duration: 60 }, { type: 'attract', value: 'ROOT', duration: 60 }], throw: [{ type: 'sleep', turns: 2 }], learnedNote: 'Slow-mo, easier catches, ROOT animals get curious. Thrown: they fall asleep.', release: 'mon' },
+  shrooms: { kind: 'drug', feed: true, name: 'Magic mushrooms', em: '🍄', price: 0, use: [{ type: 'reveal', duration: 90 }, { type: 'tint', value: 'rainbow', duration: 90 }], throw: [{ type: 'confuse', turns: 3 }], learnedNote: 'You see things that were always there.', release: 'tue' },
   protein: { kind: 'drug', name: 'Protein shake', em: '🥤', price: 35, use: [{ type: 'heal', value: .2 }], train: [{ type: 'xpRate', value: 1, duration: 1800 }], learnedNote: 'Gym creatures train twice as fast.', release: 'tue' },
-  // fishing: the net holds a wild creature for 2 turns; the lake net trap only works on a shore
+  // ---- feedable drugs: Bag → Use → pick the drug → pick a creature (or yourself). Right drug + right creature + level = a drug form. Each feeding can cause a bad trip (see trips). ----
+  xanax: { kind: 'drug', feed: true, name: 'Xanax', em: '💊', price: 45, requires: 'xanaxRx', use: [{ type: 'speed', value: -.3, duration: 60 }, { type: 'guard', duration: 60 }], learnedNote: 'Everything is fine. Fine is a verb.', release: 'tue' },
+  molly: { kind: 'drug', feed: true, name: 'Molly', em: '💖', price: 70, use: [{ type: 'heal', value: .2 }, { type: 'tint', value: '#ff7ac8', duration: 60 }, { type: 'catchBonus', value: .3, duration: 60 }], learnedNote: 'You love everyone. Creatures can tell.', release: 'tue' },
+  keta: { kind: 'drug', feed: true, name: 'Ketamine', em: '🧪', price: 70, use: [{ type: 'speed', value: -.5, duration: 45 }, { type: 'tint', value: '#7a8cff', duration: 45 }], learnedNote: 'You are very still. The floor is very far away.', release: 'tue' },
+  lsd: { kind: 'drug', feed: true, name: 'LSD', em: '🌈', price: 0, notSold: true, use: [{ type: 'reveal', duration: 90 }, { type: 'tint', value: 'rainbow', duration: 90 }], learnedNote: 'You see things that were always there. Now with colours.', release: 'tue' },
+  speed: { kind: 'drug', feed: true, name: 'Speed', em: '⚡', price: 60, use: [{ type: 'speed', value: .6, duration: 60, stacks: true, maxStacks: 4, onOverdose: { type: 'heartAttack' } }], learnedNote: 'Faster. A lot faster. Your heart agrees, then does not.', release: 'tue' },
+  meth: { kind: 'drug', feed: true, name: 'Meth', em: '💎', price: 0, notSold: true, use: [{ type: 'speed', value: 1.2, duration: 60, stacks: true, maxStacks: 2, onOverdose: { type: 'heartAttack' } }, { type: 'stat', value: { atk: 2, def: -1 }, duration: 60 }], learnedNote: 'The lamp is looking at you. Do not look back.', release: 'wed' },
+  dmt: { kind: 'drug', feed: true, name: 'DMT', em: '🌀', price: 0, notSold: true, use: [{ type: 'reveal', duration: 60 }, { type: 'tint', value: 'rainbow', duration: 60 }, { type: 'confuse', duration: 30 }], learnedNote: 'Eight minutes. Machine elves. They say hi.', release: 'wed' },
+  // fishing: the net holds a wild creature for 2 turns
   net: { kind: 'throwable', name: 'Fishing net', em: '🕸️', price: 25, hit: .85, throw: [{ type: 'stun', turns: 2 }, { type: 'catchBonus', value: .2, turns: 2 }], learnedNote: 'Holds it still for two turns.', release: 'tue' },
-  netTrap: { kind: 'trap', name: 'Lake net trap', em: '🥅', price: 80, shore: true, lure: 'WATER', tier: 2, waitMin: 3, catchBonus: .5, catch: [['pike', 3], ['salmon', 3], ['frog', 2], ['genie', 1]], rare: [['owl', 4]], learnedNote: 'Set it on a shore.', release: 'tue' },
   // key items
   stache: { kind: 'key', name: 'Moustache trim', em: '✂️', price: 20, cosmetic: true, learnedNote: 'Magnificent. Purely cosmetic.', release: 'mon' },
   bitcoin: { kind: 'key', name: 'Bitcoin (physical)', em: '🪙', notSold: true, learnedNote: 'Somebody would love this on a grave.', release: 'wed' },
@@ -259,42 +417,42 @@ npcs: {
   pelle: { name: 'Bottle-return Pelle', role: 'talker', at: [37, 33], area: [35, 33, 8, 2], gossip: true, canDie: true, catchable: true, likes: 'buns', epitaph: 'Returned his last bottle.',
     look: { hair: '#8a6a4a', style: 'short', beard: '#9a9a9a', top: '#2e7d32', prop: 'bag' }, release: 'mon',
     lines: { pool: ['The machines make a funny noise. Like someone is breathing behind them.', 'One krona per can. I have three million cans.'] } },
-  freja: { name: 'Freezer Freja', role: 'merchant', at: [15, 34], area: [14, 34, 7, 1], gossip: true, canDie: true, catchable: true, likes: 'FROST', epitaph: 'Finally warm.',
-    look: { skin: '#f0c8a8', hair: '#e8c46a', style: 'long', top: '#4fc3f7', legs: '#3d5f92' }, shop: ['meatballs', 'frostMk1'], release: 'mon',
-    lines: { pool: ['Penguins hate it when you leave the freezer door open. Or love it. I forget.'] } },
+  freja: { name: 'Freezer Freja', role: 'merchant', at: [15, 34], area: [14, 34, 7, 1], gossip: true, canDie: true, catchable: true, likes: 'meatballs', epitaph: 'Finally warm.',
+    look: { skin: '#f0c8a8', hair: '#e8c46a', style: 'long', top: '#4fc3f7', legs: '#3d5f92' }, shop: ['meatballs', 'jam'], release: 'mon',
+    lines: { pool: ['Rats love it when you leave the freezer door open. Or hate it. I forget.'] } },
   hasse: { name: 'Hallucinating Hasse', role: 'talker', at: [16, 13], area: [13, 10, 10, 5], gossip: true, canDie: true, catchable: true, likes: 'shrooms', epitaph: 'Can finally smell purple.',
     look: { hair: '#aa7744', style: 'messy', top: '#c06bd6', top2: '#ffd23a', topStyle: 'stripe', legs: '#3d5f92' }, release: 'mon',
     lines: { pool: ['Can you smell purple?', 'The receipt in aisle 4 is fourteen metres long and it LOOKED at me.', 'Mushrooms? Ask the guy who hides behind the bottle machines. Didn\'t hear it from me.'] } },
-  barber: { name: 'The Barber', role: 'merchant', at: [38, 68], area: [35, 66, 10, 3], canDie: true, catchable: true, likes: 'WILD', epitaph: 'Took a little off the top. All of it.',
+  barber: { name: 'The Barber', role: 'merchant', at: [38, 68], area: [35, 66, 10, 3], canDie: true, catchable: true, likes: 'stache', epitaph: 'Took a little off the top. All of it.',
     look: { hair: '#1a1a1a', style: 'short', stache: 1, top: '#f4f4f4', prop: 'apron' }, shop: ['tranq', 'stache'], release: 'mon',
     lines: { pool: ['Trim? Gossip? A tranquilizer gun? Don\'t ask why I have one.'] } },
-  jonas: { name: 'Hardware Jonas', role: 'merchant', at: [10, 57], area: [9, 56, 3, 2], canDie: true, catchable: true, likes: 'TECH', epitaph: 'Always had the right tool. Except this time.',
-    look: { hair: '#3a2a1a', style: 'cap', cap: '#e3000f', cap2: '#fff', top: '#2a2a33', legs: '#5a4a30' }, shop: ['rock', 'bottle', 'fizzMk1', 'grubMk1', 'wildMk1', 'techMk1', 'rustleMk1', 'fizzMk2', 'grubMk2', 'wildMk2', 'fizzMk3', 'grubMk3', 'wildMk3'], release: 'mon',
+  jonas: { name: 'Hardware Jonas', role: 'merchant', at: [10, 57], area: [9, 56, 3, 2], canDie: true, catchable: true, likes: 'rock', epitaph: 'Always had the right tool. Except this time.',
+    look: { hair: '#3a2a1a', style: 'cap', cap: '#e3000f', cap2: '#fff', top: '#2a2a33', legs: '#5a4a30' }, shop: ['rock', 'bottle', 'mouseTrap', 'jamJar', 'rodTrap', 'cheese', 'nuts', 'jam', 'bread', 'meat'], release: 'mon',
     lines: { pool: ['Traps work while you sleep. Like me.', 'Put it where the creatures walk. Come back later.'] } },
   fia: { name: 'Flower Fia', role: 'merchant', at: [29, 37], area: [28, 35, 2, 3], canDie: true, catchable: true, likes: 'WIFE', epitaph: 'Pushing up her own daisies.',
     look: { skin: '#f0c8a8', hair: '#a0522d', style: 'long', top: '#5fae3e', legs: '#34343c', prop: 'bouquet' }, shop: ['bouquet', 'glitter', 'giftcard', 'ringbox', 'chores', 'saleSign', 'furniture', 'samples'], release: 'mon',
     lines: { pool: ['Flowers solve everything. Except chlorine flowers. Those make it worse.', 'Never give a wife a chore chart. Trust me.'] } },
   system: { name: 'Systembolaget cashier', role: 'merchant', at: [42, 29], canDie: false, look: { hair: '#5a3a22', style: 'bob', top: '#0a6e3a' }, shop: ['folkol', 'lager', 'ipa', 'gt', 'whisky', 'glogg', 'snaps', 'beer6'], release: 'mon',
     lines: { pool: ['ID, please. …You look 47. Go ahead.'] } },
-  apotek: { name: 'Pharmacist', role: 'merchant', at: [40, 37], canDie: false, heal: true, look: { skin: '#f0c8a8', hair: '#3a2a1a', style: 'short', glasses: 1, top: '#f4f4f4' }, shop: ['fizztab'], release: 'mon',
+  apotek: { name: 'Pharmacist', role: 'merchant', at: [40, 37], canDie: false, heal: true, look: { skin: '#f0c8a8', hair: '#3a2a1a', style: 'short', glasses: 1, top: '#f4f4f4' }, shop: ['fizztab', 'xanax'], release: 'mon',
     lines: { pool: ['Everyone is fully healed. Take care out there.'] } },
-  burgercook: { name: 'IRON Burger cook', role: 'merchant', at: [6, 71], canDie: true, likes: 'GRUB', epitaph: 'Well done. Finally.', look: { hair: '#222', style: 'cap', cap: '#222', cap2: '#f39c34', top: '#f4f4f4' }, shop: ['burger'], release: 'mon', lines: { pool: ['Om nom.'] } },
-  pizzaiolo: { name: 'Pizzeria Berga', role: 'merchant', at: [17, 71], canDie: true, likes: 'GRUB', epitaph: 'Extra sauce, extra dead.', look: { hair: '#2a1a10', style: 'short', stache: 1, top: '#f4f4f4' }, shop: ['kebabpizza'], release: 'mon', lines: { pool: ['Kebab pizza. The national dish.'] } },
-  sushichef: { name: 'J&K99 Sushi chef', role: 'merchant', at: [28, 71], canDie: true, likes: 'FROST', epitaph: 'Rolled away.', look: { hair: '#111', style: 'short', top: '#1c2a36' }, shop: ['sushi'], release: 'mon', lines: { pool: ['Fresh today. Probably.'] } },
+  burgercook: { name: 'IRON Burger cook', role: 'merchant', at: [6, 71], canDie: true, likes: 'buns', epitaph: 'Well done. Finally.', look: { hair: '#222', style: 'cap', cap: '#222', cap2: '#f39c34', top: '#f4f4f4' }, shop: ['burger'], release: 'mon', lines: { pool: ['Om nom.'] } },
+  pizzaiolo: { name: 'Pizzeria Berga', role: 'merchant', at: [17, 71], canDie: true, likes: 'buns', epitaph: 'Extra sauce, extra dead.', look: { hair: '#2a1a10', style: 'short', stache: 1, top: '#f4f4f4' }, shop: ['kebabpizza'], release: 'mon', lines: { pool: ['Kebab pizza. The national dish.'] } },
+  sushichef: { name: 'J&K99 Sushi chef', role: 'merchant', at: [28, 71], canDie: true, likes: 'sushi', epitaph: 'Rolled away.', look: { hair: '#111', style: 'short', top: '#1c2a36' }, shop: ['sushi'], release: 'mon', lines: { pool: ['Fresh today. Probably.'] } },
   dealer: { name: 'Guy behind the bottle machines', role: 'dealer', at: [46, 34], canDie: true, catchable: false, likes: 'buns', epitaph: 'Out of stock.', hidden: true,
     look: { skin: '#d8b090', hair: '#1a1a1a', style: 'hat', top: '#2a2a33', legs: '#111', glasses: 1 }, release: 'mon',
     lines: { pool: ['Psst. You didn\'t see me.', 'Cash is for tourists. I take creatures.'] } },
   kenta: { name: 'Coach Kenta', role: 'gym', at: [43, 15], canDie: true, catchable: true, likes: 'protein', epitaph: 'Did one more rep.',
-    look: { skin: '#d9a07a', hair: '#222', style: 'short', top: '#e3000f', legs: '#111', big: 1 }, party: [['bear', 9], ['golem', 10], ['frog', 11]], shop: ['protein'], release: 'mon',
+    look: { skin: '#d9a07a', hair: '#222', style: 'short', top: '#e3000f', legs: '#111', big: 1 }, party: [['bear', 9], ['boar', 10], ['fox', 11]], shop: ['protein'], release: 'mon',
     lines: { pool: ['Three, two, one, GO! …Why are you not going?', 'Leave your creatures on the WOD board. They come back stronger.'], when: [{ flag: 'gymOpen', text: 'The board is open. Drop your creatures, pick them up later.' }] } },
   trainer1: { name: 'Protein Patrik', role: 'trainer', at: [39, 14], canDie: true, catchable: true, likes: 'protein', epitaph: 'Skipped leg day. Permanently.',
-    look: { skin: '#e0a882', hair: '#d8b060', style: 'short', top: '#f7931a', legs: '#2a2a33', big: 1 }, party: [['bear', 8], ['slime', 8]], release: 'mon',
+    look: { skin: '#e0a882', hair: '#d8b060', style: 'short', top: '#f7931a', legs: '#2a2a33', big: 1 }, party: [['bear', 8], ['cockroach', 8]], release: 'mon',
     lines: { pool: ['Do you even lift, bro?', 'Protein shake? I have nine.'] } },
   trainer2: { name: 'Kettlebell Kim', role: 'trainer', at: [44, 11], canDie: true, catchable: true, likes: 'protein', epitaph: 'Swung too hard.',
-    look: { skin: '#f0c8a8', hair: '#1a1a1a', style: 'bob', top: '#3ddc84', legs: '#111' }, party: [['golem', 9], ['crow', 8]], release: 'mon',
+    look: { skin: '#f0c8a8', hair: '#1a1a1a', style: 'bob', top: '#3ddc84', legs: '#111' }, party: [['boar', 9], ['crow', 8]], release: 'mon',
     lines: { pool: ['WOD of the day: catch 20 creatures, for time.'] } },
   aiLjunky: { name: 'AI-Ljunky', role: 'trainer', at: [44, 12], canDie: true, catchable: true, likes: 'bitcoin', epitaph: 'SEGMENTATION FAULT (core dumped).',
-    look: { skin: '#b8c4d0', hair: '#3dff8a', style: 'short', top: '#2a0a3a', legs: '#111', glasses: 1, prop: 'bow' }, party: [['wraith', 18], ['snake', 19], ['frog', 19], ['mummy', 20]], partyFallback: ['ghost', 18], release: 'tue', requires: 'ljunkyDone', robot: true,
+    look: { skin: '#b8c4d0', hair: '#3dff8a', style: 'short', top: '#2a0a3a', legs: '#111', glasses: 1, prop: 'bow' }, party: [['wraith', 18], ['methmoth', 19], ['ketacrow', 19], ['cokeroach', 20]], partyFallback: ['fox', 18], release: 'tue', requires: 'ljunkyDone', robot: true,
     lines: { pool: ['HELLO. I AM LJUNKY. VERSION 2.0. NOW WITH 40 % MORE DIP.', 'ERROR: FEELINGS.EXE NOT FOUND. FIGHT? Y/N', 'I HAVE TRAINED ON 10,000 HOURS OF LJUNKY EXPLAINING CRYPTO. YOU CANNOT WIN.'] },
     win: 'REBOOTING… I… LOVE… THIS… GYM.' },
   caddy: { name: 'Caddy Calle', role: 'talker', at: [60, 24], area: [58, 23, 6, 4], canDie: true, catchable: true, likes: 'beer6', epitaph: 'Found the water hazard.',
@@ -305,10 +463,10 @@ npcs: {
     look: { hair: '#c9c9c9', style: 'messy', beard: '#c9c9c9', top: '#4f6e3a', legs: '#5a4a30' }, release: 'tue', lines: { pool: ['Trees.'] } },
   guide: { name: 'Mountain guide Greta', role: 'talker', at: [121, 33], area: [119, 32, 4, 3], canDie: true, catchable: true, likes: 'protein', epitaph: 'Slipped on the way up.',
     look: { skin: '#f0c8a8', hair: '#a0522d', style: 'long', top: '#e3000f', topStyle: 'stripe', top2: '#fbf6e8', legs: '#3d5f92' }, release: 'tue', lines: { pool: ['Rocks.'] } },
-  doorman: { name: 'Doorman Dragan', role: 'talker', at: [143, 59], area: [141, 58, 6, 2], canDie: true, catchable: true, likes: 'coke', epitaph: 'Not tonight. Not ever.',
+  doorman: { name: 'Doorman Dragan', role: 'merchant', shop: ['molly', 'speed', 'keta'], at: [143, 59], area: [141, 58, 6, 2], canDie: true, catchable: true, likes: 'coke', epitaph: 'Not tonight. Not ever.',
     look: { skin: '#d9a07a', hair: '#111', style: 'bald', top: '#111', legs: '#111', glasses: 1, big: 1 }, release: 'tue', lines: { pool: ['Not tonight.'] } },
-  folke: { name: 'Fisherman Folke', role: 'merchant', at: [72, 19], area: [68, 18, 8, 2], canDie: true, catchable: true, likes: 'FROST', epitaph: 'The big one got away. And back.',
-    look: { hair: '#8a6a4a', style: 'hat', beard: '#8a6a4a', top: '#2f6fd0', legs: '#3a2a1a', prop: 'bag' }, shop: ['net', 'netTrap'], release: 'tue', lines: { pool: ['Fish.'] } },
+  folke: { name: 'Fisherman Folke', role: 'merchant', at: [72, 19], area: [68, 18, 8, 2], canDie: true, catchable: true, likes: 'worms', epitaph: 'The big one got away. And back.',
+    look: { hair: '#8a6a4a', style: 'hat', beard: '#8a6a4a', top: '#2f6fd0', legs: '#3a2a1a', prop: 'bag' }, shop: ['net', 'netTrap', 'worms'], release: 'tue', lines: { pool: ['Fish.'] } },
   bengt: { name: 'Boat-Bengt', role: 'boatman', at: [58, 19], requires: 'know:boat', canDie: true, catchable: true, likes: 'buns', epitaph: 'Sank with dignity.',
     look: { hair: '#222', style: 'cap', cap: '#fbf6e8', cap2: '#1F2A44', beard: '#222', top: '#1F2A44', legs: '#fbf6e8', glasses: 1 }, release: 'wed', lines: { pool: ['Boats.'] } },
   nisse: { name: 'Night-watch Nisse', role: 'talker', at: [12, 57], area: [10, 56, 8, 3], show: { night: true }, canDie: true, catchable: true, likes: 'coke', epitaph: 'Off duty.',
@@ -319,6 +477,9 @@ npcs: {
     look: { skin: '#d8b090', hair: '#222', style: 'cap', cap: '#2a2a33', cap2: '#3ddc84', top: '#3a3a44', legs: '#222', stache: 1 }, release: 'mon',
     lines: { pool: ['Psst. I buy animals. No paperwork, no questions, no real money.', 'Creatures? I know a guy in Norrtälje. He knows a guy.'] },
     offer: ['What you got?', 'I pay cash. Not much cash.', 'Market is soft today. Very soft.'], thanks: ['{kr} kr. Pleasure doing business.', 'Here, {kr} kr. Don\'t tell Pelle.', '{kr} kr. Take it or… you already took it.'] },
+  tore: { name: 'Trapper Tore', role: 'trapper', at: [50, 58], area: [49, 57, 3, 3], requires: 'know:tore', canDie: true, catchable: true, likes: 'honey', epitaph: 'Caught in his own trap. Fitting.',
+    look: { hair: '#6b4226', style: 'cap', cap: '#4f6e3a', cap2: '#2e4424', beard: '#6b4226', top: '#6b5a3a', legs: '#4a3a22', prop: 'bag' }, shop: ['honey', 'salt', 'meat', 'worms', 'cheese'], release: 'tue',
+    lines: { pool: ['Traps. Upgrades. Repairs. In that order.'] } },
   ingvar: { name: 'Inkasso-Ingvar', role: 'trainer', at: [0, 0], canDie: false, catchable: false, offMap: true, release: 'wed',
     look: { skin: '#e9b48c', hair: '#666', style: 'short', top: '#1d1d24', top2: '#e8eef3', topStyle: 'blazer', legs: '#1d1d24', glasses: 1, prop: 'clip' },
     lines: { pool: ['Inkasso-Ingvar. You promised. Klarna remembers.'] }, win: 'Fine. I will put a note in your file.' }
@@ -326,7 +487,7 @@ npcs: {
 /* Kenny the Fence pays kronor for creatures: rates[rarity] + level × perLv. Low on purpose */
 fence: { rates: { C: 3, U: 6, R: 12, E: 25, L: 40, M: 60 }, perLv: .5 },
 /* Inkasso-Ingvar shows up when promise debt reaches every `every` points. Pay `pay` kr or fight his team (levels = your best + lvUp) */
-debtCollector: { npc: 'ingvar', every: 3, pay: 250, team: ['golem', 'banshee', 'ghost'], lvUp: 2 },
+debtCollector: { npc: 'ingvar', every: 3, pay: 250, team: ['boar', 'crow', 'adder'], lvUp: 2 },
 /* filler shoppers: generated from names + paper-doll parts. Count per release day. */
 fillers: {
   release: 'tue', count: 8, area: [2, 28, 28, 18], canDie: true, catchable: true, likes: 'buns', epitaph: 'Just came in for milk.',
@@ -357,20 +518,20 @@ nonsense: ['The cucumbers vote AIK.', 'Unexpected item in bagging area. Unexpect
 /* ---------- encounter zones (first match wins). r = [x, y, w, h] tiles. enc = [[creature, weight]] (EPIC/needs entries only while revealed) ---------- */
 zones: {
   stock: { name: 'ICA stock room', r: [2, 23, 29, 4] },
-  fruit: { name: 'Fruit & veg', r: [2, 28, 6, 11], enc: [['cuke', 6], ['banshee', 2], ['fly', 4], ['lich', 2]], lv: [4, 7] },
-  pickmix: { name: 'Pick-and-mix', r: [8, 28, 6, 11], enc: [['slime', 6], ['banshee', 2], ['serpent', 2]], lv: [4, 7] },
-  freezer: { name: 'Freezer aisle', r: [14, 28, 7, 11], enc: [['peng', 6], ['banshee', 2], ['salmon', 2]], lv: [5, 8] },
-  bakery: { name: 'Bakery', r: [21, 28, 6, 11], enc: [['mummy', 5], ['banshee', 2], ['slime', 1], ['lich', 1]], lv: [5, 8] },
-  flowers: { name: 'Flower department', r: [27, 28, 4, 11], enc: [['cuke', 5], ['bat', 1], ['fly', 3]], lv: [5, 8] },
-  selfcheck: { name: 'Self-checkout', r: [22, 39, 9, 7], enc: [['ghost', 5], ['bat', 1], ['serpent', 2]], lv: [5, 8] },
-  checkout: { name: 'Checkouts', r: [2, 39, 20, 7], enc: [['bat', 1], ['serpent', 1]], lv: [4, 6] },
-  system: { name: 'Systembolaget', r: [34, 22, 13, 11], enc: [['frog', 5], ['crow', 3], ['genie', 1], ['owl', 1]], lv: [6, 9] },
-  apotek: { name: 'Apotek Hjärtat', r: [34, 35, 13, 10], enc: [['snail', 1]], lv: [6, 9] },
-  burger: { name: 'IRON Burger', r: [1, 65, 11, 9], enc: [['bear', 1]], lv: [6, 9] },
-  pizza: { name: 'Pizzeria Berga', r: [12, 65, 11, 9], enc: [['lizard', 1]], lv: [6, 9] },
-  sushi: { name: 'J&K99 Sushi', r: [23, 65, 11, 9], enc: [['salmon', 1]], lv: [6, 9] },
-  barber: { name: "Tailor's Barber", r: [34, 65, 13, 9], enc: [['moth', 1]], lv: [7, 10] },
-  charger: { name: 'E.ON charger', r: [35, 50, 13, 10], enc: [['snake', 5], ['bat', 2]], lv: [6, 9], out: 1 },
+  fruit: { name: 'Fruit & veg', hab: 'maxi', r: [2, 28, 6, 11], enc: [['rat', 6], ['cockroach', 3], ['ladybug', 1]], lv: [4, 7] },
+  pickmix: { name: 'Pick-and-mix', hab: 'maxi', r: [8, 28, 6, 11], enc: [['rat', 4], ['cockroach', 4], ['ladybug', 2]], lv: [4, 7] },
+  freezer: { name: 'Freezer aisle', hab: 'maxi', r: [14, 28, 7, 11], enc: [['rat', 5], ['cockroach', 3]], lv: [5, 8] },
+  bakery: { name: 'Bakery', hab: 'maxi', r: [21, 28, 6, 11], enc: [['cockroach', 5], ['rat', 4], ['ladybug', 1]], lv: [5, 8] },
+  flowers: { name: 'Flower department', hab: 'maxi', r: [27, 28, 4, 11], enc: [['ladybug', 6], ['cockroach', 2], ['rat', 2]], lv: [5, 8] },
+  selfcheck: { name: 'Self-checkout', hab: 'maxi', r: [22, 39, 9, 7], enc: [['rat', 4], ['cockroach', 3], ['crow', 1]], lv: [5, 8] },
+  checkout: { name: 'Checkouts', hab: 'maxi', r: [2, 39, 20, 7], enc: [['rat', 3], ['cockroach', 3]], lv: [4, 6] },
+  system: { name: 'Systembolaget', hab: 'maxi', r: [34, 22, 13, 11], enc: [['crow', 4], ['rat', 3], ['cockroach', 2]], lv: [6, 9] },
+  apotek: { name: 'Apotek Hjärtat', hab: 'maxi', r: [34, 35, 13, 10], enc: [['cockroach', 3], ['rat', 3]], lv: [6, 9] },
+  burger: { name: 'IRON Burger', hab: 'maxi', r: [1, 65, 11, 9], enc: [['rat', 3], ['cockroach', 3], ['crow', 2]], lv: [6, 9] },
+  pizza: { name: 'Pizzeria Berga', hab: 'maxi', r: [12, 65, 11, 9], enc: [['rat', 3], ['cockroach', 3], ['crow', 2]], lv: [6, 9] },
+  sushi: { name: 'J&K99 Sushi', hab: 'maxi', r: [23, 65, 11, 9], enc: [['rat', 3], ['cockroach', 2], ['crow', 2]], lv: [6, 9] },
+  barber: { name: "Tailor's Barber", hab: 'maxi', r: [34, 65, 13, 9], enc: [['rat', 3], ['cockroach', 3]], lv: [7, 10] },
+  charger: { name: 'E.ON charger', hab: 'lot', r: [35, 50, 13, 10], enc: [['crow', 4], ['rat', 3], ['ladybug', 1]], lv: [6, 9], out: 1 },
   box: { name: 'The Box', r: [37, 9, 10, 10], house: 'ljunky' },
   cemetery: { name: 'Cemetery', r: [1, 9, 11, 10], out: 1, release: 'tue' },
   // ---- the bigger world: houses first, then the grass that crosses the roads, then the big areas (first match wins) ----
@@ -378,32 +539,32 @@ zones: {
   cave: { name: 'The shaman cave', r: [134, 22, 14, 8], house: 'jrohn', release: 'tue' },
   castle: { name: 'The castle', r: [131, 4, 20, 9], house: 'loken', release: 'wed' },
   rave: { name: 'The rave', r: [136, 62, 18, 10], house: 'bigwman', release: 'tue', ambient: { tone: 55, vol: .035, nightVol: .09, every: .5, flash: true } },
-  grounds: { name: 'The castle grounds', r: [126, 2, 30, 15], out: 1, release: 'wed' },
-  boxpath: { name: 'The lawn, east side', r: [24, 9, 23, 11], enc: [['crow', 4], ['fly', 3], ['bat', 2], ['elk', 1]], lv: [8, 11], out: 1 },
-  band_s1: { name: 'Roadside grass', r: [52, 46, 4, 5], enc: [['fly', 3], ['crow', 3], ['cat', 1]], lv: [11, 14], out: 1, release: 'tue' },
-  band_s2: { name: 'Roadside grass', r: [72, 46, 4, 5], enc: [['fly', 3], ['bat', 2], ['cat', 2], ['walter', 1]], lv: [14, 17], out: 1, release: 'tue' },
-  band_s3: { name: 'City outskirts', r: [90, 46, 4, 5], enc: [['ghost', 3], ['golem', 3], ['banshee', 2], ['bat', 2]], lv: [17, 20], out: 1, release: 'tue' },
-  band_s4: { name: 'City outskirts', r: [108, 46, 4, 5], enc: [['ghost', 3], ['snake', 3], ['golem', 2], ['banshee', 2]], lv: [19, 22], out: 1, release: 'tue' },
-  band_n1: { name: 'Lakeside grass', r: [52, 19, 4, 4], enc: [['crow', 3], ['fly', 3], ['frog', 2]], lv: [11, 14], out: 1, release: 'tue' },
-  band_n2: { name: 'Lakeside grass', r: [76, 19, 4, 4], enc: [['crow', 3], ['frog', 3], ['genie', 1]], lv: [14, 17], out: 1, release: 'tue' },
-  band_n3: { name: 'Lakeside grass', r: [100, 19, 4, 4], enc: [['frog', 3], ['owl', 2], ['genie', 1]], lv: [17, 20], out: 1, release: 'tue' },
-  foothills: { name: 'The foothills', r: [124, 29, 4, 4], enc: [['peng', 3], ['golem', 3], ['lizard', 2]], lv: [24, 28], out: 1, release: 'tue' },
-  mtrail: { name: 'The mountain trail', r: [130, 29, 4, 4], enc: [['golem', 3], ['lizard', 3], ['owl', 2], ['peng', 2]], lv: [28, 32], out: 1, release: 'tue' },
-  forest1: { name: 'The forest', r: [56, 56, 6, 10], enc: [['elk', 3], ['walter', 2], ['cat', 2], ['moth', 2], ['fly', 2]], lv: [23, 26], out: 1, release: 'tue' },
-  forest2: { name: 'The forest', r: [76, 56, 6, 10], enc: [['elk', 3], ['moth', 3], ['owl', 2], ['cat', 2]], lv: [26, 30], out: 1, release: 'tue' },
-  deep1: { name: 'The deep forest', r: [112, 56, 6, 10], enc: [['lich', 2], ['serpent', 2], ['owl', 3], ['elk', 3]], lv: [29, 32], out: 1, release: 'tue' },
-  deep2: { name: 'The deep forest', r: [126, 56, 6, 10], enc: [['lich', 2], ['serpent', 2], ['owl', 2], ['snake', 2]], lv: [31, 34], out: 1, release: 'tue' },
-  deep3: { name: 'The deep forest', r: [136, 56, 18, 6], enc: [['lich', 2], ['serpent', 3], ['owl', 2], ['elk', 2]], lv: [33, 36], out: 1, release: 'tue' },
-  biglake: { name: 'The big lake', r: [56, 0, 104, 20], enc: [['pike', 4], ['salmon', 3], ['genie', 2], ['frog', 2]], lv: [34, 40], out: 1, release: 'wed' },
-  golf: { name: 'The golf course', r: [48, 22, 39, 25], enc: [['crow', 3], ['fly', 4], ['bat', 2], ['cat', 1], ['walter', 1]], lv: [10, 14], out: 1, release: 'tue' },
-  city: { name: 'The city', r: [88, 22, 35, 25], out: 1, release: 'tue' },
-  mountain: { name: 'The mountain', r: [123, 22, 37, 29], enc: [['peng', 3], ['golem', 3], ['lizard', 2], ['owl', 1]], lv: [26, 31], out: 1, release: 'tue' },
-  forest: { name: 'The forest', r: [48, 50, 52, 24], enc: [['elk', 3], ['walter', 2], ['cat', 2], ['moth', 2], ['fly', 2], ['owl', 1]], lv: [23, 28], out: 1, release: 'tue' },
-  deepforest: { name: 'The deep forest', r: [100, 50, 60, 24], enc: [['lich', 2], ['serpent', 2], ['owl', 2], ['elk', 2], ['snake', 1]], lv: [35, 41], out: 1, release: 'tue' },
+  grounds: { name: 'The castle grounds', hab: 'castle', r: [126, 2, 30, 15], out: 1, release: 'wed' },
+  boxpath: { name: 'The lawn, east side', hab: 'lawn', r: [24, 9, 23, 11], enc: [['crow', 4], ['ladybug', 3], ['rat', 2], ['cockroach', 1]], lv: [8, 11], out: 1 },
+  band_s1: { name: 'Roadside grass', hab: 'lawn', r: [52, 46, 4, 5], enc: [['crow', 3], ['rat', 3], ['ladybug', 2]], lv: [11, 14], out: 1, release: 'tue' },
+  band_s2: { name: 'Roadside grass', hab: 'golf', r: [72, 46, 4, 5], enc: [['crow', 3], ['rat', 2], ['squirrel', 2], ['beetle', 2]], lv: [14, 17], out: 1, release: 'tue' },
+  band_s3: { name: 'City outskirts', hab: 'city', r: [90, 46, 4, 5], enc: [['cockroach', 3], ['rat', 3], ['crow', 2], ['fox', 1]], lv: [17, 20], out: 1, release: 'tue' },
+  band_s4: { name: 'City outskirts', hab: 'city', r: [108, 46, 4, 5], enc: [['cockroach', 3], ['rat', 2], ['crow', 2], ['fox', 2], ['methmoth', 1]], lv: [19, 22], out: 1, release: 'tue' },
+  band_n1: { name: 'Lakeside grass', hab: 'lawn', r: [52, 19, 4, 4], enc: [['crow', 3], ['ladybug', 3], ['rat', 1]], lv: [11, 14], out: 1, release: 'tue' },
+  band_n2: { name: 'Lakeside grass', hab: 'lawn', r: [76, 19, 4, 4], enc: [['crow', 3], ['squirrel', 2], ['ladybug', 2]], lv: [14, 17], out: 1, release: 'tue' },
+  band_n3: { name: 'Lakeside grass', hab: 'lawn', r: [100, 19, 4, 4], enc: [['squirrel', 3], ['crow', 2], ['beetle', 2]], lv: [17, 20], out: 1, release: 'tue' },
+  foothills: { name: 'The foothills', hab: 'mountain', r: [124, 29, 4, 4], enc: [['hare', 3], ['adder', 3], ['crow', 2]], lv: [24, 28], out: 1, release: 'tue' },
+  mtrail: { name: 'The mountain trail', hab: 'mountain', r: [130, 29, 4, 4], enc: [['adder', 3], ['hare', 3], ['eagle', 1], ['crow', 2]], lv: [28, 32], out: 1, release: 'tue' },
+  forest1: { name: 'The forest', hab: 'forest', r: [56, 56, 6, 10], enc: [['fox', 3], ['boar', 2], ['squirrel', 3], ['moth', 2], ['beetle', 2]], lv: [23, 26], out: 1, release: 'tue' },
+  forest2: { name: 'The forest', hab: 'forest', r: [76, 56, 6, 10], enc: [['fox', 3], ['boar', 3], ['moth', 3], ['squirrel', 2]], lv: [26, 30], out: 1, release: 'tue' },
+  deep1: { name: 'The deep forest', hab: 'deepforest', r: [112, 56, 6, 10], enc: [['boar', 3], ['bear', 1], ['moth', 2], ['fox', 2], ['adder', 1]], lv: [29, 32], out: 1, release: 'tue' },
+  deep2: { name: 'The deep forest', hab: 'deepforest', r: [126, 56, 6, 10], enc: [['moose', 2], ['boar', 2], ['bear', 2], ['moth', 2]], lv: [31, 34], out: 1, release: 'tue' },
+  deep3: { name: 'The deep forest', hab: 'deepforest', r: [136, 56, 18, 6], enc: [['moose', 3], ['bear', 2], ['boar', 2], ['trancequirrel', 1]], lv: [33, 36], out: 1, release: 'tue' },
+  biglake: { name: 'The big lake', r: [56, 0, 104, 20], enc: [['pike', 4], ['crayfish', 3], ['mantis', 2], ['perch', 2], ['trippo', 1]], lv: [34, 40], out: 1, release: 'wed' },
+  golf: { name: 'The golf course', hab: 'golf', r: [48, 22, 39, 25], enc: [['squirrel', 3], ['ladybug', 3], ['beetle', 3], ['tortoise', 2], ['crow', 2], ['fox', 1]], lv: [14, 20], out: 1, release: 'tue' },
+  city: { name: 'The city', hab: 'city', r: [88, 22, 35, 25], enc: [['rat', 3], ['cockroach', 3], ['crow', 3], ['fox', 1], ['methmoth', 1]], lv: [12, 20], out: 1, release: 'tue' },
+  mountain: { name: 'The mountain', hab: 'mountain', r: [123, 22, 37, 29], enc: [['adder', 3], ['hare', 3], ['eagle', 2], ['wolverine', 1], ['bear', 1], ['crow', 2]], lv: [26, 33], out: 1, release: 'tue' },
+  forest: { name: 'The forest', hab: 'forest', r: [48, 50, 52, 24], enc: [['fox', 3], ['boar', 2], ['squirrel', 3], ['moth', 2], ['beetle', 1]], lv: [23, 28], out: 1, release: 'tue' },
+  deepforest: { name: 'The deep forest', hab: 'deepforest', r: [100, 50, 60, 24], enc: [['moose', 2], ['bear', 2], ['boar', 2], ['moth', 2], ['trancequirrel', 1], ['fox', 1]], lv: [35, 41], out: 1, release: 'tue' },
   countryside: { name: 'The countryside', r: [48, 0, 112, 74], out: 1, release: 'tue' },
   lake: { name: 'The lake', r: [0, 0, 48, 9], out: 1 },
-  lawn: { name: 'The lawn by the lake', r: [0, 9, 48, 13], enc: [['crow', 5], ['bat', 2], ['fly', 2], ['elk', 2]], lv: [3, 6], out: 1 },
-  parking: { name: 'Parking lot', r: [0, 46, 48, 19], enc: [['bat', 5], ['golem', 2], ['walter', 1], ['elk', 1]], lv: [2, 5], out: 1 }
+  lawn: { name: 'The lawn by the lake', hab: 'lawn', r: [0, 9, 48, 13], enc: [['crow', 5], ['ladybug', 4], ['rat', 1]], lv: [3, 6], out: 1 },
+  parking: { name: 'Parking lot', hab: 'lot', r: [0, 46, 48, 19], enc: [['crow', 5], ['rat', 3], ['cockroach', 2]], lv: [2, 5], out: 1 }
 },
 
 /* ---------- The Box (Ljunky's CrossFit gym). boss = hero id; bossIfSelf = who runs it when you ARE that hero.
@@ -430,12 +591,39 @@ graves: {
    refuse = his line when you offer a wife. Traded creatures can show up in his stock later (buy back with kr). ---------- */
 dealer: {
   npc: 'dealer', rotateMin: 20, size: 3, levelBonus: .08, buyBack: 60,
+  book: { item: 'faltboken', price: 4, line: 'Field research. Very academic.' },   // always for sale (in creature points) until you own it
   rates: { C: 1, U: 2, R: 4, E: 7, L: 9, M: 12, H: 5 },
   stock: [['coke', 3, 3], ['weed', 2, 3], ['snus', 1, 2], ['glogg', 1, 2], ['shrooms', 4, 1]], // [item, price in creature points, weight]
   rare: [['shrooms', 4, .25], ['coke', 2, .15]],                                               // [item, price, chance per rotation] (discount specials)
   refuse: ['Whoa. That\'s somebody\'s wife. I have standards. Low ones, but still.', 'No wives. Bad for business. Bad for karma.'],
-  hello: ['Psst. Creatures for goodies. No questions.', 'You again. Good. I need a Trolley Golem for… reasons.'],
+  hello: ['Psst. Creatures for goodies. No questions.', 'You again. Good. I need a Badger for… reasons.'],
   empty: 'Come back later. Supply chain issues.'
+},
+
+/* ---------- old saves: creatures from before the new roster become these (level kept; the form follows the level) ---------- */
+legacy: { frog: 'toadlet', cuke: 'fawn', peng: 'hoglet', golem: 'hoglet', ghost: 'lynxKitten', slime: 'fawn', bat: 'crowling', mummy: 'badgerCub', banshee: 'crowling', fly: 'larva', crow: 'crowling', genie: 'lynxKitten', owl: 'crowling', snail: 'hoglet',
+  snake: 'adderling', bear: 'bearCub', lizard: 'adderling', salmon: 'perchFry', moth: 'caterpillar', pike: 'pikeFry', loyal: 'badgerCub', walter: 'foxKit', cat: 'lynxKitten', lich: 'badgerCub', elk: 'fawn', serpent: 'adderling' },
+
+/* ---------- Fältboken (the field book, replaces the creature list). margin = the previous owner's notes, one per line. A drug form shows as a black silhouette until you have seen its line; the recipe shows once you know it. ---------- */
+fieldbook: {
+  locked: 'You have no field guide. The guy behind the bottle machines sells one. Or somebody left one in a camper van, deep in the forest.',
+  intro: 'FÄLTBOKEN. Nordens Djur, med anteckningar. Coffee rings on every page.',
+  margin: {
+    badger: 'It does not care. DO NOT feed it anything you would not eat yourself. (I did.)', lynx: 'Hates being looked at. Loves being looked at. Do not ask which.', toad: 'Sings at 3 a.m. Sings louder with the right drug. The elves hum along.',
+    hedgehog: 'Crosses roads. Always. Give it a small mushroom and it grows a garden.', deer: 'Calm already. Give it weed and it levitates, emotionally.',
+    rat: 'Cheese. Always cheese. It knows what a mouse trap is. It does not care.', cockroach: 'Survives everything. Including what I fed it. Fast now. VERY fast.', crow: 'Holds grudges. Remembers faces. Hates me specifically.', ladybug: 'Lucky. Dangerous in a spotty way.', perch: 'First fish. Always the first fish. It is a tradition.',
+    squirrel: 'Nuts. Golf balls. Whatever. At the rave it is the DJ.', beetle: 'Looks tough. Is tough. Do not give it speed. It is already late.', tortoise: 'Do not hurry it. If you hurry it: coke. It will outrun you.',
+    crayfish: 'Night. Lake bottom. A cage. A pinch. Snaps? Yes. It sings.', pike: 'The king of the lake. Molly makes it affectionate. That is worse.', mantis: 'Fastest punch alive. Shrooms: the punch comes with colours.', trippo: 'Only seen when I was... not myself. It was HUGE. Was it real? Ask the cat.',
+    fox: 'Foxes come into town at night. They are the only honest ones.', boar: 'Mud. Rage. Cocaine makes it worse. Shrooms make it HONEST.', moth: 'Do NOT give it meth. I did. Look at the lamp over there.', moose: 'DO NOT give the moose ketamine indoors.', bear: 'Honey. Always honey. Shrooms and it will look right through you.',
+    adder: 'Zig-zag. Sunbathing. Stay on the path. LSD melts it.', hare: 'Fast. Winter coat. Nothing else to say about it.', eagle: 'It sees you from two kilometres. Mist net? Good luck.', wolverine: 'Small. Angry. Stays mean. Drugs do not help. Nothing helps.', wraith: 'Not in the book. Not in the world. Not in this edition.'
+  }
+},
+
+/* ---------- what a trap says when you check it (see tuning.TRAP for the odds) ---------- */
+trapText: {
+  nothing: ['The bait is gone. Something laughed at you.', 'Empty. A single feather. Possibly an insult.', 'Nothing. The bait is gone, and so is your dignity.', 'The trap is sprung, the bait is eaten, and nobody is home.'],
+  junk: ['You find a boot. Size 46. Smells like Löken.', 'A shopping bag, a receipt and a lot of regret.', 'A single sock. It is not yours. It is also not nobody\'s.', 'A Folköl can. Empty. Still cold.'],
+  higher: 'Something far too big got in. It wrecked the trap, but it is still here. Dazed. Angry.'
 },
 
 /* ---------- the opening: you wake up in the van, walk around, a stranger lets you choose a starter ----------
@@ -447,7 +635,7 @@ opening: {
   strangerAfter: 12,                            // seconds of walking around before he shows up
   stranger: { name: '???', look: { skin: '#d8d0c8', hair: '#2a0a3a', style: 'hat', top: '#2a0a3a', top2: '#3dff8a', topStyle: 'blazer', legs: '#111', shoes: '#111', glasses: 1, big: 1 } },
   lines: ['You have been chosen.', 'Now it is your time to choose.'],
-  starters: ['frog', 'cuke', 'peng', 'snake', 'crow'],
+  starters: ['badgerCub', 'lynxKitten', 'toadlet', 'hoglet', 'fawn'],
   joined: '{name} joined your party!',
   tooSlow: '…',                                 // said when someone else grabbed the same one a second earlier
   noFight: 'You have nothing to fight with.',
@@ -479,7 +667,7 @@ personalities: {
 },
 
 knowledge: {
-  types:   { name: 'How the types work', text: 'FIZZ › GRUB › WILD › TECH › FROST › RUSTLE › FIZZ. The move list shows what is strong.' },
+  types:   { name: 'How the types work', text: 'FANG › WING › ROOT › WATER › STONE › SHELL › FANG. The move list shows what is strong.' },
   tranq:   { name: 'The Barber has a tranquilizer gun', text: 'Under the chair. He sells it.' },
   ring:    { name: 'Fia keeps a ring box for desperate husbands', text: 'Behind the counter. Pricey.' },
   'wife:cicci':    { name: 'What Cicci wants', text: 'Someone who talks about the budget out loud. Honestly.' },
@@ -494,7 +682,34 @@ knowledge: {
   'house:bigwman': { name: "BigWman's house", text: 'A 24-hour rave, deep in the forest.', listed: true, release: 'tue' },
   herbs: { name: "Jrohn's brew", text: 'Fern, then mushroom, then moss. Never the other way.', release: 'tue' },
   boat:  { name: 'Boat-Bengt', text: 'Trades boats for vans. On the big lake shore.', release: 'wed' },
-  ferry: { name: 'A ferry creature', text: 'A big lake creature that knows Ferry can carry you across the water.', release: 'wed' }
+  ferry: { name: 'A ferry creature', text: 'A big lake creature that knows Ferry can carry you across the water.', release: 'wed' },
+  tore:  { name: 'Trapper Tore', text: 'Upgrades and repairs traps. A clearing at the forest edge, by the dirt road. Bring fur.', release: 'tue' },
+  // drug recipes: which drug turns which teen into which form. Told by the dealer, the doorman, Hasse… or learned by feeding. Shown in Fältboken.
+  'recipe:xanadger': { name: 'Badger + Xanax', text: 'Feed a Badger (Lv 24+) Xanax and it becomes Xanadger. Sleepy but tough. Naps in the middle of fights.', release: 'tue' },
+  'recipe:ecstadger': { name: 'Badger + Molly', text: 'Feed a Badger (Lv 24+) Molly and it becomes Ecstadger. Hugs everyone. Including the thing that is trying to eat it.', release: 'tue' },
+  'recipe:ketadger': { name: 'Badger + Ketamine', text: 'Feed a Badger (Lv 24+) Ketamine and it becomes Ketadger. Is it here? Is it there? It is behind you. Huge hit.', release: 'tue' },
+  'recipe:ladger': { name: 'Badger + LSD', text: 'Feed a Badger (Lv 24+) LSD and it becomes Ladger. Sees every colour. Hits with the one that hurts most.', release: 'tue' },
+  'recipe:mollynx': { name: 'Lynx + Molly', text: 'Feed a Lynx (Lv 22+) Molly and it becomes MolLynx. Big Eyes. Nobody can bring themselves to attack it.', release: 'tue' },
+  'recipe:dmtoad': { name: 'Toad + DMT', text: 'Feed a Toad (Lv 26+) DMT and it becomes DMToad. It has met the machine elves. They said hi.', release: 'wed' },
+  'recipe:sporecupine': { name: 'Hedgehog + Shrooms', text: 'Feed a Hedgehog (Lv 24+) Shrooms and it becomes Sporecupine. Mushrooms grow on its back. It is fine with that.', release: 'tue' },
+  'recipe:stonedeer': { name: 'Deer + Weed', text: 'Feed a Deer (Lv 22+) Weed and it becomes Stonedeer. Chill Out. Everybody at the fight is a bit more chill.', release: 'mon' },
+  'recipe:cokeroach': { name: 'Cockroach + Coke', text: 'Feed a Cockroach (Lv 18+) Coke and it becomes Cokeroach. Always first. Always sniffing. Never sleeps.', release: 'mon' },
+  'recipe:ketacrow': { name: 'Crow + Ketamine', text: 'Feed a Crow (Lv 20+) Ketamine and it becomes Ketacrow. Stares into the void. The void stares back and apologises.', release: 'tue' },
+  'recipe:laddybug': { name: 'Ladybug + LSD', text: 'Feed a Ladybug (Lv 12+) LSD and it becomes Ladd-ybug. Seven Spots of Truth. Shows you what is really there.', release: 'tue' },
+  'recipe:trancequirrel': { name: 'Squirrel + Molly', text: 'Feed a Squirrel (Lv 20+) Molly and it becomes Trancequirrel. Drop the Bass. Sets up in the golf rough at night.', release: 'tue' },
+  'recipe:speedbeetle': { name: 'Stag Beetle + Speed', text: 'Feed a Stag Beetle (Lv 18+) Speed and it becomes Speedbeetle. Tweak. Doesn\'t blink. Doesn\'t stop.', release: 'tue' },
+  'recipe:snortoise': { name: 'Tortoise + Coke', text: 'Feed a Tortoise (Lv 22+) Coke and it becomes Snortoise. Line Dash. The fastest tortoise alive. It will tell you.', release: 'tue' },
+  'recipe:snapskrafta': { name: 'Crayfish + Snaps', text: 'Feed a Crayfish (Lv 18+) Snaps and it becomes Snapskräfta. Sings Helan Går. Hits harder when you join in.', release: 'tue' },
+  'recipe:mollipike': { name: 'Pike + Molly', text: 'Feed a Pike (Lv 24+) Molly and it becomes Mollipike. Love Bite. Drains you gently and tells you it is nothing personal.', release: 'tue' },
+  'recipe:mantisShroom': { name: 'Mantis Shrimp + Shrooms', text: 'Feed a Mantis Shrimp (Lv 26+) Shrooms and it becomes Mantis Shroom. Sporepunch. Hits first, confuses second.', release: 'tue' },
+  'recipe:xanaxfox': { name: 'Fox + Xanax', text: 'Feed a Fox (Lv 22+) Xanax and it becomes Xanaxfox. Unbothered. Was chasing a mouse. Forgot why.', release: 'tue' },
+  'recipe:shroomboar': { name: 'Wild Boar + Shrooms', text: 'Feed a Wild Boar (Lv 26+) Shrooms and it becomes Shroomboar. Truffle Rage. The lower its HP, the harder it hits.', release: 'tue' },
+  'recipe:blowboar': { name: 'Wild Boar + Coke', text: 'Feed a Wild Boar (Lv 26+) Coke and it becomes Blowboar. Nose Charge. Huge hit. It will feel that tomorrow.', release: 'tue' },
+  'recipe:methmoth': { name: 'Moth + Meth', text: 'Feed a Moth (Lv 20+) Meth and it becomes Methmoth. Lamp Frenzy. Has not slept since Tuesday. Fights the street lamp.', release: 'wed' },
+  'recipe:ketamoose': { name: 'Moose + Ketamine', text: 'Feed a Moose (Lv 32+) Ketamine and it becomes Ketamoose. Moose in the Void. Is it still here? Define "here".', release: 'tue' },
+  'recipe:shroomoose': { name: 'Moose + Shrooms', text: 'Feed a Moose (Lv 32+) Shrooms and it becomes Shroomoose. Antler Bloom. A spore cloud with an opinion.', release: 'tue' },
+  'recipe:psilocybear': { name: 'Brown Bear + Shrooms', text: 'Feed a Brown Bear (Lv 34+) Shrooms and it becomes Psilocybear. Third Eye Maul. Never misses. Sees you from three angles.', release: 'tue' },
+  'recipe:acidadder': { name: 'Adder + LSD', text: 'Feed a Adder (Lv 24+) LSD and it becomes Acidadder. Melt. Everything is liquid and it is your fault.', release: 'tue' },
 },
 
 dialogue: {
@@ -558,23 +773,24 @@ dialogue: {
       { text: 'One krona per can. I have three million cans. They count the cans. They KNOW.' }] },
   freja: { personality: 'dry', friends: ['berit'],
     talk: [
-      { if: { step: 'freja_penguin:0' }, text: 'Have you found a penguin yet? Any penguin. It does not have to like me.' },
-      { if: { metMin: 2, questNot: 'freja_penguin' }, text: 'It is lonely in here. Bring me a Freezer Penguin. Just so I can see it. Do not tell the peas.', replies: [
-        { label: 'I will find one.', quest: 'freja_penguin', tone: 'kind', text: 'Mm. Thanks.' }, { label: 'Penguins have jobs.', tone: 'funny', text: 'Mm.' }] },
-      { if: { questDone: 'freja_penguin' }, text: 'It stood by the peas for a whole minute. I will remember that forever.' },
+      { if: { step: 'freja_penguin:0' }, text: 'Have you found a rat yet? Any rat. It does not have to like me.' },
+      { if: { metMin: 2, questNot: 'freja_penguin' }, text: 'Something is living in the freezer pipes. Bring me a Rat. Just so I can see it. Do not tell the peas.', replies: [
+        { label: 'I will find one.', quest: 'freja_penguin', tone: 'kind', text: 'Mm. Thanks.' }, { label: 'Rats have jobs.', tone: 'funny', text: 'Mm.' }] },
+      { if: { questDone: 'freja_penguin' }, text: 'It sat by the peas for a whole minute. I will remember that forever.' },
       { if: { met: 0 }, text: "Cold in here. Colder out there. You want something, or are you just standing in my draught?", replies: [
         { label: 'Just looking.', tone: 'kind', text: 'Mm. Everyone is.' },
         { label: 'Your freezers are lovely.', tone: 'flirt', text: 'Please do not.' }] },
-      { if: { metMin: 1 }, tell: 'types', text: 'Listen. FIZZ beats GRUB, GRUB beats WILD, WILD beats TECH, TECH beats FROST, FROST beats RUSTLE, RUSTLE beats FIZZ. Write it down. Or do not. I am only a freezer.' },
-      { if: { carry: 'peng' }, text: 'A penguin. Is it warm? Why is it not shivering?' },
+      { if: { metMin: 1 }, tell: 'types', text: 'Listen. FANG beats WING, WING beats ROOT, ROOT beats WATER, WATER beats STONE, STONE beats SHELL, SHELL beats FANG. Teeth catch birds, birds eat plants, roots drink water, water wears stone, stones crack shells, shells break teeth. Write it down. Or do not. I am only a freezer.' },
+      { if: { carry: 'rat' }, text: 'A rat. In MY freezer aisle? Name it. Not Gunnar. I knew a Gunnar.' },
       { if: { killed: 'berit' }, text: 'Berit and I shared the lunch room. It is very quiet at the lunch table now.' },
       { if: { state: 'high' }, text: 'Your eyes are the size of dinner plates. Lie down by the peas.' },
-      { text: 'Penguins hate it when you leave the freezer door open. Or love it. I forget.' }] },
+      { text: 'Rats love it when you leave the freezer door open. Or hate it. I forget.' }] },
   hasse: { rumours: true, personality: 'dreamer', friends: ['pirate'],
     talk: [
       { if: { met: 0 }, text: 'Can you smell purple? No? Then you have not lived.', replies: [
         { label: 'Smells blue to me.', tone: 'funny', text: 'BLUE! Yes! You see it too!' },
         { label: 'No.', tone: 'honest', text: 'Honest. Sad. Honest.' }] },
+      { if: { relMin: 2, notFlag: 'got:lsd' }, text: 'Psst. You are okay. I like you. Take this: a little rainbow. Put it on a ladybug. Do not ask me how I know.', give: { lsd: 1 }, set: { 'got:lsd': true }, tell: ['recipe:laddybug', 'recipe:ladger', 'recipe:acidadder'] },
       { if: { state: 'high' }, text: 'YOU can see them too! The shapes! Tell no one. Tell everyone.' },
       { if: { hero: 'jrohn' }, text: 'Jrohn! That is you. Wait. That is me? Which one of us is wearing the shirt?' },
       { if: { from: 'tue', metMin: 1 }, tell: 'house:jrohn', release: 'tue', text: 'There is a cave halfway up the mountain. A shaman lives in it. Half plant, half man, no shirt. I do not know who he is.' },
@@ -597,6 +813,7 @@ dialogue: {
       { text: 'Hair grows. Gossip grows faster.' }] },
   jonas: { personality: 'grumpy', friends: ['anna', 'barber'], help: { relMin: 4, give: { rock: 3 }, text: 'Here. Rocks. Free. The only thing in this shop with no markup.' },
     talk: [
+      { if: { metMin: 1 }, tell: 'tore', release: 'tue', text: 'Anything above a mouse trap is Tore. Forest edge, a clearing by the dirt road. He bites. Not literally. Mostly.' },
       { if: { step: 'jonas_bulbs:1' }, text: 'Well? How was she about the bill?' },
       { if: { step: 'jonas_bulbs:0' }, text: 'Anna. The light bill. Go and talk to her. She yells less at strangers.' },
       { if: { metMin: 3, questNot: 'jonas_bulbs' }, text: 'Anna buys the cheap bulbs, then yells at me about the bill. Talk to her about it? For me?', replies: [
@@ -629,12 +846,14 @@ dialogue: {
       { text: 'Special today: everything. All of it.' }] },
   apotek: { personality: 'dry', talk: [
       { if: { met: 0 }, text: 'Everyone is fully healed. Take care out there.' },
+      { if: { step: 'xanax_rx:0' }, text: 'A Signal Crayfish. From the big lake. Show me one and the doctor will sign.' },
+      { if: { metMin: 2, notFlag: 'xanaxRx', questNot: 'xanax_rx' }, quest: 'xanax_rx', text: 'Something for the nerves? I need a prescription. The doctor wants a Signal Crayfish. I do not ask. I just pass it on.' },
       { if: { state: 'blurred' }, text: 'You are swaying. Sit. Breathe. Do not mix any more.' },
       { if: { debtMin: 2 }, text: 'There is no medicine for promise debt. Only payment.' },
       { text: 'Take two Fizz tablets and call me in the morning. I am here at night too.' }] },
   burgercook: { personality: 'hothead', talk: [
       { if: { met: 0 }, text: 'ORDER UP! Oh. You are not an order.' },
-      { if: { carry: 'bear' }, text: 'Is that a BURGER BEAR? Do not bring it near my grill. It knows.' },
+      { if: { carry: 'bear' }, text: 'Is that a BEAR? In my kitchen? It is always hungry. Do not bring it near my grill.' },
       { text: 'The secret ingredient is rage. And mayonnaise.' }] },
   pizzaiolo: { personality: 'flirty', talk: [
       { if: { met: 0 }, text: 'Ciao, bella! Kebab pizza, the national dish. Specialita della casa: regret.' },
@@ -642,9 +861,11 @@ dialogue: {
       { text: 'Extra garlic sauce? You say yes. Everybody says yes.' }] },
   sushichef: { personality: 'dry', talk: [
       { if: { met: 0 }, text: 'Fresh today. Probably.' },
-      { if: { carry: 'salmon' }, text: 'That salmon roll walks. That is not on my menu. Please take it away.' },
+      { if: { carry: 'perch' }, text: 'That perch is staring at my fish tank. Please keep it away from my fish tank.' },
       { text: 'Soy sauce is not a personality.' }] },
   dealer: { personality: 'paranoid', talk: [
+      { if: { relMin: 1 }, tell: ['recipe:cokeroach', 'recipe:blowboar', 'recipe:snortoise', 'recipe:sporecupine'], text: 'Coke on a roach, a boar, a tortoise: they get FAST. Shrooms on a hedgehog: spores. I did not say anything.' },
+      { if: { metMin: 1, notCarry: 'faltboken' }, text: 'I also sell a book. Field research. Very academic. Four points.' },
       { if: { met: 0 }, text: "Psst. You didn't see me." },
       { if: { relMin: 2 }, text: 'You again. Good. You are not a cop. Cops have worse shoes.' },
       { if: { night: true }, text: 'Nighttime is good for business. And for hiding.' },
@@ -699,12 +920,17 @@ dialogue: {
       { if: { night: true }, text: 'At night the forest gets deeper. Never go east in the dark.' },
       { text: 'There is a party in the deep forest. It never ends. The bass makes my teeth ring.' }] },
   guide: { personality: 'grumpy', talk: [
+      { if: { metMin: 2 }, tell: 'tore', release: 'tue', text: 'Tore lives where the trees thin. Makes traps. Hates visitors. Likes fur.' },
       { if: { metMin: 1 }, tell: 'herbs', release: 'tue', text: 'Jrohn brews in the cave. The order matters: fern first, then the mushroom, then moss. Do not ask me how I know. I carried the herbs.' },
       { if: { met: 0 }, text: 'Hiking boots? No? You will regret that. Everyone does.' },
-      { if: { carry: 'peng' }, text: 'A freezer penguin on a mountain. It looks at home, at least.' },
+      { if: { carry: 'hare' }, text: 'A mountain hare. Still in its winter coat. Suspicious.' },
       { if: { night: true }, text: 'Nobody goes up at night. Except the shaman. And he floats.' },
       { text: 'The trail is long and the rocks are rude. Halfway up there is a cave. Do not touch the boulder.' }] },
+  tore: { personality: 'grumpy', talk: [
+      { if: { met: 0 }, text: 'Traps. I make them better. Fur and kronor. Mostly fur. Do not touch the pit.' },
+      { text: 'A good trap is a patient trap. Bring me fur, scales, shells. And kronor.' }] },
   doorman: { personality: 'hothead', talk: [
+      { if: { relMin: 1 }, tell: ['recipe:mollynx', 'recipe:ecstadger', 'recipe:trancequirrel', 'recipe:mollipike', 'recipe:ketadger', 'recipe:ketacrow', 'recipe:speedbeetle'], text: 'Molly on a badger, a lynx, a squirrel, a pike. Ketamine on a crow. Speed on a beetle. I said NOTHING. Move along.' },
       { if: { met: 0 }, text: 'Name? Not on the list. Move along.' },
       { if: { night: true }, text: 'THE BASS IS UP. It is night. Do you feel it in your teeth?' },
       { if: { hero: 'bigwman' }, text: 'Oh, it is you. The owner. I did not recognise you with the shirt on.' },
@@ -721,7 +947,7 @@ dialogue: {
         { label: 'What are you fishing for?', tone: 'kind', text: 'The one with the crown. He always gets away.' },
         { label: 'Any luck?', tone: 'funny', text: 'Luck is for lottery winners. I have patience.' }] },
       { if: { metMin: 1, from: 'wed' }, tell: 'boat', release: 'wed', text: 'You want to reach the castle? Over the big lake? Then you want Boat-Bengt, down on the western shore. He trades boats. For vans, strangely.' },
-      { if: { carry: 'pike', from: 'wed' }, tell: 'ferry', release: 'wed', text: 'THAT is a Pikezilla! Feed it, level it. At the right size it can ferry you across the water on its back. Do not ask how I know.' },
+      { if: { carry: 'pikezilla', from: 'wed' }, tell: 'ferry', release: 'wed', text: 'THAT is a Pikezilla! Feed it, level it. At the right size it can ferry you across the water on its back. Do not ask how I know.' },
       { if: { night: true }, text: 'Night fishing is the best. The lake breathes.' },
       { text: 'Nets, traps, patience. Two of those are for sale.' }] },
   bengt: { personality: 'salesman', talk: [
@@ -734,7 +960,7 @@ dialogue: {
       { if: { met: 0 }, text: 'Shh. Night shift. I watch the lot. Somebody has to, and it is never the day shift.', replies: [
         { label: 'What do you see?', tone: 'kind', text: 'Bats. Mostly. And once, a trolley that walked on its own.' },
         { label: 'Nothing happens here.', tone: 'rude', text: 'That is exactly what they want you to think.' }] },
-      { if: { carry: 'bat' }, text: 'A bat in a bag. Good. Do not let it near the lights.' },
+      { if: { carry: 'moth' }, text: 'A moth in a bag. Good. Do not let it near the lights.' },
       { text: 'The rave in the deep forest is louder at night. You can feel it in the bags.' },
       { text: 'Day people have no idea. I could tell them. They would not listen.' }] },
   market: { rumours: true, personality: 'salesman', talk: [
@@ -780,9 +1006,17 @@ dialogue: {
       { if: { flag: 'h2' }, text: 'Moss. Soft. It purrs. You pick it.', set: { h3: true } },
       { text: 'Moss, too soon. It sulks. The order matters.', set: { h1: false, h2: false, h3: false } }] },
   cauldron: { repeat: true, talk: [
+      { if: { flag: 'got:dmt' }, text: 'The cauldron bubbles. The elves wave from inside.' },
       { if: { flag: 'edge:jrohn' }, text: 'The brew bubbles. Jrohn will be very, very relaxed.' },
-      { if: { flag: 'h3' }, text: 'You add the herbs. The cauldron hums. Somewhere, Jrohn loses track of what a fight is.', set: { 'edge:jrohn': true }, give: { shrooms: 1 } },
+      { if: { flag: 'h3', notFlag: 'got:dmt', relMin: 0 }, text: 'You add the herbs. The cauldron hums. Somewhere, Jrohn loses track of what a fight is.', set: { 'edge:jrohn': true, 'got:dmt': true }, give: { shrooms: 1, dmt: 1 }, tell: ['recipe:dmtoad'] },
       { text: 'A cold cauldron. It wants herbs, in the right order. Someone on the mountain knows it.' }] },
+  camper: { repeat: true, talk: [
+      { if: { flag: 'got:meth' }, text: 'The camper is empty. The smell stays. Do not touch the thermos.' },
+      { if: { carry: 'faltboken', notFlag: 'got:meth', relMin: 0 }, text: 'Under the bunk, in a sock: a small bag of bright crystals and a note: "for the Methmoth guy. Do NOT." You take it. It glows a little.', give: { meth: 1 }, set: { 'got:meth': true }, tell: ['recipe:methmoth'] },
+      { text: 'A dented camper van, curtains drawn. On the dashboard: a thermos, a lamp (lit) and a coffee- and weed-stained book. FÄLTBOKEN – Nordens Djur, med anteckningar. Nobody is coming back for it.', give: { faltboken: 1 }, set: { 'got:book': true } }] },
+  alley: { repeat: true, talk: [
+      { if: { flag: 'got:alley' }, text: 'A bin. A smell. Nothing else tonight.' },
+      { text: 'Behind a bin, a very small, very cold bag. You are not sure what it is. You are sure what it is.', give: { coke: 1 }, set: { 'got:alley': true } }] },
   throne: { repeat: true, talk: [
       { if: { flag: 'throne:done' }, text: 'The throne is quiet. For now.' },
       { text: 'An empty throne. Dusty. Löken guards it from the lawn, gently.', quest: 'castle_throne', replies: [
@@ -823,7 +1057,7 @@ dialogue: {
       { if: { flag: 'edge:jrohn' }, text: 'Everything is so... soft. What were we doing? Oh! A hug!' },
       { if: { metMin: 1 }, text: 'You came back! I have been telling the ferns about you.' },
       { if: { killed: 'monika' }, text: 'Monika... the ferns are very quiet today.' },
-      { if: { carry: 'walter' }, text: 'WALTER! You found him! I love this! I love you! Where is my shirt?' },
+      { if: { carry: 'toad' }, text: 'A TOAD! Hug it for me! I love this! I love you! Where is my shirt?' },
       { if: { state: 'high' }, text: 'We are in the same garden right now. Do you see it? The same one.' },
       { text: 'Walk with me. Or fight me. Whichever has more hugs.' }] },
   loken: { personality: 'hothead', friends: ['sofia'], talk: [
@@ -837,7 +1071,7 @@ dialogue: {
       { if: { flag: 'edge:ljunky' }, text: 'Why am I so tired already? I did not even start. WHY IS THE ROWER WARM?' },
       { if: { metMin: 1 }, text: 'Back for more? I have patched the game since you left.' },
       { if: { killed: 'maadmads' }, text: 'You... deleted my wife? That is not in the patch notes.' },
-      { if: { carry: 'cat' }, text: 'You have my cats! Give them back. They do not like you. They like me.' },
+      { if: { carry: 'lynx' }, text: 'A lynx. My cats are lynx-adjacent. They like me. They do not like you.' },
       { if: { debtMin: 3 }, text: 'Three promise debts. I could make a coin out of that.' },
       { text: 'Buy the dip, my friend. Buy it.' }] },
 
@@ -892,7 +1126,7 @@ dialogue: {
   monika: { after: [{ text: "Walter is home and the shirt is on. Mostly. Tell him I love him. Nicely." }], personality: 'dreamer', friends: ['fia', 'jrohn'],
     wife: { reacts: { jrohn: { mul: 1.5, turns: 1 }, bigwman: { mul: .8, turns: 0 }, wizcudi: { mul: .9, turns: 0 }, loken: { mul: .8, turns: 0 }, ljunky: { mul: 1, turns: 0 } },
       lines: [
-        { text: 'I have Walter right here. He is fine. He is FINE.', right: { carry: 'walter' } },
+        { text: 'I have the toad right here. He is fine. He is FINE.', right: { carry: 'toad' } },
         { text: 'Fia gave him his flowers. I will miss her.', right: { killed: 'fia' } },
         { text: 'No more drinks for you. Have a sandwich.', right: { state: 'drunk' } },
         { text: 'It is true, I promised. I will fix it.', right: { debtMin: 2 } },
@@ -908,7 +1142,7 @@ dialogue: {
       { if: { met: 0, hero: 'wizcudi' }, text: 'Wizcudi. Lovely to see you. I am sorry about the lights. Everyone is.' },
       { if: { met: 0, hero: 'loken' }, text: 'Löken. The lawn man. Please tell me my husband is not on it.' },
       { if: { met: 0, hero: 'ljunky' }, text: 'Ljunky. Are those cats following you, or are you following them?' },
-      { if: { carry: 'walter' }, text: 'WALTER! Oh. Oh, you have him. Do you know what that means?' },
+      { if: { carry: 'toad' }, text: 'A TOAD! Oh. Oh, you have it. Do you know what that means?' },
       { text: 'Walter ran away AGAIN.' }] },
   sofia: { after: [{ text: "No match tonight. I made soup. Tell him to look at me." }], personality: 'hothead', friends: ['pelle', 'loken'],
     wife: { reacts: { loken: { mul: 1.6, turns: 1 }, bigwman: { mul: .9, turns: 0 }, wizcudi: { mul: 1.2, turns: 0 }, jrohn: { mul: .8, turns: 0 }, ljunky: { mul: .9, turns: 0 } },
@@ -934,7 +1168,7 @@ dialogue: {
   maadmads: { after: [{ text: "The cats are fed. I saved the coins. Please tell him to text me." }], personality: 'gossip', friends: ['barber', 'ljunky'],
     wife: { reacts: { ljunky: { mul: 1.5, turns: 1 }, bigwman: { mul: .8, turns: 0 }, wizcudi: { mul: 1, turns: 0 }, jrohn: { mul: .9, turns: 0 }, loken: { mul: .9, turns: 0 } },
       lines: [
-        { text: 'The cats are with you? Thank god. Give them tuna.', right: { carry: 'cat' } },
+        { text: 'A lynx with you? Thank god. Give it tuna. A lot of tuna.', right: { carry: 'lynx' } },
         { text: 'I heard what happened at The Box. I am not angry. Honestly.', right: { flag: 'ljunkyDone' } },
         { text: 'You smell of beer. Go and drink some water. Then we talk.', right: { state: 'drunk' } },
         { text: 'I know the promises. I will not take another.', right: { debtMin: 2 } },
@@ -985,7 +1219,7 @@ world: {
     ['fill', 124, 29, 4, 4, 'u'], ['fill', 130, 29, 4, 4, 'u'],
     // the forest and the deep forest, the rave
     ['fill', 48, 50, 112, 24, 'Q'], ['fill', 48, 50, 52, 24, ','], ['scatter', 48, 50, 52, 24, 'T', .18, 5], ['fill', 48, 60, 52, 2, 'y'], ['fill', 56, 56, 6, 10, 'u'], ['fill', 76, 56, 6, 10, 'u'],
-    ['fill', 100, 60, 45, 2, 'y'], ['fill', 112, 56, 6, 10, 'u'], ['fill', 126, 56, 6, 10, 'u'], ['fill', 136, 56, 18, 6, 'u'], ['room', 136, 62, 18, 10, 'D', 'd', 144, 62, 2],
+    ['fill', 49, 57, 4, 4, ','], ['fill', 119, 58, 5, 2, ','], ['fill', 100, 60, 45, 2, 'y'], ['fill', 112, 56, 6, 10, 'u'], ['fill', 126, 56, 6, 10, 'u'], ['fill', 136, 56, 18, 6, 'u'], ['room', 136, 62, 18, 10, 'D', 'd', 144, 62, 2],
     // tall grass that crosses the roads: you cannot get past without meeting something (level goes up eastwards)
     ['fill', 52, 46, 4, 5, '"'], ['fill', 72, 46, 4, 5, '"'], ['fill', 90, 46, 4, 5, '"'], ['fill', 108, 46, 4, 5, '"'],
     ['fill', 52, 19, 4, 4, '"'], ['fill', 76, 19, 4, 4, '"'], ['fill', 100, 19, 4, 4, '"']
@@ -999,7 +1233,7 @@ houses: {
   ljunky:  { name: 'The Box', hero: 'ljunky', level: 10, door: [41, 18], doorW: 2, release: 'mon', home: { at: [44, 11] },
     locked: "The Box is locked. Through the window: someone screaming 'ONE MORE ROUND'. You are not ready for that." },
   wizcudi: { name: 'The electronics store', hero: 'wizcudi', level: 20, door: [104, 37], doorW: 2, release: 'tue', home: { at: [108, 34] },
-    trophy: { at: [100, 34], give: { techMk1: 1, fizztab: 2 }, text: 'A glass case: a perfect, never-used extension cord. You take it. Nobody is looking.' },
+    trophy: { at: [100, 34], give: { mouseTrap: 1, fizztab: 2 }, text: 'A glass case: a perfect, never-used extension cord. You take it. Nobody is looking.' },
     locked: 'The store is dark. Every single light is off, on purpose.' },
   jrohn:   { name: 'The shaman cave', hero: 'jrohn', level: 30, door: [140, 29], doorW: 2, release: 'tue', home: { at: [144, 26] },
     trophy: { at: [136, 26], give: { weed: 1, shrooms: 1 }, text: 'Dried herbs on a stone shelf. A note: "For Walter".' },
@@ -1029,16 +1263,16 @@ quests: {
     steps: [ { text: 'Bring the pirate an empty bottle (Hardware Jonas sells them).', turnIn: 'pirate', done: { carry: 'bottle' }, take: { bottle: 1 } } ],
     rewards: [ { rel: { pirate: 2 }, give: { surstromming: 1 }, text: 'The pirate cries a little.' } ] },
   freja_penguin: { name: 'Company for the freezer', giver: 'freja', release: 'tue',
-    steps: [ { text: 'Show Freja a Freezer Penguin.', turnIn: 'freja', done: { carry: 'peng' } } ],
-    rewards: [ { rel: { freja: 2 }, give: { meatballs: 3, frostMk1: 1 }, text: 'She cannot stop smiling. Cold smile.' } ] },
-  barber_fur: { name: 'The cat hair', giver: 'barber', release: 'tue',
-    steps: [ { text: 'Bring the Barber one of Ljunky\'s cats (it has to be a real one).', turnIn: 'barber', done: { carry: 'cat' } } ],
+    steps: [ { text: 'Show Freja a Rat (there is something in her pipes).', turnIn: 'freja', done: { carry: 'rat' } } ],
+    rewards: [ { rel: { freja: 2 }, give: { meatballs: 3, jamJar: 1 }, text: 'She cannot stop smiling. Cold smile.' } ] },
+  barber_fur: { name: 'The fox fur', giver: 'barber', release: 'tue',
+    steps: [ { text: 'Bring the Barber a Fox. He says it is for the moustache wax.', turnIn: 'barber', done: { carry: 'fox' } } ],
     rewards: [ { rel: { barber: 2, maadmads: 1 }, kr: 300, give: { ringbox: 1 }, text: 'He weeps over the fur. Pays well.' } ] },
   jonas_bulbs: { name: "Anna's light bill", giver: 'jonas', release: 'tue',
     steps: [ { text: 'Talk to Anna about the light bill.', done: { flag: 'talked:anna' } }, { text: 'Tell Jonas how it went.', turnIn: 'jonas', done: {} } ],
-    rewards: [ { rel: { jonas: 2, anna: 2 }, tell: 'wife:anna', give: { techMk1: 1 }, text: 'Jonas finally understands the meter.' } ] },
+    rewards: [ { rel: { jonas: 2, anna: 2 }, tell: 'wife:anna', give: { mouseTrap: 1 }, text: 'Jonas finally understands the meter.' } ] },
   folke_pike: { name: 'The one with the crown', giver: 'folke', release: 'tue',
-    steps: [ { text: 'Show Folke a Pikezilla.', turnIn: 'folke', done: { carry: 'pike' } } ],
+    steps: [ { text: 'Show Folke a Pikezilla.', turnIn: 'folke', done: { carry: 'pikezilla' } } ],
     rewards: [ { rel: { folke: 3 }, give: { netTrap: 1 }, text: 'Folke whispers: "It is real." And gives you a trap.' } ] },
   folke_cast: { name: 'The perfect cast', giver: 'folke', release: 'tue',
     steps: [ { text: 'Fish with a perfect timing (every reel in the gold).', done: { flag: 'fish:perfect' } }, { text: 'Tell Folke.', turnIn: 'folke', done: {} } ],
@@ -1046,6 +1280,9 @@ quests: {
   caddy_par: { name: 'Par on the first hole', giver: 'caddy', release: 'tue',
     steps: [ { text: 'Make par on the first hole (the tee is by the pond).', done: { flag: 'golf:par' } }, { text: 'Tell Caddy Calle.', turnIn: 'caddy', done: {} } ],
     rewards: [ { rel: { caddy: 3 }, kr: 250, give: { beer6: 1 }, text: 'Calle shakes your hand. It is damp.' } ] },
+  xanax_rx: { name: 'The prescription', giver: 'apotek', release: 'tue',
+    steps: [ { text: 'Show the pharmacist a Signal Crayfish (big lake, a tier 3 water trap at night).', turnIn: 'apotek', done: { carry: 'signalCrayfish' } } ],
+    rewards: [ { rel: { apotek: 2 }, set: { xanaxRx: true }, tell: ['recipe:xanadger', 'recipe:xanaxfox'], text: 'Prescription granted. Xanax is on the shelf.' } ] },
   // the house puzzles: each gives you an edge on that hero (his team is 3 levels lower, and he is off his game)
   box_wod: { name: 'The WOD', giver: 'kb1', release: 'mon',
     steps: [ { text: 'Warm up in The Box: the kettlebells, light to heavy.', done: { flag: 'wod3' } }, { text: 'Finish on the rower.', done: { flag: 'edge:ljunky' } } ],
@@ -1068,14 +1305,16 @@ quests: {
    minigame: 'fishing' (catch = [[creature, weight]], lv = [min, max]) or 'golf' (hole). Others use dialogue[id] like a person (repeat: true = may repeat lines).
    show = conditions for when it is there (day, night …). Every prop has dialogue/quests like any person. */
 props: {
-  pier: { name: 'The pier', at: [23, 2], em: '🎣', minigame: 'fishing', catch: [['golem', 3], ['crow', 2], ['frog', 3]], lv: [6, 9], junk: 'A boot. Size 46. Smells like Löken.', cooldown: 20 },
-  lakespot: { name: 'A fishing spot', at: [66, 18], em: '🎣', minigame: 'fishing', catch: [['pike', 4], ['salmon', 3], ['genie', 2], ['frog', 2]], lv: [30, 36], junk: 'A shopping trolley. It is not alive. Not yet.', cooldown: 20, release: 'tue' },
+  pier: { name: 'The pier', at: [23, 2], em: '🎣', minigame: 'fishing', catch: [['perch', 5], ['pike', 2], ['crayfish', 2]], lv: [6, 9], junk: 'A boot. Size 46. Smells like Löken.', cooldown: 20 },
+  lakespot: { name: 'A fishing spot', at: [66, 18], em: '🎣', minigame: 'fishing', catch: [['pike', 4], ['crayfish', 3], ['perch', 2], ['mantis', 1]], lv: [30, 36], junk: 'A shopping trolley. It is not alive. Not yet.', cooldown: 20, release: 'tue' },
   tee1: { name: 'Tee 1', at: [58, 36], em: '⛳', minigame: 'golf', hole: { name: 'Hole 1: over the pond', distance: 140, par: 3 }, release: 'tue' },
   kb1: { name: '8 kg kettlebell', at: [39, 12], em: '🏋️', release: 'mon' }, kb2: { name: '16 kg kettlebell', at: [40, 14], em: '🏋️', release: 'mon' }, kb3: { name: '24 kg kettlebell', at: [43, 14], em: '🏋️', release: 'mon' }, rower: { name: 'The rower', at: [42, 12], em: '🚣', release: 'mon' },
   fuse1: { name: 'A drawer', at: [101, 33], em: '🗄️', release: 'tue' }, fuse2: { name: 'A toolbox', at: [107, 36], em: '🧰', release: 'tue' }, fuse3: { name: 'A shelf', at: [110, 34], em: '📚', release: 'tue' }, fusebox: { name: 'The fuse box', at: [104, 33], em: '🔲', release: 'tue' },
   fern: { name: 'A fern', at: [136, 24], em: '🌿', release: 'tue' }, mush: { name: 'A mushroom', at: [145, 27], em: '🍄', release: 'tue' }, moss: { name: 'Moss', at: [136, 28], em: '🪨', release: 'tue' }, cauldron: { name: 'The cauldron', at: [141, 24], em: '🍲', release: 'tue' },
   throne: { name: 'The throne', at: [141, 6], em: '👑', release: 'wed' },
   bar: { name: 'The bar', at: [139, 64], em: '🍹', release: 'tue' }, dj: { name: 'The DJ booth', at: [148, 64], em: '🎧', release: 'tue' },
+  camper: { name: 'A camper van', at: [121, 58], em: '🚐', release: 'tue' },
+  alley: { name: 'A city alley', at: [92, 43], em: '🗑️', show: { night: true }, release: 'tue' },
   balloons: { name: 'Balloon stand', at: [27, 47], em: '🎈', show: { day: 'mon' }, release: 'mon' },
   wallet: { name: 'A lost wallet', at: [30, 18], em: '👛', show: { day: 'wed' }, release: 'wed' }
 },

@@ -4,11 +4,18 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const win = {}; vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../data/m3-data.js'), 'utf8'), { window: win });
 const D = win.M3_DATA, CFG = D.tuning, TY = D.types, MOVES = D.moves, CR = D.creatures;
+CR.dev = { type: 'MIND', rarity: 'L', stats: [80, 70, 64, 60], moves: [['glitch', 1]] };       // Dev Ljunky (SP.dev in missions/m3.js)
+/* MIRROR: a line + a level = the form that lives at that level; zones, trainer parties and quests name lines */
+const LINES = {}; for (const id in CR) if (CR[id].line) (LINES[CR[id].line] = LINES[CR[id].line] || []).push(id);
+const formFor = (ref, lv) => { const fam = LINES[ref]; if (!fam) return ref; let id = fam.find(k => CR[k].stage === 1) || fam[0]; for (let g = 0; g < 5; g++) { const ev = CR[id].evolve; if (ev && lv >= ev.lv && CR[ev.to]) id = ev.to; else break; } return id; };
+const repOf = ref => LINES[ref] ? CR[LINES[ref].find(k => CR[k].stage === 1) || LINES[ref][0]] : CR[ref];
+const WILD = +(process.env.WILD || CFG.WILD_STAT || 1), BOSS = +(process.env.BOSS || CFG.BOSS_STAT || 1);   // stat multipliers for wild foes / hero teams (tuning.WILD_STAT, BOSS_STAT; env for experiments)
 const rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)];
 
 /* ---- MIRROR: stats, XP, types ---- */
-const stat = (id, lv, i) => { const s = CR[id], b = s.stats[i] * (CFG.RARITY_STAT[s.rarity] || 1); return i === 0 ? Math.floor(b * lv / 25 * 1.4) + lv + 12 : Math.floor(b * lv / 25 * 1.3) + 5; };
-const maxHp = (id, lv) => stat(id, lv, 0);
+const stat = (id, lv, i, m = 1) => { m = m || 1; return m * stat0(id, lv, i); };
+const stat0 = (id, lv, i) => { const s = CR[id], b = s.stats[i] * (CFG.RARITY_STAT[s.rarity] || 1); return i === 0 ? Math.floor(b * lv / 25 * 1.4) + lv + 12 : Math.floor(b * lv / 25 * 1.3) + 5; };
+const maxHp = (id, lv, m) => stat(id, lv, 0, m);
 const xpNeed = lv => Math.round(CFG.XP_BASE + CFG.XP_SQ * lv * lv);
 const learned = (id, lv) => CR[id].moves.filter(m => m[1] <= lv && MOVES[m[0]]).map(m => m[0]).slice(-4);
 const eff = (a, d) => { if (!a || !d || a === 'MIND' || d === 'MIND') return 1; const c = TY.cycle, ia = c.indexOf(a), id = c.indexOf(d); if (ia < 0 || id < 0) return 1; return (ia + 1) % c.length === id ? TY.strong : (id + 1) % c.length === ia ? TY.weak : 1; };
@@ -17,10 +24,10 @@ const best = (me, foe) => { let b = learned(me.id, me.lv)[0] || 'slam', bv = -1;
 
 /* ---- MIRROR: one battle, lead vs foe. Player always picks the best move (no items). foeMul = HP multiplier (Dev Ljunky) ---- */
 function fight(my, foe, o = {}) {
-  const A = { id: my.id, lv: my.lv, hp: my.hp != null ? my.hp : maxHp(my.id, my.lv), stg: { atk: 0, def: 0, spd: 0 } }, B = { id: foe.id, lv: foe.lv, hp: o.foeHp != null ? o.foeHp : maxHp(foe.id, foe.lv) * (o.foeMul || 1), stg: { atk: 0, def: 0, spd: 0 } };
+  const A = { id: my.id, lv: my.lv, sm: my.sm || 1, hp: my.hp != null ? my.hp : maxHp(my.id, my.lv, my.sm), stg: { atk: 0, def: 0, spd: 0 } }, B = { id: foe.id, lv: foe.lv, sm: foe.sm || 1, hp: o.foeHp != null ? o.foeHp : maxHp(foe.id, foe.lv, foe.sm) * (o.foeMul || 1), stg: { atk: 0, def: 0, spd: 0 } };
   const ds = o.dev;                                                // Dev Ljunky state { fixes, rage } kept between your creatures
-  const maxA = maxHp(A.id, A.lv), maxB = B.hp; let rounds = 0;
-  const es = (c, k) => stat(c.id, c.lv, { atk: 1, def: 2, spd: 3 }[k]) * stageMul(Math.max(-6, Math.min(6, c.stg[k])));
+  const maxA = maxHp(A.id, A.lv, A.sm), maxB = B.hp; let rounds = 0;
+  const es = (c, k) => stat(c.id, c.lv, { atk: 1, def: 2, spd: 3 }[k], c.sm) * stageMul(Math.max(-6, Math.min(6, c.stg[k])));
   const hit = (u, t, id) => {
     const mv = MOVES[id]; if (mv.p && Math.random() > (mv.acc || 1)) return;
     if (!mv.p) { for (const k in (mv.self || {})) u.stg[k] = Math.max(-4, Math.min(4, u.stg[k] + mv.self[k])); for (const k in (mv.foe || {})) t.stg[k] = Math.max(-4, Math.min(4, t.stg[k] + mv.foe[k])); if (mv.heal) u.hp = Math.min(u === A ? maxA : maxB, u.hp + (u === A ? maxA : maxB) * mv.heal); return; }
@@ -46,15 +53,21 @@ function fight(my, foe, o = {}) {
   return { win: B.hp <= 0 && A.hp > 0, rounds, foeHp: Math.max(0, B.hp), lost: Math.max(0, (my.hp != null ? my.hp : maxA) - Math.max(0, A.hp)) / maxA, hpLeft: Math.max(0, A.hp) };
 }
 const mean = a => a.reduce((x, y) => x + y, 0) / (a.length || 1);
-const STARTERS = ['frog', 'cuke', 'peng'];                      // a typical lead (the pessimistic case: no swapping)
-const PARTY = ['frog', 'cuke', 'peng', 'snake'];                // a typical party: four different types
+const STARTERS = ['badger', 'lynx', 'toad'];                      // a typical lead (the pessimistic case: no swapping)
+const PARTY = ['badger', 'lynx', 'toad', 'hedgehog'];                // a typical party: four different types
 // a real player swaps in the creature with the best type matchup against what is in front of them
 const matchup = (id, foeId) => { let o = 0; for (const m of learned(id, 20)) { const mv = MOVES[m]; if (mv.p) o = Math.max(o, eff(mv.type, CR[foeId].type) * (mv.type === CR[id].type ? 1.2 : 1) * mv.p); } let d = 0; for (const m of learned(foeId, 20)) { const mv = MOVES[m]; if (mv.p) d = Math.max(d, eff(mv.type, CR[id].type) * mv.p); } return o - d; };
-const smartLead = foeId => PARTY.slice().sort((a, b) => matchup(b, foeId) - matchup(a, foeId))[0];
+const smartLead = (foeId, lv = 20) => formFor(PARTY.slice().sort((a, b) => matchup(formFor(b, lv), foeId) - matchup(formFor(a, lv), foeId))[0], lv);
+const smartLeadOld = foeId => PARTY.slice().sort((a, b) => matchup(b, foeId) - matchup(a, foeId))[0];
 const SMART = !process.argv.includes('--random');
-function cell(myLv, zoneEnc, lvRange, n = 400) {                // wild fights against a zone's table
+function cell(myLv, zoneEnc, lvRange, n = 400) {                // wild fights against a zone's table (entries are lines or forms; the form follows the level)
   let win = 0, rounds = [], lost = [];
-  for (let i = 0; i < n; i++) { const id = (() => { const tot = zoneEnc.reduce((a, e) => a + e[1], 0); let r = Math.random() * tot; for (const e of zoneEnc) if ((r -= e[1]) <= 0) return e[0]; return zoneEnc[0][0]; })(), lv = Math.round(rnd(lvRange[0], lvRange[1] + .99) - .49), r = fight({ id: SMART ? smartLead(id) : pick(STARTERS), lv: myLv }, { id, lv }); if (r.win) { win++; rounds.push(r.rounds); lost.push(r.lost); } }
+  for (let i = 0; i < n; i++) {
+    const ref = (() => { const tot = zoneEnc.reduce((a, e) => a + e[1], 0); let r = Math.random() * tot; for (const e of zoneEnc) if ((r -= e[1]) <= 0) return e[0]; return zoneEnc[0][0]; })();
+    const lv = Math.round(rnd(lvRange[0], lvRange[1] + .99) - .49), id = formFor(ref, lv);
+    const lead = SMART ? smartLead(id, myLv) : formFor(pick(STARTERS), myLv), r = fight({ id: lead, lv: myLv }, { id, lv, sm: WILD });
+    if (r.win) { win++; rounds.push(r.rounds); lost.push(r.lost); }
+  }
   return { win: win / n, rounds: mean(rounds), lost: mean(lost) };
 }
 
@@ -68,10 +81,10 @@ const out = [], w = s => { out.push(s); console.log(s); };
 const zonesOf = pred => Object.entries(D.zones).filter(([id, z]) => z.enc && z.lv && pred(id, z)).map(([id, z]) => Object.assign({ id }, z));
 const rel = (e, day) => !e.release || ['mon', 'tue', 'wed'].indexOf(e.release) <= ['mon', 'tue', 'wed'].indexOf(day);
 const cached = {};
-function zoneStats(z, myLv) { const k = z.id + ':' + myLv; if (cached[k]) return cached[k]; const tab = z.enc.filter(([id]) => CR[id] && rel(CR[id], 'wed') && !CR[id].needs && !CR[id].trapOnly); return (cached[k] = tab.length ? cell(myLv, tab, z.lv, 250) : null); }
+function zoneStats(z, myLv) { const k = z.id + ':' + myLv; if (cached[k]) return cached[k]; const tab = z.enc.filter(([id]) => repOf(id) && rel(repOf(id), 'wed') && !repOf(id).needs && !repOf(id).trapOnly && !repOf(id).starter); return (cached[k] = tab.length ? cell(myLv, tab, z.lv, 250) : null); }
 
 if (process.argv.includes('--check')) { // numbers to compare with the real game
-  for (const [id, lv] of [['frog', 5], ['cuke', 20], ['golem', 30], ['pike', 40], ['wraith', 50]]) w(`CHECK ${id} Lv${lv}: HP ${maxHp(id, lv)} ATK ${stat(id, lv, 1)} DEF ${stat(id, lv, 2)} SPD ${stat(id, lv, 3)} xpNeed ${xpNeed(lv)} moves ${learned(id, lv).join(',')}`);
+  for (const [id, lv] of [['badgerCub', 5], ['badger', 20], ['honeyBadger', 32], ['pikezilla', 40], ['wraith', 50]]) w(`CHECK ${id} Lv${lv}: HP ${maxHp(id, lv)} ATK ${stat(id, lv, 1)} DEF ${stat(id, lv, 2)} SPD ${stat(id, lv, 3)} xpNeed ${xpNeed(lv)} moves ${learned(id, lv).join(',')}`);
   process.exit(0);
 }
 
@@ -96,6 +109,7 @@ function grind(days, startLv, goalLv) {
 }
 w('# Balance pass (generated by tools/balance.js; every number comes from data/m3-data.js)\n');
 w('Model: the simulator mirrors the game\'s battle, XP and encounter math (checked against real in-game fights: same win rate, turns and HP loss within noise). The player has a party of four different types and swaps in the best matchup' + (SMART ? '' : ' (OFF: random lead)') + ', uses the best move, no items. Real time per fight = 9 s + 5.5 s per turn, plus walking to the next encounter, plus 60 s to heal for each full HP bar lost.\n');
+w('Stat multipliers: wild foes ×' + WILD + ', hero teams ×' + BOSS + ' (tuning.WILD_STAT / BOSS_STAT).\n');
 w('XP for the next level = ' + CFG.XP_BASE + ' + ' + CFG.XP_SQ + ' × lv²  ·  XP per win = foe lv × ' + CFG.XP_PER_LV + ' (weaker foes × (foe/you)^' + CFG.XP_LOW + ', stronger at most ×1.5)  ·  encounter ' + CFG.ENC_RATE * 100 + ' % per tile after ' + CFG.ENC_COOLDOWN + ' safe tiles\n');
 for (const [day, label] of [['mon', 'MONDAY (the old map only)'], ['wed', 'TUESDAY/WEDNESDAY (the east is open)']]) {
   const g = grind(day, CFG.START_LV, 50);
@@ -117,7 +131,7 @@ w('');
 w('## One wild fight: a lead of level L against a creature of level L + d (average of the three starters vs average zone creature)');
 w('Turns are counted over won fights only.');
 w('| lead level | foe −3 | foe +0 | foe +3 | foe +6 |'); w('|---|---|---|---|---|');
-const avgTab = [['frog', 1], ['cuke', 1], ['golem', 1], ['ghost', 1], ['crow', 1], ['bear', 1]];
+const avgTab = [['rat', 1], ['crow', 1], ['fox', 1], ['boar', 1], ['adder', 1], ['crayfish', 1]];
 for (const lv of [5, 10, 20, 30, 40, 50]) { const r = [-3, 0, 3, 6].map(d => { const c = cell(lv, avgTab, [lv + d, lv + d], 300); return `${Math.round(c.win * 100)} % win · ${c.rounds.toFixed(1)} turns · −${Math.round(c.lost * 100)} % HP`; }); w(`| ${lv} | ${r.join(' | ')} |`); }
 w('');
 
@@ -127,8 +141,8 @@ w('| heroes beaten | boss team | your lead lv | wins all 3 | with 4 creatures of
 const heroTeam = Object.values(D.heroes)[0].team;
 function teamFight(lv, beaten, n = 300, party = 1, edge = 0) {
   let wins = 0; const base = CFG.BOSS_LV + CFG.BOSS_LV_STEP * Math.min(3, beaten) - edge;
-  for (let i = 0; i < n; i++) { const mine = Array.from({ length: party }, (_, q) => ({ id: PARTY[q % PARTY.length], lv, hp: null })); let alive = true, k = 0;
-    for (let f = 0; f < 3 && alive; f++) { const foe = { id: heroTeam[f], lv: Math.max(1, base - 1 + f) };
+  for (let i = 0; i < n; i++) { const mine = Array.from({ length: party }, (_, q) => ({ id: formFor(PARTY[q % PARTY.length], lv), lv, hp: null })); let alive = true, k = 0;
+    for (let f = 0; f < 3 && alive; f++) { const foe = { id: heroTeam[f], lv: Math.max(1, base - 1 + f), sm: BOSS };
       while (k < mine.length) { const r = fight({ id: mine[k].id, lv, hp: mine[k].hp }, foe); if (r.win) { mine[k].hp = r.hpLeft; break; } k++; }
       if (k >= mine.length) alive = false; }
     if (alive) wins++; }
@@ -142,11 +156,10 @@ w('## Dev Ljunky (level ' + CFG.DEV_LV + ', HP ×' + CFG.DEV_HP + ', his real AI
 w('Your party: four creatures of the same level (Starter-type mix), one after the other, Dev keeps his HP between them. No items, no swapping mid-fight: this is the floor, a real player with Fizz tablets and type swaps does better.');
 w('| your party level | wins | creatures lost on average |'); w('|---|---|---|');
 function devFight(lv, tabs, party = 4) {
-  const ds = { fixes: 0, rage: false }, mine = Array.from({ length: party }, (_, q) => ({ id: PARTY[q % PARTY.length], lv, hp: null })); let foeHp = null, fainted = 0, left = tabs, k = 0;
-  const first = ['ghost'];
+  const ds = { fixes: 0, rage: false }, mine = Array.from({ length: party }, (_, q) => ({ id: formFor(PARTY[q % PARTY.length], lv), lv, hp: null })); let foeHp = null, fainted = 0, left = tabs, k = 0;
   while (k < mine.length) {
     // pick the best matchup among the creatures still standing (Dev is MIND: neutral against everything, so just take the next one)
-    const c = mine[k]; const r = fight({ id: c.id, lv, hp: c.hp }, { id: 'ghost', lv: CFG.DEV_LV }, { foeMul: CFG.DEV_HP, foeHp, dev: ds });
+    const c = mine[k]; const r = fight({ id: c.id, lv, hp: c.hp }, { id: 'dev', lv: CFG.DEV_LV }, { foeMul: CFG.DEV_HP, foeHp, dev: ds });
     foeHp = r.foeHp; if (foeHp <= 0 || r.win) return { win: true, fainted };
     c.hp = 0; fainted++; k++;
     if (left > 0 && k >= mine.length) { /* last stand: tablets cannot revive */ }
@@ -158,7 +171,7 @@ w('A party that has to level four creatures to 46 needs about 2.3× the grind ti
 
 /* ===== 6. money ===== */
 w('## Money');
-w('Kronor per wild win = foe level × ' + CFG.WILD_KR + '. A carrier bag costs ' + CFG.BAG_COST + ' kr, a Fizz tablet ' + D.items.fizztab.price + ' kr, a trap ' + D.items.fizzMk1.price + ' kr, a ring box ' + D.items.ringbox.price + ' kr.');
+w('Kronor per wild win = foe level × ' + CFG.WILD_KR + '. A carrier bag costs ' + CFG.BAG_COST + ' kr, a Fizz tablet ' + D.items.fizztab.price + ' kr, a trap ' + D.items.mouseTrap.price + ' kr, a ring box ' + D.items.ringbox.price + ' kr.');
 w('| foe level | kr per win | bags per win | fights to afford a ring box |'); w('|---|---|---|---|');
 for (const lv of [5, 10, 20, 30, 40]) { const kr = Math.round(lv * CFG.WILD_KR); w(`| ${lv} | ${kr} | ${(kr / CFG.BAG_COST).toFixed(1)} | ${Math.ceil(D.items.ringbox.price / kr)} |`); }
 w('');

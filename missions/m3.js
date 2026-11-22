@@ -11,16 +11,22 @@ let G = null, B = null;
 
 /* ===================== DATA ===================== */
 const SCHEMA = {
-  creatures: { req: ['name', 'type', 'rarity', 'stats', 'moves'], enums: { rarity: ['C', 'U', 'R', 'E', 'L', 'M', 'H'] }, refs: { moves: 'moves' }, art: 'art' },
+  creatures: { req: ['name', 'type', 'rarity', 'stats', 'moves'], enums: { rarity: ['C', 'U', 'R', 'E', 'L', 'M', 'H'], size: ['S', 'M', 'L', 'XL'] }, refs: { moves: 'moves', evolve: 'creatures', feedFrom: 'creatures' }, art: 'art',
+    check: (e, id, warn, raw) => { if (e.evolve && !raw.creatures[e.evolve.to]) warn('creatures.' + id + ': evolve.to → unknown creature "' + e.evolve.to + '"'); for (const k in (e.feed || {})) if (!raw.creatures[e.feed[k]]) warn('creatures.' + id + ': feed.' + k + ' → unknown creature'); if (e.trip && !raw.trips[e.trip]) warn('creatures.' + id + ': trip "' + e.trip + '" is not in trips'); } },
   moves: { req: ['name'] },
-  items: { req: ['kind', 'name'], enums: { kind: ['throwable', 'trap', 'lure', 'weapon', 'drug', 'app', 'key'] }, nums: ['price', 'waitMin', 'tier'], refs: { upgradesTo: 'items', rare: 'creatures', spawn: 'creatures' } },
+  items: { req: ['kind', 'name'], enums: { kind: ['throwable', 'trap', 'lure', 'weapon', 'drug', 'app', 'key', 'bait', 'material'] }, nums: ['price', 'waitMin', 'tier'], refs: { upgradesTo: 'items', rare: 'creatures', spawn: 'creatures' } },
   heroes: { req: ['name', 'team', 'at', 'look'], refs: { team: 'creatures', moves: 'moves' } },
   partners: { req: ['name', 'guy', 'at', 'look'], refs: { guy: 'heroes' } },
-  npcs: { req: ['name', 'role', 'at'], enums: { role: ['talker', 'merchant', 'trainer', 'gym', 'dealer', 'filler', 'fence', 'boatman'] }, refs: { shop: 'items', party: 'creatures' } },
-  zones: { req: ['name', 'r'], refs: { enc: 'creatures' } },
+  npcs: { req: ['name', 'role', 'at'], enums: { role: ['talker', 'merchant', 'trainer', 'gym', 'dealer', 'filler', 'fence', 'boatman', 'trapper'] }, refs: { shop: 'items', party: 'cref' } },
+  zones: { req: ['name', 'r'], refs: { enc: 'cref' } },
   apps: { req: ['name', 'icon', 'lines'] },
   houses: { req: ['name', 'hero', 'level', 'door'], refs: { hero: 'heroes' }, nums: ['level'] }
 };
+/* LINES: a line is a family of forms (Mouse → Rat → Rat King, plus drug forms). Zones, trainer parties and quests may name a line: the game picks the form for the level.
+   cref = every creature id and every line id, used only to check those references */
+const LINES = {};
+window.M3_DATA.cref = {};
+for (const id in window.M3_DATA.creatures) { const c = window.M3_DATA.creatures[id]; window.M3_DATA.cref[id] = 1; if (c.line) { window.M3_DATA.cref[c.line] = 1; (LINES[c.line] = LINES[c.line] || []).push(id); } }
 const D = PX.data.load(window.M3_DATA, SCHEMA, { today: LOD.today, devAll: LOD.dev, flag: f => !!(G && (f.startsWith('know:') ? G.know && G.know[f.slice(5)] : G.flags && G.flags[f])) });
 const CFG = D.raw.tuning, TY = D.raw.types, TYPES = TY.cycle, TCOL = TY.colors;
 const MOVES = D.raw.moves, HERO = D.raw.heroes, PARTNERS = D.raw.partners, ITEMS = D.raw.items, NPCS = D.raw.npcs, ZONE_DEFS = D.raw.zones;
@@ -37,7 +43,21 @@ for (const id in PARTNERS) SP['w_' + id] = { kind: 'wife', ref: id, name: PARTNE
 for (const id in NPCS) SP['n_' + id] = { kind: 'npc', ref: id, name: NPCS[id].name, type: 'MIND', rarity: 'H', stats: NPCS[id].stats || NPC_STATS, moves: NPCS[id].moves || NPC_MOVES, likes: NPCS[id].likes, epitaph: NPCS[id].epitaph };
 SP.dev = { kind: 'boss', name: 'Dev Ljunky', type: 'MIND', rarity: 'L', stats: [80, 70, 64, 60], moves: [['glitch', 1], ['patch', 1], ['hotfix', 1], ['spawn', 1]], hidden: true };
 const isCreature = sp => SP[sp] && SP[sp].kind === 'creature';
+const lineOf = sp => (SP[sp] && SP[sp].line) || sp;
+/* a line (or exact form) + a level -> the form that lives at that level: follow evolve while the level is high enough */
+function formFor(ref, lv) {
+  const fam = LINES[ref]; if (!fam) return ref;
+  let id = fam.find(k => SP[k].stage === 1) || fam[0];
+  for (let g = 0; g < 5; g++) { const ev = SP[id].evolve; if (ev && lv >= ev.lv && SP[ev.to]) id = ev.to; else break; }
+  return id;
+}
+const bagSize = (s, kind) => !s || s.kind !== 'creature' || kind === 'trap' || !s.size || s.size === 'S' || (s.size === 'M' && s.stage === 1);   // can a carrier bag hold it?
+const tripOf = c => (c && SP[c.sp] && SP[c.sp].trip && D.raw.trips[SP[c.sp].trip]) || null;
+const abilityOf = c => (c && SP[c.sp] && SP[c.sp].ability) || null;
+const sketchy = c => !!(c && c.sk && c.sk > Date.now());
+const fit = c => !!c && c.hp > 0 && !sketchy(c);
 const SPECIES = () => Object.keys(D.raw.creatures).filter(id => rel(D.raw.creatures[id]) || G && G.caught[id]);
+const WILD_LINES = () => Object.keys(LINES).filter(l => l !== 'wraith' && !LINES[l].some(id => SP[id].starter));
 const ZONES = Object.keys(ZONE_DEFS).map(id => Object.assign({ id }, ZONE_DEFS[id]));
 
 /* ===================== SPRITES ===================== */
@@ -85,7 +105,14 @@ function creatureIcon(sp) { // a menu icon. Creatures use their PNG file directl
   if (u) iconCache[sp] = u; return u;
 }
 function drawCreature(ctx, sp, x, y, scale, o = {}) { // bottom-centre at (x, y)
-  const id = spriteOf(sp); if (!id) { LOD.em('❔', x, y - 24 * scale, 20 * scale); return; }
+  const id = spriteOf(sp);
+  if (!id) { // no PNG drawn yet: a dark disc with a type-coloured ring and a question mark
+    const col = (SP[sp] && TCOL[SP[sp].type]) || '#9aa4ad', bob = Math.sin((o.t || 0) * 3) * scale, cx = x, cy = y - 22 * scale + bob, r = 17 * scale;
+    ctx.save(); if (o.alpha != null) ctx.globalAlpha = o.alpha;
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(x, y - 2 * scale, 14 * scale, 4 * scale, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#1F2A44'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill(); ctx.lineWidth = 3 * scale; ctx.strokeStyle = col; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = '900 ' + Math.round(22 * scale) + 'px Barlow, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('?', cx, cy + scale); ctx.restore(); return;
+  }
   PX.drawSprite(ctx, id, 'idle', o.t || 0, x, y, Object.assign({ scale, idle: true }, o));
 }
 /* intro portrait: assets/portraits/<id>.png if it exists, else the sprite */
@@ -406,10 +433,10 @@ const weaponOwned = () => ['tranqScope', 'tranqDarts', 'tranq'].find(has);
 const heroId = () => (LOD.fighter && LOD.fighter.id) || 'ljunky';
 const typeOf = c => c.t || (SP[c.sp] ? SP[c.sp].type : 'MIND');
 function mk(sp, lv) { const c = { sp, lv: clamp(Math.round(lv), 1, CFG.LV_MAX), xp: 0, hp: 1 }; c.hp = maxHp(c); return c; }
-function baseStat(c, i) { const s = SP[c.sp] || SP.frog, b = s.stats[i] * (CFG.RARITY_STAT[s.rarity] || 1); return i === 0 ? Math.floor(b * c.lv / 25 * 1.4) + c.lv + 12 : Math.floor(b * c.lv / 25 * 1.3) + 5; }
+function baseStat(c, i) { const s = SP[c.sp] || SP.badgerCub, b = s.stats[i] * (CFG.RARITY_STAT[s.rarity] || 1), v = i === 0 ? Math.floor(b * c.lv / 25 * 1.4) + c.lv + 12 : Math.floor(b * c.lv / 25 * 1.3) + 5; return c.sm ? Math.round(v * c.sm) : v; }   // c.sm = a stat multiplier (WILD_STAT, BOSS_STAT)
 const maxHp = c => Math.round(baseStat(c, 0) * (c.hpMul || 1));
 const xpNeed = lv => Math.round(CFG.XP_BASE + CFG.XP_SQ * lv * lv);
-const learned = c => (SP[c.sp] || SP.frog).moves.filter(m => m[1] <= c.lv && MOVES[m[0]]).map(m => m[0]).slice(-4);
+const learned = c => (SP[c.sp] || SP.badgerCub).moves.filter(m => m[1] <= c.lv && MOVES[m[0]]).map(m => m[0]).slice(-4);
 const stageMul = s => s >= 0 ? (2 + s) / 2 : 2 / (2 - s);
 const cname = c => c.partner ? PARTNERS[c.partner].name : c.nick || (SP[c.sp] ? SP[c.sp].name : c.sp);
 const active = () => G.party[B.me];
@@ -427,13 +454,14 @@ const gameSpeed = () => clamp(1 + EF.sum(G.me, 'speed'), .35, 4);
 function eStat(c, k, side) {
   if (side === 'me' && B.swap && (k === 'atk' || k === 'def')) k = k === 'atk' ? 'def' : 'atk';
   let v = baseStat(c, { atk: 1, def: 2, spd: 3 }[k]), s = (c.stg && c.stg[k]) || 0;
+  const tr = tripOf(c); if (tr) v *= (tr[k + 'Mul'] || 1);   // trip traits: xanax DEF ×1.4, weed SPD ×0.7 …
   if (side === 'me') { s += statFx(k); if (k === 'def' && B.pants) s -= 2; if (k === 'spd' && B.jungle) v *= .8; }
   return v * stageMul(clamp(s, -6, 6));
 }
 function partyLevelPts() { return [...G.party, ...G.box].filter(c => isCreature(c.sp)).reduce((a, c) => a + c.lv, 0) * (CFG.PTS.lvl || 0); }
 function bestMove(c, target) {
   let best = learned(c)[0] || 'slam', bv = -1;
-  for (const id of learned(c)) { const m = MOVES[id]; if (!m.p) continue; const v = m.p * (m.acc || 1) * eff(m.type, typeOf(target)) * (m.type === typeOf(c) ? 1.2 : 1) * (m.hits || 1); if (v > bv) { bv = v; best = id; } }
+  for (const id of learned(c)) { const m = MOVES[id]; if (!m.p) continue; const v = m.p * (m.acc || 1) * eff(m.type, typeOf(target)) * (m.type === typeOf(c) ? 1.2 : 1) * (Array.isArray(m.hits) ? (m.hits[0] + m.hits[1]) / 2 : m.hits || 1); if (v > bv) { bv = v; best = id; } }
   return best;
 }
 function addToParty(c, quiet) {
@@ -471,9 +499,14 @@ const SFX = {
 };
 const layer = FX.layer(); // battle particles, numbers, throw arcs (screen coords)
 const spots = { fx: 0, fy: 0, mx: 0, my: 0, sc: 3 };
-function resetStg(c) { c.stg = { atk: 0, def: 0, spd: 0 }; c.stun = 0; c.disp = c.hp; c.flash = 0; c.sq = 0; c.off = 0; c.yoff = 0; c.alpha = 1; }
+function resetStg(c) { c.stg = { atk: 0, def: 0, spd: 0 }; c.stun = 0; c.pend = 0; c.void = 0; c.cute = 0; c.half = 0; c.poison = 0; c.stunWhy = null; c.disp = c.hp; c.flash = 0; c.sq = 0; c.off = 0; c.yoff = 0; c.alpha = 1; if (B && B.teamStg && c !== curFoe() && G.party.includes(c)) for (const k in B.teamStg) c.stg[k] = clamp(c.stg[k] + B.teamStg[k], -4, 4); }
 function stageMsg(c, k, n) { const nm = { atk: 'ATK', def: 'DEF', spd: 'SPD' }[k]; return cname(c) + "'s " + nm + (n > 0 ? (n > 1 ? ' rose sharply!' : ' rose!') : (n < -1 ? ' fell harshly!' : ' fell!')); }
-async function stage(c, k, n) { c.stg[k] = clamp(c.stg[k] + n, -4, 4); await say(stageMsg(c, k, n)); }
+const immune = (c, kind) => { const t = tripOf(c); return !!((t && t.immune && t.immune.includes(kind)) || (kind === 'drops' && abilityOf(c) === 'noDrops')); };
+const stunLine = c => { const w = c.stunWhy; c.stunWhy = null; return cname(c) + ' ' + (w || "is stunned and can't move!"); };
+async function stage(c, k, n) {
+  if (n < 0 && immune(c, 'drops')) { await say(cname(c) + ' does not care about stat drops.'); return; }
+  c.stg[k] = clamp(c.stg[k] + n, -4, 4); await say(stageMsg(c, k, n));
+}
 function hurt(c, d, side, crit) {
   c.hp = Math.max(0, c.hp - d); if (EF.has(c, 'sleep')) EF.clear(c, 'sleep');
   c.flash = 1; FX.tween(c, { flash: 0 }, .18, 'linear'); c.sq = crit ? .8 : .5; FX.tween(c, { sq: 0 }, .3, 'outElastic');
@@ -488,10 +521,10 @@ function lunge(side) { const c = side === 'me' ? active() : curFoe(); if (!c) re
 
 async function startBattle(o) {
   if (B) return;
-  if (!G.party.some(c => c.hp > 0)) { if (!G.party.length) LOD.toast(OP.noFight, 1.8); return; }
+  if (!G.party.some(fit)) { if (!G.party.length) LOD.toast(OP.noFight, 1.8); else if (G.party.some(sketchy)) LOD.toast('🥴 Everyone is sketchy or knocked out. Wait it out, or heal.', 2.4); return; }
   G.scene = 'battle'; LOD.input.clear(); layer.clear();
   const z = zoneAt(G.p.x, G.p.y);
-  B = Object.assign({ kind: 'wild', foes: [], fi: 0, me: G.party.findIndex(c => c.hp > 0), turn: 0, ult: false, lure: 1, atm: false, yes: 0, pants: false,
+  B = Object.assign({ kind: 'wild', foes: [], fi: 0, me: G.party.findIndex(fit), turn: 0, ult: false, lure: 1, atm: false, yes: 0, pants: false,
     jungle: heroId() === 'wizcudi' && !!z.out, conf: 0, survive: 0, angry: 0, over: false, result: '', zone: z.id, flashT: .7, said: new Set(), pkg: 0, introT: 0 }, o);
   for (const c of G.party) resetStg(c); for (const f of B.foes) { resetStg(f); f.fx = f.fx || []; }
   if (B.dazed) { for (const f of B.foes) { EF.apply(f, { type: 'stun', turns: 1 }); EF.apply(f, { type: 'catchBonus', value: B.dazed, turns: 99 }); } }
@@ -500,6 +533,7 @@ async function startBattle(o) {
   SFX.start(); await sleep(B.introT ? 1.6 : .75);
   const foe = curFoe();
   if (B.kind === 'wild' || B.kind === 'trap') { G.seen[foe.sp] = 1; await say((B.kind === 'trap' ? 'A dazed ' : 'A wild ') + cname(foe) + ' appeared! (Lv ' + foe.lv + ')'); }
+  if ((B.kind === 'boss' || B.kind === 'trainer') && SP[foe.sp] && SP[foe.sp].kind === 'creature') G.seen[foe.sp] = 1;   // a drug form in a boss team shows up in Fältboken
   if (B.kind === 'trainer' || B.kind === 'npc') { const n = npcDef(B.npc); await say((n ? n.name : 'They') + (B.kind === 'npc' ? ' wants to fight!' : ' sends out ' + cname(foe) + '!')); }
   await say('Go, ' + cname(active()) + '!');
   while (!B.over) { await round(); if (!B) return; }
@@ -508,11 +542,12 @@ async function startBattle(o) {
 async function round() {
   const meRef = active(), foeRef = curFoe();
   if (heroId() === 'jrohn' && !B.pants && B.turn > 0 && Math.random() < .1 && B.kind !== 'dev') { B.pants = true; await say('👖 Oops. Your pants dropped. DEF fell!'); }
-  const act = await chooseAction();
+  const act = meRef.pend ? { k: 'move', mv: meRef.pend } : await chooseAction();
   if (!B || B.over) return;
   const foeAct = B.kind === 'partner' || B.kind === 'dev' ? null : 'move';
-  const meFirst = act.k !== 'move' || (B.turn === 0 && heroId() === 'wizcudi') || !foeAct ||
+  let meFirst = act.k !== 'move' || (B.turn === 0 && heroId() === 'wizcudi') || !foeAct ||
     eStat(meRef, 'spd', 'me') > eStat(foeRef, 'spd', 'foe') || (eStat(meRef, 'spd', 'me') === eStat(foeRef, 'spd', 'foe') && Math.random() < .5);
+  if (act.k === 'move' && foeAct) { const a = !!(tripOf(meRef) && tripOf(meRef).first), b = !!(tripOf(foeRef) && tripOf(foeRef).first); if (a && !b) meFirst = true; else if (b && !a) meFirst = false; }   // coke: always first
   const order = B.kind === 'partner' ? ['me', 'foe'] : meFirst ? ['me', 'foe'] : ['foe', 'me'];
   for (const side of order) {
     if (!B || B.over) return;
@@ -521,12 +556,36 @@ async function round() {
     await resolveFaints();
   }
   if (!B || B.over) return;
+  await endTurnFx();
+  if (!B || B.over) return;
   if (B.yes > 0 && --B.yes === 0) await say('The YES! energy fades.');
   if (B.foeYes > 0) B.foeYes--;
   if (B.conf > 0) B.conf--;
-  for (const f of B.foes) for (const e of EF.turn(f)) if (e.type === 'sleep' && f.hp > 0) await say(cname(f) + ' woke up!');
+  for (const f of B.foes.concat([active()])) for (const e of EF.turn(f)) if (e.type === 'sleep' && f.hp > 0) await say(cname(f) + ' woke up!');
   B.turn++;
   if (B.kind === 'partner') { B.survive++; const need = partnerNeed(); if (B.survive >= need) { PPL.wifeAfter(B.partner, 'endured'); await say(PARTNERS[B.partner].name + ' sighs. "Fine. We will talk about this later."'); B.over = true; B.result = 'solved'; } }
+}
+/* trip traits and poison, once per round, for both creatures that are out */
+async function endTurnFx() {
+  for (const [c, side] of [[active(), 'me'], [curFoe(), 'foe']]) {
+    if (!c || c.hp <= 0 || !B || B.over) continue;
+    const t = tripOf(c), other = side === 'me' ? curFoe() : active(), mates = side === 'me' ? G.party : B.foes;
+    c.half = 0; if (c.cute > 0) c.cute--;
+    const at = side === 'me' ? [spots.mx, spots.my - 30 * spots.sc] : [spots.fx, spots.fy - 30 * spots.sc];
+    if (c.poison > 0) { c.poison--; hurt(c, Math.max(1, Math.round(maxHp(c) * .06)), side); await say(cname(c) + ' is hurt by the poison.'); if (c.hp <= 0) { await resolveFaints(); if (!B || B.over) return; continue; } }
+    if (!t) continue;
+    if (t.healSelf && c.hp < maxHp(c)) { healC(c, t.healSelf); layer.number(at[0], at[1], '+' + Math.round(maxHp(c) * t.healSelf), { color: '#7be0a0' }); }
+    if (t.healParty) for (const q of mates) if (q.hp > 0 && q.hp < maxHp(q)) healC(q, t.healParty);
+    if (t.drainSelf) c.hp = Math.max(1, c.hp - Math.max(1, Math.round(maxHp(c) * t.drainSelf)));
+    if (t.atkStep) c.stg.atk = clamp(c.stg.atk + t.atkStep, -4, 4);
+    if (t.defStep) c.stg.def = clamp(c.stg.def + t.defStep, -4, 4);
+    if (t.foeAtkEvery2 && B.turn % 2 === 1 && other && !immune(other, 'drops')) { other.stg.atk = clamp(other.stg.atk - 1, -4, 4); await say('The haze rolls over ' + cname(other) + '. ATK fell.'); }
+  }
+}
+/* does a trip trait make this creature lose its turn? */
+async function tripSkip(c) {
+  const t = tripOf(c); if (!t || !t.skipP || Math.random() >= t.skipP) return false;
+  await say(cname(c) + ' ' + t.skipText); if (t.halfDmg) c.half = 1; return true;
 }
 const partnerNeed = () => CFG.PARTNER_TURNS + PPL.reacts(B.partner).turns;
 
@@ -543,7 +602,7 @@ async function chooseAction() {
       { label: '🍺 Use', value: 'use', sub: nUse ? nUse + ' in the bag' : 'Bag is empty', dis: !nUse },
       { label: '🎯 Throw', value: 'throw', dis: !nThrow },
       { label: '⭐ ' + hero.ult, value: 'ult', sub: B.ult ? 'Used' : 'Once per battle', dis: B.ult },
-      { label: '🔄 Party', value: 'party', sub: G.party.filter(c => c.hp > 0).length + ' can fight' },
+      { label: '🔄 Party', value: 'party', sub: G.party.filter(fit).length + ' can fight' },
       { label: '🏃 Run', value: 'run', dis: !(K === 'wild' || K === 'trap') }
     ];
     if (K === 'partner') main.splice(2, 0, { label: '🛡️ Endure', value: 'endure' });
@@ -552,7 +611,7 @@ async function chooseAction() {
     const v = await ask(q, main);
     if (!B) return { k: 'none' };
     if (v === 'fight') {
-      const mv = await ask('Choose a move.', learned(me).map(id => { const m = MOVES[id]; return { label: m.name, value: id, ty: m.type || 'NONE', sub: m.p ? 'Power ' + m.p + (m.hits ? ' ×' + m.hits : '') + effHint(m.type, typeOf(foe)) : 'Status' }; }).concat([BACK()]));
+      const mv = await ask('Choose a move.', learned(me).map(id => { const m = MOVES[id]; return { label: m.name, value: id, ty: m.type || 'NONE', sub: m.p ? 'Power ' + m.p + (m.hits ? ' ×' + (Array.isArray(m.hits) ? m.hits.join('–') : m.hits) : '') + effHint(m.type, typeOf(foe)) : 'Status' }; }).concat([BACK()]));
       if (mv) return { k: 'move', mv };
     } else if (v === 'use') {
       const d = await ask('Use what?', usables().map(id => itemOpt(id)).concat([BACK()]));
@@ -578,7 +637,7 @@ async function chooseAction() {
   }
 }
 async function pickParty(q, forced) {
-  const opts = G.party.map((c, i) => ({ label: cname(c) + ' Lv ' + c.lv + (i === B.me ? ' (out)' : ''), img: creatureIcon(c.sp), ty: typeOf(c), sub: c.hp + '/' + maxHp(c) + ' HP', hp: c.hp / maxHp(c), value: i, dis: c.hp <= 0 || i === B.me }));
+  const opts = G.party.map((c, i) => ({ label: cname(c) + ' Lv ' + c.lv + (i === B.me ? ' (out)' : '') + (sketchy(c) ? ' 🥴' : ''), img: creatureIcon(c.sp), ty: typeOf(c), sub: sketchy(c) ? 'Sketchy: ' + Math.ceil((c.sk - Date.now()) / 60000) + ' min' : c.hp + '/' + maxHp(c) + ' HP', hp: c.hp / maxHp(c), value: i, dis: !fit(c) || i === B.me }));
   if (!forced) opts.push(BACK());
   return ask(q, opts, { one: true });
 }
@@ -586,7 +645,7 @@ async function pickParty(q, forced) {
 /* ---------- doing things ---------- */
 async function doPlayer(act) {
   const me = active(), foe = curFoe();
-  if (me.stun > 0) { me.stun--; await say(cname(me) + " is stunned and can't move!"); return; }
+  if (me.stun > 0) { me.stun--; await say(stunLine(me)); return; }
   if (heroId() === 'bigwman' && act.k !== 'run' && B.pkg < 2 && B.turn > 0 && Math.random() < .1) { B.pkg++; await say('📦 "Package for BigWman!" You sign for it. Turn lost.'); return; }
   const confused = B.conf > 0 || EF.has(G.me, 'confuse');
   if (confused && Math.random() < .3 && (act.k === 'move' || act.k === 'talk')) {
@@ -596,11 +655,12 @@ async function doPlayer(act) {
   switch (act.k) {
     case 'move':
       if (B.kind === 'partner') { await say(PARTNERS[B.partner].name + ' is not hurt. She is disappointed.'); return; }
+      if (!me.pend && await tripSkip(me)) return;
       await useMove(me, foe, act.mv, 'me'); return;
     case 'use': await useItem(act.id, true); return;
     case 'throw': await throwIt(act.id); return;
     case 'ult': await heroUlt(); return;
-    case 'swap': B.me = act.i; resetStg(active()); await say('Come back! Go, ' + cname(active()) + '!'); return;
+    case 'swap': B.me = act.i; if (me.pend) { me.pend = 0; me.void = 0; } resetStg(active()); await say('Come back! Go, ' + cname(active()) + '!'); return;
     case 'pull': B.pants = false; await say('👖 You pull your pants up. Dignity restored. Mostly.'); return;
     case 'endure': B.endure = true; await say(cname(me) + ' braces for the words.'); return;
     case 'run': {
@@ -613,34 +673,57 @@ async function doPlayer(act) {
 }
 async function useMove(user, target, id, side, o = {}) {
   const mv = MOVES[id], nm = (side === 'foe' && (B.kind === 'wild' || B.kind === 'trap') ? 'The wild ' : side === 'foe' && B.kind === 'boss' ? HERO[B.boss].name + "'s " : '') + cname(user);
+  const tSide = side === 'me' ? 'foe' : 'me', ut = tripOf(user);
   if (side === 'foe') {
-    if (user.stun > 0) { user.stun--; await say(cname(user) + " is stunned and can't move!"); return; }
+    if (user.stun > 0) { user.stun--; await say(stunLine(user)); return; }
     if (EF.has(user, 'sleep')) { await say(cname(user) + ' is fast asleep. 💤'); return; }
     if (EF.has(user, 'stun')) { await say(cname(user) + " is dazed and can't move!"); return; }
     if (EF.has(user, 'loseTurn')) { await say(cname(user) + ' is busy and loses the turn.'); return; }
-    if (EF.has(user, 'confuse') && Math.random() < .4) { await say(cname(user) + ' is confused and hits itself!'); hurt(user, Math.max(1, Math.round(maxHp(user) * .08)), 'foe'); return; }
   }
+  if (EF.has(user, 'confuse') && Math.random() < .4) { await say(cname(user) + ' is confused and hits itself!'); hurt(user, Math.max(1, Math.round(maxHp(user) * .08)), side); return; }
   await say(nm + ' used ' + mv.name + '!');
   lunge(side); await sleep(.15);
   if (mv.say) await say(mv.say);
+  if (mv.vanish && !user.pend) { user.pend = id; user.void = 1; user.stunWhy = null; return; }   // K-hole: this turn it hides, next turn it hits
+  if (mv.vanish) { user.pend = 0; user.void = 0; }
   if (mv.special) { await devSpecial(mv.special, user); return; }
+  if (mv.p && target.void) { await say('But ' + cname(target) + ' is not even here.'); return; }
+  if (mv.p && target.cute > 0) { await say(cname(user) + ' just cannot bring itself to attack ' + cname(target) + '. Those eyes.'); return; }
   let acc = (mv.acc || 1) + (side === 'me' ? statFx('acc') : 0);
   if (side === 'foe') acc -= EF.sum(user, 'blind');
-  if (mv.p && Math.random() > acc) { await say('It missed!'); return; }
+  if (ut && ut.accPenalty) acc -= ut.accPenalty;
+  if (mv.p && !mv.sure && Math.random() > acc) { await say('It missed!'); return; }
   if (!mv.p) {
     if (mv.self) for (const k in mv.self) await stage(user, k, mv.self[k]);
     if (mv.foe) for (const k in mv.foe) await stage(target, k, mv.foe[k]);
     if (mv.heal) { healC(user, mv.heal); await say(cname(user) + ' feels better.'); }
+    if (mv.partyHeal) { for (const q of (side === 'me' ? G.party : B.foes)) healC(q, mv.partyHeal); await say('The whole team feels better.'); }
+    if (mv.team) {
+      const night = PPL.isNight() ? (mv.nightTeam || 0) : 0, add = {}; for (const k in mv.team) add[k] = mv.team[k] + night;
+      if (side === 'me') { B.teamStg = B.teamStg || {}; for (const k in add) { B.teamStg[k] = (B.teamStg[k] || 0) + add[k]; for (const q of G.party) if (q !== user && q.stg) q.stg[k] = clamp(q.stg[k] + add[k], -4, 4); } }
+      for (const k in add) { user.stg[k] = clamp(user.stg[k] + add[k], -4, 4); }
+      await say('Team ' + Object.keys(add).map(k => k.toUpperCase()).join('/') + ' +' + Math.max(...Object.values(add)) + (night ? ' (night bonus)' : '') + '.');
+    }
+    if (mv.foeLose) { if (user.usedLose) await say('The elves are busy. It already did that.'); else { user.usedLose = 1; target.stun = (target.stun || 0) + mv.foeLose; target.stunWhy = 'is deep in conversation with the machine elves.'; } }
+    if (mv.cute) user.cute = mv.cute;
+    if (mv.selfStun) { user.stun = (user.stun || 0) + mv.selfStun; user.stunWhy = mv.stunText || 'is still out of it.'; }
+    if (mv.confuse && !immune(target, 'confuse')) { EF.apply(target, { type: 'confuse', turns: 3 }); await say(cname(target) + ' is confused!'); }
+    if (mv.confuseAll) { for (const c of [user, target]) if (!immune(c, 'confuse')) { EF.apply(c, { type: 'confuse', turns: 3 }); await say(cname(c) + ' is confused!'); } }
     return;
   }
-  const mt = id === 'glitch' ? typeOf(user) : mv.type, tSide = side === 'me' ? 'foe' : 'me';
-  let hits = mv.hits || 1, crits = 0, e = 1, dealt = 0;
+  const best = mv.bestType || (ut && ut.lsd) ? TYPES.slice().sort((a, b) => eff(b, typeOf(target)) - eff(a, typeOf(target)))[0] : null;
+  let mt = mv.bestType ? best : ut && ut.lsd ? (user.t = Math.random() < .5 ? best : pick(TYPES)) : id === 'glitch' ? typeOf(user) : mv.type;
+  if (ut && ut.lsd) { user.t = mt; await say(cname(user) + ' shimmers. Now it is ' + mt + '.'); }
+  let hits = Array.isArray(mv.hits) ? mv.hits[0] + Math.floor(Math.random() * (mv.hits[1] - mv.hits[0] + 1)) : (mv.hits || 1), crits = 0, e = 1, dealt = 0;
+  if (mv.hits && ut && ut.extraHits) hits += ut.extraHits;
+  const pw = mv.p * (mv.rage ? 1 + (1 - user.hp / maxHp(user)) : 1);
   for (let h = 0; h < hits && target.hp > 0; h++) {
     if (side === 'foe' && heroId() === 'loken' && !B.atm) { B.atm = true; await say('🛡️ ATM Security! The first hit is blocked.'); continue; }
     const A = eStat(user, 'atk', side), Df = eStat(target, 'def', tSide);
-    let d = ((2 * user.lv / 5 + 2) * mv.p * A / Df) / 25 + 2;
+    let d = ((2 * user.lv / 5 + 2) * pw * A / Df) / 25 + 2;
     e = eff(mt, typeOf(target));
     let critP = .07; if (side === 'me') { if (heroId() === 'ljunky') critP = .15; if (statFx('crit') > 0) critP = .35; }
+    if (ut && ut.crit) critP += ut.crit;
     const crit = Math.random() < critP; if (crit) crits++;
     d *= (mt && mt === typeOf(user) ? 1.2 : 1) * e * rand(.85, 1) * (crit ? 1.5 : 1);
     if (side === 'me' && B.yes > 0) d *= 1.5;
@@ -648,20 +731,27 @@ async function useMove(user, target, id, side, o = {}) {
     if (side === 'me' && B.dip != null) d *= B.dip;
     if (side === 'foe' && B.foeDip != null) { d *= B.foeDip; B.foeDip = null; }
     if (side === 'foe' && B.endure) d *= .5;
+    if (target.half) d *= .5;
     if (o.mul) d *= o.mul;
     d = Math.round(d); if (d === 0 && side === 'me' && B.dip === 0) { await say('The dip kept dipping. Zero damage.'); continue; }
     d = Math.max(1, d); dealt += d;
     hurt(target, d, tSide, crit); crit ? SFX.crit() : SFX.hit();
     await sleep(.35);
   }
-  if (mv.hits && dealt) await say('Hit ' + mv.hits + ' times!');
+  if (hits > 1 && dealt) await say('Hit ' + hits + ' times!');
   if (crits) await say('A critical hit!');
   if (dealt && e !== 1 && mt) learn('eff:' + mt + '>' + typeOf(target));
   if (dealt && e > 1) await say("It's super effective!"); else if (dealt && e < 1) await say("It's not very effective…");
+  if (dealt && mv.drain) { user.hp = Math.min(maxHp(user), user.hp + Math.round(dealt * mv.drain)); await say(cname(user) + ' drains some HP.'); }
+  if (dealt && mv.recoil) { hurt(user, Math.max(1, Math.round(dealt * mv.recoil)), side); await say(cname(user) + ' is hurt by the recoil!'); }
   if (target.hp > 0 && dealt) {
     if (mv.foe) for (const k in mv.foe) await stage(target, k, mv.foe[k]);
-    if (mv.stun && Math.random() < mv.stun) { target.stun = 1; await say(cname(target) + ' is stunned!'); }
+    if (mv.stun && Math.random() < mv.stun && !immune(target, 'status')) { target.stun = 1; target.stunWhy = null; await say(cname(target) + ' is stunned!'); }
+    const cf = (mv.confuse || 0) + (ut && ut.confuseOnHit ? ut.confuseOnHit : 0);
+    if (cf && Math.random() < cf && !immune(target, 'confuse') && !EF.has(target, 'confuse')) { EF.apply(target, { type: 'confuse', turns: 3 }); await say(cname(target) + ' is confused!'); }
+    if (mv.poison && !target.poison) { target.poison = mv.poison; await say(cname(target) + ' is poisoned!'); }
   }
+  if (mv.self && user.hp > 0) for (const k in mv.self) await stage(user, k, mv.self[k]);   // a damaging move can also change the user's own stats (Helan Går)
 }
 async function foeTurn() {
   const foe = curFoe(), me = active();
@@ -669,8 +759,9 @@ async function foeTurn() {
   if (B.kind === 'dev') return devTurn();
   if (B.kind === 'boss' && !B.foeUlt && B.fi >= 1 && foe.stun <= 0 && canAct(foe)) { B.foeUlt = true; if (await bossUlt()) return; }
   if (B.robot && Math.random() < .3 && canAct(foe)) await say(robotLine());
+  if (!foe.pend && foe.stun <= 0 && canAct(foe) && await tripSkip(foe)) return;
   const ids = learned(foe);
-  const id = Math.random() < .7 ? bestMove(foe, me) : pick(ids);
+  const id = foe.pend || (Math.random() < .7 ? bestMove(foe, me) : pick(ids));
   await useMove(foe, me, id, 'foe');
   if (B.foeDouble && me.hp > 0 && foe.hp > 0) { B.foeDouble = 0; await useMove(foe, me, bestMove(foe, me), 'foe'); }
 }
@@ -693,7 +784,7 @@ async function heroUlt() {
   else if (h === 'loken') {
     await say('Stick together, boys! Everyone attacks!');
     if (B.kind === 'partner') { await say('She is not hurt. She is impressed, a little.'); B.survive++; return; }
-    for (const c of G.party) { if (c.hp <= 0 || foe.hp <= 0) continue; if (!c.stg) resetStg(c); await useMove(c, foe, bestMove(c, foe), 'me', { mul: c === me ? 1 : .8 }); }
+    for (const c of G.party) { if (!fit(c) || foe.hp <= 0) continue; if (!c.stg) resetStg(c); await useMove(c, foe, bestMove(c, foe), 'me', { mul: c === me ? 1 : .8 }); }
   } else if (h === 'ljunky') {
     if (B.kind === 'partner') { await say('You bought the dip. She saw it. That made it worse.'); B.angry = 1; return; }
     B.dip = Math.random() < .5 ? 2 : 0; await say(B.dip ? 'Buy the Dip… TO THE MOON! Double damage.' : 'Buy the Dip… it keeps dipping.');
@@ -731,8 +822,9 @@ function logDrink() {
 }
 function catchChance(f) {
   const s = SP[f.sp], R = CFG.CATCH_R[s.rarity] || .5, hpF = f.hp / maxHp(f);
-  const bonus = 1 + EF.sum(f, 'catchBonus') + EF.sum(G.me, 'catchBonus');
+  const mol = tripOf(active()); const bonus = 1 + EF.sum(f, 'catchBonus') + EF.sum(G.me, 'catchBonus') + (mol && mol.catchBonus ? mol.catchBonus : 0);
   if (s.trapOnly && !(B.trapItem === s.trapOnly)) return 0;
+  if (!bagSize(s, B.kind)) return 0;
   if (f.hp <= 0) return clamp((CFG.KO_CATCH[s.rarity] || .6) * bonus * (heroId() === 'ljunky' ? 1.1 : 1), .05, .98);
   return clamp((1 - hpF * .78) * R * B.lure * bonus * (heroId() === 'ljunky' ? 1.25 : 1) * (f.stun > 0 || !canAct(f) ? 1.2 : 1), .03, .95);
 }
@@ -786,7 +878,7 @@ async function throwBag(ko) {
   const foe = curFoe();
   await say(ko ? 'You pull out a carrier bag…' : 'You threw a carrier bag!');
   const p = catchChance(foe), ok = Math.random() < p;
-  if (p === 0) { B.bagT = 0; await say('The bag goes straight through it. Something else is needed.'); return false; }
+  if (p === 0) { B.bagT = 0; await say(bagSize(SP[foe.sp], B.kind) ? 'The bag goes straight through it. Something else is needed.' : 'Far too big for a carrier bag. Only a trap holds something like this.'); return false; }
   const shakes = ok ? 3 : Math.random() < p * 1.6 ? 2 : Math.random() < .5 ? 1 : 0;
   await layer.arc(spots.mx, spots.my - 30 * spots.sc, spots.fx, spots.fy - 20 * spots.sc, { h: 60, dur: .45, draw: (c, x, y, k, r) => { c.save(); c.translate(x, y); c.rotate(r); c.font = '26px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('🛍️', 0, 0); c.restore(); } });
   B.bagT = 1; B.bagShake = 0; learnItem('bag');
@@ -799,10 +891,10 @@ async function throwBag(ko) {
   return true;
 }
 async function caught(foe) {
-  const s = SP[foe.sp], c = { sp: foe.sp, lv: foe.lv, xp: 0, hp: Math.max(1, foe.hp) };
+  const s = SP[foe.sp], c = { sp: foe.sp, lv: foe.lv, xp: 0, hp: 1 }; c.hp = Math.min(maxHp(c), Math.max(1, foe.hp));
   PPL.reactGone(foe.sp, 'caught');
   if (s.kind === 'creature') {
-    const isNew = !G.caught[foe.sp]; G.caught[foe.sp] = 1;
+    const ln = lineOf(foe.sp), isNew = !G.lines[ln] && !s.starter && ln !== 'wraith'; G.caught[foe.sp] = 1; G.lines[ln] = 1; G.seen[foe.sp] = 1;
     await say('Gotcha! ' + cname(foe) + ' was bagged!' + (isNew ? ' New species! +' + fmt(CFG.PTS.species) : ''));
     if (s.rarity === 'M') G.flags.mythicCaught = 1;
   } else {
@@ -816,10 +908,10 @@ async function caught(foe) {
 /* ---------- knockout: Catch or Finish off ---------- */
 async function knockout(foe, who) {
   const s = SP[foe.sp] || {}, person = s.kind !== 'creature';
-  const canCatch = s.kind === 'creature' || (who && who.catchable !== false);
+  const canCatch = (s.kind === 'creature' && bagSize(s, B.kind) && !(s.trapOnly && B.trapItem !== s.trapOnly)) || (s.kind !== 'creature' && who && who.catchable !== false);
   const canDie = !who || who.canDie !== false;
   const opts = [
-    { label: '🛍️ Catch', value: 'catch', cls: 'hot', dis: !canCatch, sub: heroId() === 'bigwman' && canCatch ? Math.round(catchChance(foe) * 100) + ' %' : (has('bag') ? '×' + G.items.bag : CFG.BAG_COST + ' kr') },
+    { label: '🛍️ Catch', value: 'catch', cls: 'hot', dis: !canCatch, sub: s.kind === 'creature' && !bagSize(s, B.kind) ? 'Too big for a bag' : heroId() === 'bigwman' && canCatch ? Math.round(catchChance(foe) * 100) + ' %' : (has('bag') ? '×' + G.items.bag : CFG.BAG_COST + ' kr') },
     { label: '🪦 Finish off', value: 'kill', cls: 'bad', dis: !canDie },
     { label: person ? '🤝 Let it go' : '🌿 Walk away', value: 'leave' }
   ];
@@ -842,6 +934,7 @@ async function finishOff(foe) {
   S.addGrave(foe); PPL.reactGone(foe.sp, 'dead');
   await say('💀 ' + cname(foe) + ' is no more.' + (cemeteryOpen() ? ' A stone appears in the cemetery.' : ''));
   if (SP[foe.sp].kind !== 'creature') personGone(foe.sp, 'dead');
+  else if (SP[foe.sp].mat && ITEMS[SP[foe.sp].mat]) { const m = SP[foe.sp].mat, n = { S: 1, M: 1, L: 2, XL: 3 }[SP[foe.sp].size] || 1; give(m, n); learnItem(m); await say('You salvage ' + n + ' × ' + ITEMS[m].name + ' ' + ITEMS[m].em + '. Trap upgrades need it.'); }
   if (B.kind !== 'boss' && B.kind !== 'trainer') await gainXp(foe, 1.2);
 }
 /* a person was caught or finished off: remove them from the map, count the goal */
@@ -864,12 +957,23 @@ async function gainXp(foe, mul = 1) {
     await addXp(c, amt, c === active());
   }
 }
+/* automatic evolution: when the level reaches evolve.lv the creature becomes the next form (name, stats and moves follow the new form; nickname, level and XP stay) */
+async function evolveCheck(c, loud) {
+  const s = SP[c.sp]; if (!s || !s.evolve || c.lv < s.evolve.lv || !SP[s.evolve.to]) return;
+  const from = cname(c), to = s.evolve.to;
+  if (loud !== null) { await say('What? ' + from + ' is evolving!'); if (B) B.flashT = .7; FX.addTrauma(.35); SFX.lvl(); await sleep(.5); }
+  const old = maxHp(c); c.sp = to; c.hp = Math.min(maxHp(c), c.hp + Math.max(0, maxHp(c) - old));
+  G.caught[to] = 1; G.seen[to] = 1;
+  if (loud !== null) await say(from + ' evolved into ' + SP[to].name + '!'); else LOD.toast('✨ ' + from + ' evolved into ' + SP[to].name, 2.4);
+  await evolveCheck(c, loud);
+}
 async function addXp(c, amt, loud) {
   if (c.lv >= CFG.LV_MAX) return;
   c.xp += amt; if (loud) await say(cname(c) + ' gained ' + amt + ' XP!');
   while (c.lv < CFG.LV_MAX && c.xp >= xpNeed(c.lv)) {
     c.xp -= xpNeed(c.lv); const old = maxHp(c); c.lv++; c.hp = Math.min(maxHp(c), c.hp + maxHp(c) - old);
     if (loud !== null) { SFX.lvl(); await say(cname(c) + ' grew to Lv ' + c.lv + '!'); for (const m of SP[c.sp].moves) if (m[1] === c.lv && MOVES[m[0]]) await say(cname(c) + ' learned ' + MOVES[m[0]].name + '!'); }
+    await evolveCheck(c, loud);
   }
   if (c.lv >= CFG.LV_MAX) c.xp = 0;
   G.lvlPts = Math.max(G.lvlPts || 0, partyLevelPts());
@@ -901,7 +1005,7 @@ async function resolveFaints() {
   const me = active();
   if (me.hp <= 0 && !B.said.has(me)) {
     B.said.add(me); SFX.faint(); await say(cname(me) + ' fainted!');
-    if (G.party.some(c => c.hp > 0)) { const i = await pickParty('Who goes next?', true); B.me = i; resetStg(active()); await say('Go, ' + cname(active()) + '!'); }
+    if (G.party.some(fit)) { const i = await pickParty('Who goes next?', true); B.me = i; resetStg(active()); await say('Go, ' + cname(active()) + '!'); }
     else { B.over = true; B.result = 'lose'; }
   }
 }
@@ -957,7 +1061,7 @@ async function devSpecial(k, d) {
   if (k === 'patch') { B.swap = !B.swap; B.glitchT = 1; await say('Patch notes: your ATK and DEF have been swapped. "Working as intended."'); }
   else if (k === 'hotfix') { B.fixes = (B.fixes || 0) + 1; healC(d, .22); await say('Hotfix deployed. ' + cname(d) + ' healed.'); }
   else if (k === 'spawn') {
-    const sp = pick(SPECIES().filter(s => !SP[s].needs && !SP[s].trapOnly)), bug = mk(sp, d.lv - 2); resetStg(bug); B.bug = { sp, t: 1.6 };
+    const ref = pick(WILD_LINES().filter(l => !repOf(l).needs && !repOf(l).trapOnly)), sp = formFor(ref, d.lv - 2), bug = mk(sp, d.lv - 2); resetStg(bug); B.bug = { sp, t: 1.6 };
     await say('A wild ' + SP[sp].name + ' spawns out of a bug report!');
     await useMove(bug, me, bestMove(bug, me), 'foe');
   } else if (k === 'rage') {
@@ -971,6 +1075,7 @@ function robotLine() { return pick(ROBOT).replace(/[AEO]/g, ch => Math.random() 
 /* ---------- after the battle ---------- */
 async function endBattle() {
   const r = B.result, foe = curFoe(), kind = B.kind;
+  for (const c of G.party) { delete c.t; c.pend = 0; c.void = 0; c.cute = 0; c.half = 0; c.poison = 0; if (c.fx) c.fx = c.fx.filter(f => !(f.turns > 0)); }
   if (r === 'win' || r === 'caught') {
     if ((kind === 'wild' || kind === 'trap') && r === 'win') { const kr = Math.max(1, Math.round(foe.lv * CFG.WILD_KR)); G.kr += kr; await say('You found ' + kr + ' kr in the grass.'); }
     if (kind === 'boss') await bossWon(B.boss, B.koResult);
@@ -1007,21 +1112,27 @@ async function blackoutTo(why) { // every line moves on by itself (a tap skips):
 
 /* ---------- starting the different fights ---------- */
 function encTable(z) {
-  const reveal = EF.has(G.me, 'reveal'), attract = EF.all(G.me, 'attract').map(f => f.value);
+  const reveal = EF.has(G.me, 'reveal') || G.party.some(c => { const t = tripOf(c); return (t && t.reveal) || abilityOf(c) === 'reveal'; }), attract = EF.all(G.me, 'attract').map(f => f.value), night = PPL.isNight();
   const extra = EF.all(G.me, 'spawnTable').flatMap(f => f.value || []); // spawnTable effect: extra creatures join every table while it lasts
-  return (z.enc || []).concat(extra).filter(([sp]) => SP[sp] && rel(SP[sp]) && (!SP[sp].needs || (SP[sp].needs === 'reveal' && reveal)) && !SP[sp].trapOnly)
-    .map(([sp, w]) => [sp, w * (attract.includes(SP[sp].type) ? 4 : 1) * (SP[sp].needs ? 2 : 1)]);
+  return (z.enc || []).concat(extra).filter(([ref]) => { const r = repOf(ref); return r && rel(r) && !r.starter && (!r.needs || (r.needs === 'reveal' && reveal)) && !r.trapOnly && !(r.night && !night) && !(r.day && night); })
+    .map(([ref, w]) => { const r = repOf(ref); return [ref, w * (attract.includes(r.type) ? 4 : 1) * (r.needs ? 2 : 1) * (r.nightBoost && night ? 2 : 1)]; });
 }
+const wildC = c => { if (CFG.WILD_STAT && CFG.WILD_STAT !== 1) { c.sm = CFG.WILD_STAT; c.hp = maxHp(c); } return c; };   // wild creatures get the WILD_STAT multiplier
 function wildFor(z, rare) {
   const tab = encTable(z); if (!tab.length) return null;
-  let sp = PX.data.weighted(tab);
-  if (rare) sp = tab.slice().sort((a, b) => ((CFG.CATCH_R[SP[a[0]].rarity] || 1) - (CFG.CATCH_R[SP[b[0]].rarity] || 1)))[0][0];
-  const lv = Math.round(rand(z.lv[0], z.lv[1] + .99) - .49) + (rare ? 1 : 0) + (SP[sp].rarity === 'E' ? 4 : 0);
-  return mk(sp, lv);
+  let ref = PX.data.weighted(tab);
+  if (rare) ref = tab.slice().sort((a, b) => ((CFG.CATCH_R[repOf(a[0]).rarity] || 1) - (CFG.CATCH_R[repOf(b[0]).rarity] || 1)))[0][0];
+  const lv = Math.round(rand(z.lv[0], z.lv[1] + .99) - .49) + (rare ? 1 : 0) + (repOf(ref).rarity === 'E' ? 4 : 0);
+  return wildC(mk(formFor(ref, lv), lv));
 }
 function startWild(z, rare) { const f = wildFor(z || zoneAt(G.p.x, G.p.y), rare); if (f) startBattle({ kind: 'wild', foes: [f] }); }
 function bossLv() { return CFG.BOSS_LV + CFG.BOSS_LV_STEP * Math.min(3, G.beat.length); }
-const bossTeam = id => { const base = bossLv() - (G.flags['edge:' + id] ? 3 : 0); return HERO[id].team.map((sp, i) => mk(sp, Math.max(1, base - 1 + i))); };   // a puzzle solved in his house = his team is 3 levels lower
+const repOf = ref => LINES[ref] ? SP[LINES[ref].find(k => SP[k].stage === 1) || LINES[ref][0]] : SP[ref];
+/* hero teams are drug forms. Levels: the ladder (BOSS_LV + steps per hero beaten) or, with BOSS_AT_GATE, the house gate −2 / ±0 / +2. A puzzle solved in his house = his team is 3 levels lower */
+const bossTeam = id => {
+  const gate = HOUSES[id] && HOUSES[id].level, edge = G.flags['edge:' + id] ? 3 : 0;
+  return HERO[id].team.map((sp, i) => { const lv = Math.max(1, CFG.BOSS_AT_GATE && gate ? gate - 2 + i * 2 - edge : bossLv() - edge - 1 + i), c = mk(formFor(sp, lv), lv); if (CFG.BOSS_STAT && CFG.BOSS_STAT !== 1) { c.sm = CFG.BOSS_STAT; c.hp = maxHp(c); } return c; });
+};
 function startBoss(id) { startBattle({ kind: 'boss', boss: id, foes: bossTeam(id) }); }
 function startPartner(id) {
   const avg = G.party.reduce((a, c) => a + c.lv, 0) / Math.max(1, G.party.length);
@@ -1030,10 +1141,10 @@ function startPartner(id) {
 }
 function startDev() { const d = mk('dev', CFG.DEV_LV); d.hpMul = CFG.DEV_HP; d.hp = maxHp(d); startBattle({ kind: 'dev', foes: [d] }); }
 function startTrainer(id) {
-  const n = npcDef(id); let party = (n.party || []).filter(([sp]) => SP[sp] && rel(SP[sp]));
+  const n = npcDef(id); let party = (n.party || []).filter(([ref]) => repOf(ref) && rel(repOf(ref)));
   if (n.partyFallback && party.length < (n.party || []).length) party = party.concat([n.partyFallback]);
   if (!party.length) return startNpcFight(id);
-  startBattle({ kind: 'trainer', npc: id, robot: !!n.robot, foes: party.map(([sp, lv]) => mk(sp, lv + (id === 'aiLjunky' ? 0 : Math.min(4, G.beat.length)))) });
+  startBattle({ kind: 'trainer', npc: id, robot: !!n.robot, foes: party.map(([ref, lv]) => { const L = lv + (id === 'aiLjunky' ? 0 : Math.min(4, G.beat.length)), c = mk(formFor(ref, L), L); if (SP[c.sp].stage === 'drug' && CFG.BOSS_STAT) { c.sm = CFG.BOSS_STAT; c.hp = maxHp(c); } return c; }) });
 }
 function startNpcFight(id) { const avg = G.party.reduce((a, c) => a + c.lv, 0) / Math.max(1, G.party.length); startBattle({ kind: 'npc', npc: id, foes: [mk('n_' + id, Math.round(avg))] }); }
 
@@ -1195,11 +1306,11 @@ async function fishAt(id) {
   await say('You cast a line…', { auto: false }); hideBox();
   const r = await MINI.fishing(cfg, p.name); G.fishT = p.cooldown || 20;
   if (!r.ok) { await say(r.hits ? 'It got away. So close.' : (p.junk || 'You reel in nothing.'), { auto: false }); return; }
-  const tab = (p.catch || []).filter(([sp]) => SP[sp] && rel(SP[sp])); if (!tab.length) { await say(p.junk || 'Nothing.', { auto: false }); return; }
-  const sp = PX.data.weighted(tab), lv = Math.round(rand(p.lv[0], p.lv[1]));
+  const tab = (p.catch || []).filter(([ref]) => repOf(ref) && rel(repOf(ref))); if (!tab.length) { await say(p.junk || 'Nothing.', { auto: false }); return; }
+  const ref = PX.data.weighted(tab), lv = Math.round(rand(p.lv[0], p.lv[1])), sp = formFor(ref, lv);
   if (r.perfect) G.flags['fish:perfect'] = 1;
   await say((r.perfect ? 'PERFECT! ' : '') + 'Something big on the line!', { auto: false }); hideBox();
-  startBattle({ kind: 'wild', foes: [mk(sp, lv)], dazed: r.perfect ? .35 : .2 });
+  startBattle({ kind: 'wild', foes: [wildC(mk(sp, lv))], dazed: r.perfect ? .35 : .2 });
 }
 async function golfAt(id) {
   const p = PROPS[id], cfg = D.raw.minigames.golf;
@@ -1222,6 +1333,7 @@ async function npcTalk(n) {
   if (d.role === 'dealer') return S.dealer(n);
   if (d.role === 'boatman') return boatman(n);
   if (d.role === 'fence') return fence(n);
+  if (d.role === 'trapper') return S.trapper(n);
   const tk = await PPL.talk(id, { name: who, fallback: npcLine(d) });
   if (tk.fight) { hideBox(); startNpcFight(id); return; }
   for (;;) {
@@ -1269,7 +1381,7 @@ async function debtCollector() {
   if (a === 'pay') { G.kr -= DC.pay; await say2(who, 'Pleasure. See you next promise.'); hideBox(); G.scene = 'map'; return; }
   const top = Math.max(...G.party.map(c => c.lv));
   hideBox(); G.scene = 'map';
-  startBattle({ kind: 'trainer', npc: DC.npc, foes: DC.team.map((sp, i) => mk(sp, top + DC.lvUp + i - 1)) });
+  startBattle({ kind: 'trainer', npc: DC.npc, foes: DC.team.map((ref, i) => { const L = top + DC.lvUp + i - 1; return mk(formFor(ref, L), L); }) });
 }
 const isGymBoss = id => heroId() === D.raw.gyms.box.boss && id === D.raw.gyms.box.bossIfSelf;
 async function shop(d, id) {
@@ -1370,25 +1482,86 @@ async function vanMenu() {
   if (!G.party.some(c => c.hp > 0)) { G.box[bi] = G.party[pi]; G.party[pi] = out; return say('Someone in the party has to be awake.', { auto: false }); }
   await say('Swapped.', { auto: false });
 }
+/* ---------- feeding: Bag → Use → a drug → a creature. The right drug at the right level turns a teen into its drug form. Every feeding may be a bad trip. ---------- */
+async function feedFlow(id) {
+  const it = ITEMS[id]; if (!has(id)) return;
+  const who = await ask('Give the ' + it.name + ' to…', [{ label: '🙋 Take it yourself', value: 'me' }].concat(G.party.map((c, i) => ({ label: cname(c) + ' Lv ' + c.lv + (sketchy(c) ? ' 🥴' : ''), img: creatureIcon(c.sp), ty: typeOf(c), sub: tripOf(c) ? tripOf(c).name : '', value: 'c' + i }))).concat([BACK()]), { one: true });
+  if (!who) return;
+  if (who === 'me') { await useItem(id, false); if (heartPending) await heartAttackFlow(); return; }
+  const c = G.party[+who.slice(1)]; if (!c) return;
+  take(id); learnItem(id);
+  const s = SP[c.sp], target = s.feed && s.feed[id], trip = D.raw.trips[id], from = cname(c);
+  await say('You give ' + it.em + ' ' + it.name + ' to ' + from + '. It swallows it without a word.', { auto: false });
+  if (target && SP[target] && c.lv >= (s.feedLv || 0)) {
+    FX.addTrauma(.4); SFX.lvl(); LOD.haptic('success');
+    await say(from + ' glows. Colours. Sounds. Something is happening…', { auto: false });
+    const old = maxHp(c); c.sp = target; c.hp = Math.min(maxHp(c), c.hp + Math.max(0, maxHp(c) - old)); G.caught[target] = 1; G.seen[target] = 1;
+    PPL.tell('recipe:' + target, 'feed');
+    const T2 = D.raw.trips[SP[target].trip];
+    await say(from + ' became ' + SP[target].name + '!' + (T2 ? '\n' + T2.name + ': ' + T2.up + '.\nBut: ' + T2.down + '.' : ''), { auto: false });
+  } else if (target) await say(from + ' is very relaxed. Nothing else happens. Yet.', { auto: false });
+  else await say(from + ' looks at you. Very relaxed. Nothing else happens.', { auto: false });
+  if (trip && trip.badTrip && Math.random() < trip.badTrip) {
+    c.sk = Date.now() + CFG.TRIP_MIN * 60000 / Math.max(1e-6, TRAP_SPEED); LOD.haptic('error'); LOD.callout('BAD TRIP 🥴', cname(c) + ' is sketchy for ' + CFG.TRIP_MIN + ' minutes.', 'bad');
+    await say('🥴 ' + cname(c) + ' went somewhere dark. It cannot fight for ' + CFG.TRIP_MIN + ' real minutes. It will be fine. Probably.', { auto: false });
+  }
+}
+/* ---------- Fältboken: the field guide. Without it you only see the creatures you own. ---------- */
+const FB = D.raw.fieldbook || {};
+const lineLabel = l => { const f = LINES[l].map(k => SP[k]).filter(x => x.stage !== 'drug').sort((a, b) => a.stage - b.stage); return (f[Math.min(1, f.length - 1)] || SP[LINES[l][0]]).name; };
+function bookPage(l) {
+  const all = LINES[l].map(k => ({ id: k, s: SP[k] })), norm = all.filter(x => x.s.stage !== 'drug').sort((a, b) => a.s.stage - b.s.stage), drugs = all.filter(x => x.s.stage === 'drug');
+  const seenAny = all.some(x => G.seen[x.id] || G.caught[x.id]), caughtAny = all.some(x => G.caught[x.id]), r = norm[0].s;
+  const out = [];
+  out.push(lineLabel(l) + ' · ' + r.type + (r.starter ? ' · starter only' : ''));
+  out.push(norm.map(x => (G.seen[x.id] || G.caught[x.id] ? x.s.name : '???') + (x.s.evolve ? ' → (Lv ' + x.s.evolve.lv + ')' : '')).join(' '));
+  if (caughtAny) {
+    const sizes = [...new Set(norm.map(x => x.s.size))].join('/');
+    out.push('Size ' + sizes + (norm.some(x => x.s.size === 'L' || x.s.size === 'XL') ? ' (the big ones: trap only)' : '') + (r.bait ? ' · Bait: ' + r.bait.map(b => (ITEMS[b] || { name: b }).name).join(', ') : ''));
+    const tiers = norm.filter(x => x.s.tier != null).map(x => [].concat(x.s.tier)).flat(); if (tiers.length) out.push('Trap: ' + [...new Set(norm.flatMap(x => x.s.trap || []))].join('/') + ' tier ' + Math.min(...tiers) + '–' + Math.max(...tiers) + (r.night ? ' · night' : r.day ? ' · daytime' : ''));
+    if (r.hab) out.push('Lives: ' + r.hab.join(', '));
+  } else if (seenAny) out.push('Seen. Not caught. No notes yet.');
+  for (const d of drugs) {
+    if (!(seenAny || G.caught[d.id])) continue;
+    const known = !!(G.know && G.know['recipe:' + d.id]) || G.caught[d.id];
+    out.push(known || G.seen[d.id] ? '💊 ' + d.s.name + (known ? ': ' + D.raw.knowledge['recipe:' + d.id].text : ' (seen, recipe unknown)') : '💊 ■■■■■■ ??? + ???');
+  }
+  if (caughtAny && FB.margin && FB.margin[l]) out.push('✏️ "' + FB.margin[l] + '"');
+  return out.join('\n');
+}
+async function fieldBook() {
+  if (!has('faltboken')) {
+    const mine = G.party.concat(G.box).filter(c => isCreature(c.sp));
+    await say(FB.locked + '\n\nYou have: ' + (mine.length ? mine.map(c => cname(c) + ' Lv ' + c.lv).join(', ') : 'nothing yet') + '.', { auto: false }); return;
+  }
+  for (;;) {
+    const ls = WILD_LINES().concat(Object.keys(LINES).filter(l => SP[LINES[l][0]].starter && LINES[l].some(k => G.seen[k] || G.caught[k]))).filter(l => LINES[l].some(k => rel(SP[k]) || G.caught[k]));
+    const l = await ask((FB.intro || 'Fältboken') + ' · ' + Object.keys(G.lines).length + '/' + WILD_LINES().length + ' lines caught', ls.map(l => { const any = LINES[l].some(k => G.seen[k] || G.caught[k]), got = LINES[l].some(k => G.caught[k]);
+      return { label: (got ? '● ' : any ? '○ ' : '· ') + (any ? lineLabel(l) : '???'), img: any ? creatureIcon(LINES[l].find(k => SP[k].stage === 1) || LINES[l][0]) : '', ty: any ? SP[LINES[l][0]].type : '', value: l }; }).concat([BACK('‹ Close')]), { one: true });
+    if (!l) return;
+    await say(bookPage(l), { auto: false, center: true });
+  }
+}
 /* ---------- bag menu on the map ---------- */
 async function bagMenu() {
   G.scene = 'talk'; LOD.input.clear(); G.v.x = G.v.y = 0;
   try {
     for (;;) {
-      const nItems = G.list.filter(q => q.got).length, spc = Object.keys(G.caught).filter(isCreature).length;
+      const nItems = G.list.filter(q => q.got).length, spc = Object.keys(G.lines).length;
       const traps = Object.keys(ITEMS).filter(id => has(id) && ITEMS[id].kind === 'trap'), lures = Object.keys(ITEMS).filter(id => has(id) && ITEMS[id].kind === 'lure');
       const a = await ask('🎒 ' + G.kr + ' kr', [
         { label: '🐸 Party', value: 'party', sub: G.party.length + '/4' }, { label: '🍺 Use', value: 'use', sub: usables().length ? '' : 'Nothing' },
         { label: '🪤 Traps & lures', value: 'traps', sub: (traps.length + lures.length) + ' kinds', dis: !traps.length && !lures.length },
-        { label: '🛒 Shopping list', value: 'list', sub: nItems + '/8' }, { label: '📕 Dex', value: 'dex', sub: spc + ' caught' },
+        { label: '🛒 Shopping list', value: 'list', sub: nItems + '/8' }, { label: '📕 ' + (has('faltboken') ? 'Fältboken' : 'Your creatures'), value: 'dex', sub: has('faltboken') ? spc + '/' + WILD_LINES().length + ' lines' : '' },
         { label: '📓 Notes', value: 'notes' }, { label: '📱 Phone', value: 'phone' }, { label: '🏆 Goals', value: 'goals', sub: fmt(goals().total) + ' pts' }, BACK('‹ Close')]);
       if (!a) break;
       if (a === 'party') {
-        const i = await ask('Tap one to make it lead.', G.party.map((c, i) => ({ label: (i === 0 ? '★ ' : '') + cname(c) + ' Lv ' + c.lv, img: creatureIcon(c.sp), ty: typeOf(c), sub: c.hp + '/' + maxHp(c) + ' HP · ATK ' + baseStat(c, 1) + ' DEF ' + baseStat(c, 2) + ' SPD ' + baseStat(c, 3), hp: c.hp / maxHp(c), value: i })).concat([BACK()]), { one: true });
+        const i = await ask('Tap one to make it lead.', G.party.map((c, i) => ({ label: (i === 0 ? '★ ' : '') + cname(c) + ' Lv ' + c.lv + (sketchy(c) ? ' 🥴' : ''), img: creatureIcon(c.sp), ty: typeOf(c), sub: (sketchy(c) ? 'Sketchy for ' + Math.ceil((c.sk - Date.now()) / 60000) + ' more min · ' : '') + c.hp + '/' + maxHp(c) + ' HP · ATK ' + baseStat(c, 1) + ' DEF ' + baseStat(c, 2) + ' SPD ' + baseStat(c, 3) + (tripOf(c) ? ' · ' + tripOf(c).name : ''), hp: c.hp / maxHp(c), value: i })).concat([BACK()]), { one: true });
         if (i) { const c = G.party.splice(i, 1)[0]; G.party.unshift(c); }
       } else if (a === 'use') {
         const d = await ask(usables().length ? 'Use what?' : 'Nothing to use.', usables().map(id => itemOpt(id)).concat([BACK()]));
-        if (d) { await useItem(d, false); if (heartPending) await heartAttackFlow(); if (G.scene !== 'talk') return; }
+        if (d && ITEMS[d].feed) await feedFlow(d);
+        else if (d) { await useItem(d, false); if (heartPending) await heartAttackFlow(); if (G.scene !== 'talk') return; }
       } else if (a === 'traps') {
         const d = await ask('Place a trap here, or use a lure.', traps.concat(lures).map(id => itemOpt(id, { sub: (known(id) ? ITEMS[id].learnedNote : '') }))
           .map(o => Object.assign(o, { unk: !known(o.value) })).concat([BACK()]));
@@ -1397,7 +1570,7 @@ async function bagMenu() {
       } else if (a === 'list') {
         await say(G.list.map(q => { const I = ITEMS[q.id] || { em: '📦', name: q.id }; return (q.got ? '✅ ' : '⬜ ') + I.em + ' ' + I.name; }).join('\n'), { auto: false });
       } else if (a === 'dex') {
-        await say(SPECIES().filter(k => !D.raw.creatures[k].requires || G.caught[k] || G.seen[k]).map(k => (G.caught[k] ? '● ' : G.seen[k] ? '○ ' : '· ') + '#' + String(D.raw.creatures[k].no).padStart(2, '0') + ' ' + (G.seen[k] || G.caught[k] ? SP[k].name : '???')).join('\n'), { auto: false });
+        await fieldBook();
       } else if (a === 'notes') await say(PPL.notes(), { auto: false, center: true });
       else if (a === 'phone') await S.phone();
       else if (a === 'goals') {
@@ -1586,7 +1759,7 @@ function drawLids(ctx, o) { // waking up: two black eyelids, a dark haze that li
 /* ===================== SCORE: goals, each counted once ===================== */
 function goals() {
   const P = CFG.PTS;
-  const items = G.list.filter(q => q.got).length, species = Math.min(P.speciesMax, Object.keys(G.caught).filter(isCreature).length);
+  const items = G.list.filter(q => q.got).length, species = Math.min(P.speciesMax, Object.keys(G.lines || {}).length);
   const heroes = Math.min(4, G.beat.length), partners = Math.min(5, G.solved.length), dev = G.dev ? 1 : 0, egg = G.egg ? 1 : 0;
   const rows = [['Heroes beaten in their houses ' + heroes + '/4', heroes * P.hero], ['Dev Ljunky', dev * P.dev], ['Easter egg', egg * P.egg],
     ['New species ' + species + '/20', species * P.species], ['Shopping list ' + items + '/8', items * P.item], ['Partners solved ' + partners + '/5', partners * P.partner]];
@@ -1602,12 +1775,12 @@ function newList() {
     return { id, x: px, y: py + 4, got: 0 };
   });
 }
-const strip = c => { const o = { sp: c.sp, lv: c.lv, xp: c.xp, hp: c.hp }; if (c.fx && c.fx.length) o.fx = EF.save(c); return o; };
+const strip = c => { const o = { sp: c.sp, lv: c.lv, xp: c.xp, hp: c.hp }; if (c.sk && c.sk > Date.now()) o.sk = c.sk; if (c.nick) o.nick = c.nick; if (c.fx && c.fx.length) o.fx = EF.save(c); return o; };
 const SAVE_KEYS = ['dir', 'seen', 'caught', 'list', 'kr', 'items', 'beat', 'solved', 'dev', 'eggs', 'egg', 'debt', 'lvlPts', 'flags', 'stache', 'blurred', 'starter',
-  'known', 'people', 'know', 'quests', 'heard', 'traps', 'graves', 'dead', 'caughtP', 'npcBeat', 'gym', 'dealer', 'apps', 'steps', 'fillers', 'trapsUsed'];
-const FRESH = () => ({ items: {}, known: {}, people: {}, know: {}, quests: {}, heard: {}, traps: [], graves: [], dead: {}, caughtP: {}, npcBeat: {}, gym: { slots: [] }, dealer: { pts: 0, pen: [], rot: -1, bought: {} }, apps: {}, steps: 0, trapsUsed: {}, flags: {} });
+  'known', 'people', 'know', 'quests', 'heard', 'traps', 'graves', 'dead', 'caughtP', 'npcBeat', 'gym', 'dealer', 'apps', 'steps', 'fillers', 'trapsUsed', 'lines', 'wrecks'];
+const FRESH = () => ({ items: {}, known: {}, people: {}, know: {}, quests: {}, heard: {}, lines: {}, wrecks: {}, traps: [], graves: [], dead: {}, caughtP: {}, npcBeat: {}, gym: { slots: [] }, dealer: { pts: 0, pen: [], rot: -1, bought: {} }, apps: {}, steps: 0, trapsUsed: {}, flags: {} });
 function saveState(G) {
-  const o = { v: 4, p: [Math.round(G.p.x), Math.round(G.p.y)], party: G.party.map(strip), box: G.box.map(strip), me: EF.save(G.me) };
+  const o = { v: 5, p: [Math.round(G.p.x), Math.round(G.p.y)], party: G.party.map(strip), box: G.box.map(strip), me: EF.save(G.me) };
   for (const k of SAVE_KEYS) o[k] = G[k];
   if (o.gym && o.gym.slots) o.gym = Object.assign({}, o.gym, { slots: o.gym.slots.map(s => Object.assign({}, s, { c: strip(s.c) })) });
   return JSON.parse(JSON.stringify(o));
@@ -1620,15 +1793,29 @@ const MIGRATE = {
     return d;
   },
   3: d => PX.data.fill(d, FRESH()), // v2 -> v3: people (relationships, memory) and knowledge
-  4: d => PX.data.fill(d, FRESH())  // v3 -> v4: quests and heard rumours
+  4: d => PX.data.fill(d, FRESH()), // v3 -> v4: quests and heard rumours
+  5: d => { // v4 -> v5: the new roster (lines, evolutions, drug forms) and trap ladders. Old creatures become their legacy match, old traps come back as mouse traps
+    PX.data.fill(d, FRESH());
+    const L = D.raw.legacy || {}, map = c => { if (c && !SP[c.sp]) c.sp = formFor(lineOf(L[c.sp] || 'badgerCub'), c.lv || 5); return c; };
+    for (const k of ['party', 'box']) d[k] = (d[k] || []).map(map);
+    if (d.gym && d.gym.slots) for (const sl of d.gym.slots) if (sl && sl.c) map(sl.c);
+    if (d.dealer && d.dealer.pen) d.dealer.pen = d.dealer.pen.map(c => map(c));
+    for (const m of ['caught', 'seen']) { const o = {}; for (const id in (d[m] || {})) if (SP[id]) o[id] = 1; d[m] = o; }
+    d.lines = {}; for (const id in d.caught) if (SP[id] && SP[id].kind === 'creature' && !SP[id].starter && lineOf(id) !== 'wraith') d.lines[lineOf(id)] = 1;
+    d.graves = (d.graves || []).filter(gr => SP[gr.sp]);
+    let back = 0; d.traps = (d.traps || []).filter(t => { const it = ITEMS[t.item]; if (it && (it.ladder || it.lure === 'WIFE' || it.spawn)) return true; back++; return false; });
+    d.items = d.items || {}; for (const id of Object.keys(d.items)) if (/Mk\d$/.test(id) && !ITEMS[id]) { back += d.items[id] || 0; delete d.items[id]; }   // traps in the bag (Mk1…Mk3) too
+    if (back) d.items.mouseTrap = (d.items.mouseTrap || 0) + back;
+    return d;
+  }
 };
 function loadState(G, d) {
   if (!d || !d.v) return;
-  d = PX.data.migrate(d, MIGRATE, 4);
+  d = PX.data.migrate(d, MIGRATE, 5);
   PX.data.fill(d, FRESH());
   for (const k of SAVE_KEYS) if (d[k] !== undefined) G[k] = d[k];
   const ok = c => c && SP[c.sp] && SP[c.sp].kind !== 'boss';
-  const fix = c => { const n = mk(c.sp, c.lv); n.xp = c.xp || 0; n.hp = clamp(Math.round(c.hp), 0, maxHp(n)); if (c.fx) n.fx = c.fx; return n; };
+  const fix = c => { const n = mk(c.sp, c.lv); n.xp = c.xp || 0; n.hp = clamp(Math.round(c.hp), 0, maxHp(n)); if (c.fx) n.fx = c.fx; if (c.sk) n.sk = c.sk; if (c.nick) n.nick = c.nick; return n; };
   for (const id in G.items) if (!ITEMS[id] || !(G.items[id] > 0)) delete G.items[id];
   G.party = (d.party || []).filter(ok).map(fix).slice(0, 4); G.box = (d.box || []).filter(ok).map(fix);
   G.me = { fx: (d.me || []).filter(f => f && f.type) };
@@ -1753,6 +1940,7 @@ const K = {
   say, say2, ask, hideBox, sleep, BACK, itemOpt, learn, learnItem, known, has, give, take,
   mk, maxHp, xpNeed, cname, typeOf, creatureIcon, addToParty, addXp, heroId, gone, personGone, npcDef, dollOf, drawPerson, drawCreature, spriteOf,
   startBattle, startNpcFight, startPartner, applyAll, SFX, bubble, isCreature, SPECIES, robotLine, cemeteryOpen,
+  LINES, formFor, repOf, lineOf, tripOf, sketchy, fit, bagSize, WILD_LINES, MOVES, shop,
   get PPL() { return PPL; }, get uiRoot() { return ui.root; }, tone: (...a) => LOD.tone(...a), haptic: h => LOD.haptic(h), takeCreature,
   setHeart: fn => { ctxHeart = fn; }, get trapSpeed() { return TRAP_SPEED; }
 };
@@ -1825,7 +2013,7 @@ const DEF = {
     if (heartPending && G.scene === 'map') { G.scene = 'talk'; heartAttackFlow(); }
     if (G.scene === 'map') updMap(real * gameSpeed());
     if (G.scene === 'map' || stranger) updStranger(real);
-    if (Object.keys(G.caught).filter(isCreature).length >= 15) G.flags.loyalReady = 1;
+    
     G.score = goals().total;
   },
   camTarget: G => [G.p.x, G.p.y - 8],
@@ -1841,6 +2029,6 @@ const DEF = {
   }
 };
 LOD.mission(DEF);
-window.__m3 = { maxHp, bestMove, learned, MOVES, bossTeam, MINI, PROPS, propVisible, propUse, HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
+window.__m3 = { maxHp, bestMove, learned, MOVES, bossTeam, tripOf, eStat, formFor, repOf, evolveCheck, feedFlow, fieldBook, bookPage, sketchy, fit, LINES, bagSize, catchChance, lineOf, WILD_LINES, eff, cname, healC, addXp, useMove, endTurnFx, tripSkip, stage, resetStg, encTable, immune, knockout, baseStat, curFoe, active, MINI, PROPS, propVisible, propUse, HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
   CFG, SP, MAP, ZONES, D, S, tile, zoneAt, tc, mk, goals, startWild, startBoss, startPartner, startDev, startTrainer, startNpcFight, interact, bagMenu, walkable, useItem, give, saveState, loadState, MIGRATE, EF, FX, layer, spots, npcList: () => npcList, gameSpeed, encTable, knockout, catchChance, completion: () => S.completion() };
 })();

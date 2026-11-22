@@ -8,7 +8,7 @@ trap 'kill $SERVER 2>/dev/null' EXIT
 sleep 1
 export LOD_URL="http://127.0.0.1:$PORT/"
 fail=0
-for t in engine-m1 m2 m2-fixes m3 m3-polish; do
+for t in engine-m1 m2 m2-fixes m3 m3-polish m3-creatures; do
   echo "== $t"
   node "tests/$t.js" || fail=1
 done

@@ -12,7 +12,7 @@ let FAKE = { hour: null };
 
 /* ---------- time: the real clock, and which release day it is ---------- */
 const hour = () => FAKE.hour != null ? FAKE.hour : new Date().getHours();
-const isNight = () => { const h = hour(); return h >= 21 || h < 6; };
+const isNight = () => { const h = hour(), N = (K.CFG && K.CFG.NIGHT) || [21, 6]; return h >= N[0] || h < N[1]; };
 const dayOrder = () => Object.keys(R.releases).sort((a, b) => R.releases[a] < R.releases[b] ? -1 : 1);
 function dayKey() { const t = today(), o = dayOrder(); let k = o[0]; for (const d of o) if (t >= R.releases[d]) k = d; return k; }
 const dayIdx = k => Math.max(0, dayOrder().indexOf(k));
@@ -40,7 +40,7 @@ const hasFlag = f => f.startsWith('know:') ? know(f.slice(5)) : !!G().flags[f];
 const ids4 = id => [id, 'n_' + id, 'h_' + id, 'w_' + id];
 const isDead = id => ids4(id).some(k => G().dead[k]) || G().graves.some(q => q.sp === id);
 const isCaught = id => ids4(id).some(k => G().caughtP[k]) || !!G().caught[id];
-function carries(id) { const g = G(); return [...g.party, ...g.box, ...((g.gym && g.gym.slots) || []).map(s => s.c)].some(c => c.sp === id) || (g.items[id] || 0) > 0; }
+function carries(id) { const g = G(); return [...g.party, ...g.box, ...((g.gym && g.gym.slots) || []).map(s => s.c)].some(c => c.sp === id || (K.SP[c.sp] && K.SP[c.sp].line === id)) || (g.items[id] || 0) > 0; }
 function stateIs(v) {
   const g = G(), drinks = (g.drinkLog || []).filter(t => g.t - t < 180).length;
   const drunk = drinks >= 2, blur = g.blurT > 0, high = EF.has(g.me, 'reveal') || EF.has(g.me, 'speed') || EF.has(g.me, 'tint');
@@ -49,7 +49,7 @@ function stateIs(v) {
 
 const qs = id => (G().quests && G().quests[id]) || {};
 /* ---------- conditions: all keys must match; the more keys a line matches, the better it is ---------- */
-const COND_KEYS = ['hero', 'notHero', 'met', 'metMin', 'metMax', 'returning', 'flag', 'notFlag', 'know', 'notKnow', 'relMin', 'relMax', 'killed', 'caught', 'beat', 'solved', 'debtMin', 'state', 'carry', 'hour', 'night', 'day', 'from', 'until', 'last', 'lastNot', 'zone', 'quest', 'questDone', 'questNot', 'questLocked', 'step'];
+const COND_KEYS = ['hero', 'notHero', 'met', 'metMin', 'metMax', 'returning', 'flag', 'notFlag', 'know', 'notKnow', 'relMin', 'relMax', 'killed', 'caught', 'beat', 'solved', 'debtMin', 'state', 'carry', 'notCarry', 'hour', 'night', 'day', 'from', 'until', 'last', 'lastNot', 'zone', 'quest', 'questDone', 'questNot', 'questLocked', 'step'];
 function cond(c, pid) { // -1 = no match, otherwise how many conditions matched (specificity)
   if (!c) return 0;
   const g = G(), pp = pst(pid || '_'); let n = 0;
@@ -75,6 +75,7 @@ function cond(c, pid) { // -1 = no match, otherwise how many conditions matched 
       case 'debtMin': ok = (g.debt || 0) >= v; break;
       case 'state': ok = A.every(stateIs); break;
       case 'carry': ok = A.every(carries); break;
+      case 'notCarry': ok = A.every(x => !carries(x)); break;
       case 'hour': ok = inHour(v); break;
       case 'night': ok = isNight() === !!v; break;
       case 'day': ok = dayKey() === v; break;

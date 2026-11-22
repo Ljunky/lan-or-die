@@ -21,7 +21,7 @@ function getClaims_(mission) {
 }
 function claimStarter_(b) {
   const PLAYERS = ['Löken', 'Wizcudi', 'Jrohn', 'BigWman', 'Ljunky'];
-  const STARTERS = ['frog', 'cuke', 'peng', 'snake', 'crow'];
+  const STARTERS = ['badgerCub', 'lynxKitten', 'toadlet', 'hoglet', 'fawn'];
   if (!PLAYERS.includes(b.name) || !STARTERS.includes(b.pick)) return { ok: false, error: 'bad claim' };
   const lock = LockService.getScriptLock(); lock.waitLock(10000);
   try {
