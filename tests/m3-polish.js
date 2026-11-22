@@ -159,6 +159,21 @@ async function pickStarter(p, name) {
   ok(g.scene === 'map' && g.x === 4 && g.y === 62 && g.hp, 'losing a fight ends it by itself: black out, wake up in the van, healed (' + JSON.stringify(g) + ')');
   await p.close();
 
+  // ---------- pictures from another origin (like raw.githack / a CDN): they can be drawn but not read back. Nothing may break ----------
+  p = await open(b, '?dev=all&date=2026-11-25&claims=reset', { route: async q => q.route(/127\.0\.0\.1:8123\/assets\/.*\.png/, r => r.fulfill({ status: 302, headers: { location: r.request().url().replace('127.0.0.1', 'localhost') } })) });
+  await E(p, () => localStorage.removeItem('lod.save.m3.Ljunky'));
+  await toBrief(p); await p.click('#brief-go'); await p.waitForTimeout(300); await E(p, () => { window.__m3.speed = 25; });
+  let xo = null;
+  for (let i = 0; i < 300 && !xo; i++) { xo = await E(p, () => { const m = window.__m3, pd = m.pending; if (pd && pd.say) { pd.res(); return null; } const bs = [...document.querySelectorAll('#m3ui .m3grid button')]; if (bs.length) return bs.map(x => !!(x.querySelector('img') && x.querySelector('img').getAttribute('src'))); if (m.G.scene === 'map' && !m.stranger) m.summon(); return null; }); await p.waitForTimeout(40); }
+  ok(xo && xo.length === 5 && xo.every(Boolean), 'cross-origin pictures: the 5 starters show, with icons');
+  await pickStarter(p, 'Folköl');
+  await E(p, () => { window.__m3.bagMenu(); }); await until(p, 'Party'); await p.waitForTimeout(200);
+  ok(await E(p, () => document.querySelectorAll('#m3ui .m3grid button img').length >= 1), 'cross-origin pictures: party menu works');
+  await drive(p, ['Back', 'Close']);
+  await E(p, () => { const m = window.__m3; m.startWild(m.ZONES.find(z => z.id === 'parking')); }); await drive(p, ['Walk away', '^⚔️ Fight', 'Foam|Body|Can']);
+  ok(p.errs.length === 0, 'cross-origin pictures: no page errors' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
+  await p.close();
+
   // ---------- starter pool: first player picks from 5, the next from 4… (practice = kept on this phone) ----------
   p = await open(b, '?dev=all&date=2026-11-25&claims=reset');
   const starterOpts = async (name, hero, pick) => {

@@ -77,9 +77,10 @@ function spriteOf(sp) { // creature or person -> sprite id at battle size
   return PX.sprites.ready('cr:' + sp) ? 'cr:' + sp : null;
 }
 const iconCache = {};
-function creatureIcon(sp) {
+function creatureIcon(sp) { // a menu icon. Creatures use their PNG file directly (reading pixels back can be blocked by the browser)
   if (iconCache[sp]) return iconCache[sp];
-  const id = spriteOf(sp); const u = id ? PX.sprites.dataURL(id) : '';
+  let u = '';
+  try { const c = D.raw.creatures[sp]; if (c && c.art) u = c.art; else { const id = spriteOf(sp); u = id ? PX.sprites.dataURL(id) : ''; } } catch (e) { u = ''; }
   if (u) iconCache[sp] = u; return u;
 }
 function drawCreature(ctx, sp, x, y, scale, o = {}) { // bottom-centre at (x, y)
@@ -1518,7 +1519,9 @@ function updStranger(dt) { // when he shows up you stop; he walks straight to yo
 async function strangerTalk() {
   G.scene = 'talk'; G.v.x = G.v.y = 0; LOD.input.clear(); if (stranger) stranger.dir = G.p.y < stranger.y ? 1 : 0;
   await say2(OP.stranger.name, OP.lines[0]);
-  const s = await chooseStarter();
+  let s;
+  try { s = await chooseStarter(); }
+  catch (err) { console.error('[m3] starter choice', err); s = await ask(OP.lines[1], OP.starters.map(sp => ({ label: SP[sp].name, value: sp })), { one: true, who: OP.stranger.name }); }
   G.party = [mk(s, CFG.START_LV)]; G.caught[s] = 1; G.seen[s] = 1; G.starter = s; SFX.catch(); LOD.haptic('success');
   if (stranger) { stranger.leave = G.p.x < stranger.x ? 1 : -1; stranger.dir = stranger.leave > 0 ? 3 : 2; }
   await say(PX.data.fmt(OP.joined, { name: SP[s].name }), { auto: false });
@@ -1557,7 +1560,8 @@ async function chooseStarter() {
     const claims = await loadClaims(), me = LOD.player, mine = claims[me] && OP.starters.includes(claims[me]) ? claims[me] : null;
     let avail = mine ? [mine] : OP.starters.filter(sp => !Object.keys(claims).some(n => n !== me && claims[n] === sp));
     if (!avail.length) avail = OP.starters.slice();
-    const s = await ask(OP.lines[1], avail.map(sp => ({ label: SP[sp].name, img: creatureIcon(sp), ty: SP[sp].type, value: sp })), { one: true, who: OP.stranger.name });
+    const opts = avail.map(sp => { const o = { label: SP[sp] ? SP[sp].name : sp, ty: SP[sp] && SP[sp].type, value: sp }; try { o.img = creatureIcon(sp); } catch (e) {} return o; });
+    const s = await ask(OP.lines[1], opts, { one: true, who: OP.stranger.name });
     if (await claimStarter(s)) return s;
     await say2(OP.stranger.name, OP.tooSlow);
   }

@@ -176,10 +176,12 @@ function outlineGrow(cv) { // 1-px navy outline around a doll frame (keeps size)
   c.putImageData(im, 0, 0); return cv;
 }
 /* an <img>-ready data URL of one frame (menus) */
-function dataURL(id, scale = 1) {
+function dataURL(id, scale = 1) { // never throws: a picture from another origin can be drawn but not read back
+  const def = defs[id] || {};
+  if (def.png) return def.png;                     // a PNG sprite: the file itself works as an <img> src
   const e = entry(id); if (!e || !e.frames.length) return '';
-  const cv = canvas(e.w * scale, e.h * scale), c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(e.frames[0], 0, 0, cv.width, cv.height);
-  return cv.toDataURL();
+  try { const cv = canvas(e.w * scale, e.h * scale), c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(e.frames[0], 0, 0, cv.width, cv.height); return cv.toDataURL(); }
+  catch (err) { return ''; }
 }
 
 PX.palette = PALETTE;
