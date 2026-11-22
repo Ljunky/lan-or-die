@@ -10,13 +10,18 @@ releases: { mon: '2026-11-23', tue: '2026-11-24', wed: '2026-11-25' },
 /* ---------- tuning numbers ---------- */
 tuning: {
   VIEW_TILES: 10, SPEED: 74, ENC_RATE: .09, ENC_COOLDOWN: 5,
-  START_KR: 120, BAG_COST: 2, XP_PER_LV: 7, XP_SHARE: .5, LV_MAX: 20, START_LV: 5,
-  BOSS_LV: 8, BOSS_LV_STEP: 2, DEV_LV: 18, DEV_HP: 2.6, AI_LV: 19, BOSS_KR: 150, PARTNER_TURNS: 5,
+  START_KR: 120, BAG_COST: 10, XP_PER_LV: 7, XP_SHARE: .25, LV_MAX: 50, START_LV: 5,
+  XP_BASE: 8, XP_SQ: 1.3,            // XP for the next level = XP_BASE + XP_SQ × level²
+  XP_LOW: 3,                          // anti-grind: a foe below your level gives XP × (foe lv / your lv)^XP_LOW
+  BOSS_XP: 1.2, WILD_KR: 1.5,         // XP multiplier for bosses/trainers, kronor per foe level from wild fights
+  BOSS_LV: 8, BOSS_LV_STEP: 2, DEV_LV: 46, DEV_HP: 2.6, AI_LV: 19, BOSS_KR: 150, PARTNER_TURNS: 8,
+  WIFE_DEBT_ANGER: .15,               // each point of promise debt: the wives hit 15 % harder
+  FERRY_LV: 30,                       // a ferry creature (see ferry below) this level can swim you to the castle
   LURE_RIP: 1 / 25, BLUR_DRINKS: 3, BLUR_TIME: 25,
-  KO_CATCH: { C: .95, U: .85, R: .7, E: .55, L: .45, M: .35, H: .6 },   // catch chance after a knockout, by rarity (H = heroes, wives, NPCs)
-  CATCH_R: { C: 1, U: .75, R: .5, E: .35, L: .25, M: .15, H: .3 },     // carrier-bag multiplier before a knockout
+  KO_CATCH: { C: .7, U: .55, R: .4, E: .3, L: .22, M: .3, H: .35 },    // catch chance after a knockout, by rarity (H = heroes, wives, NPCs)
+  CATCH_R: { C: .7, U: .5, R: .32, E: .22, L: .15, M: .1, H: .2 },     // carrier-bag multiplier before a knockout
   RARITY_STAT: { C: 1, U: 1.06, R: 1.12, E: 1.2, L: 1.25, M: 1.35, H: 1.15 },
-  PTS: { item: 5000, species: 2500, speciesMax: 20, hero: 20000, partner: 5000, dev: 40000, lvl: 100, lvlMax: 15000, egg: 50000 }
+  PTS: { item: 2500, species: 2000, speciesMax: 20, hero: 30000, partner: 4000, dev: 50000, egg: 50000 }  // goals only, max 300 000. Levels give no points
 },
 
 /* ---------- types: each beats the next one in the list (×strong), loses to the previous (×weak). MIND is neutral ---------- */
@@ -147,7 +152,8 @@ partners: {
 /* answers in a partner encounter. note = shown under the button after you have picked it once */
 choices: {
   sorry: { label: '🙏 Apologize', note: 'She softens. You lose HP.' },
-  promise: { label: '🤞 Promise', note: 'Ends it. Adds promise debt.' }
+  promise: { label: '🤞 Promise', note: 'Ends it. Adds promise debt.' },
+  wrong: ['Have you lost weight?', 'Calm down.', 'My mum does it differently.', 'Is this about the dishwasher?', 'Sounds like a you problem.', 'Let me google that.']   // random wrong lines mixed in
 },
 
 /* ---------- items. kind: throwable | trap | lure | weapon | drug | app | key
@@ -156,7 +162,7 @@ choices: {
    Effects: see the effect list in DATA.md. ---------- */
 items: {
   // catching
-  bag: { kind: 'throwable', name: 'Carrier bag', em: '🛍️', price: 2, catch: true, learnedNote: 'Catches a weakened creature. Better after a knockout.', release: 'mon' },
+  bag: { kind: 'throwable', name: 'Carrier bag', em: '🛍️', price: 10, catch: true, learnedNote: 'Catches a weakened creature. Better after a knockout.', release: 'mon' },
   // throwables (sold by Hardware Jonas, the freezer, the checkouts)
   rock: { kind: 'throwable', name: 'Rock', em: '🪨', price: 3, hit: .55, throw: [{ type: 'damage', value: 14 }], learnedNote: 'Cheap. Misses a lot.', release: 'mon' },
   bottle: { kind: 'throwable', name: 'Empty bottle', em: '🍾', price: 6, hit: .7, onMiss: 'near', koBelow: .35, throw: [{ type: 'damage', value: 18 }], learnedNote: 'A hit on a weak foe knocks it out. A miss lands next to it.', release: 'mon' },
@@ -167,7 +173,7 @@ items: {
   bouquet: { kind: 'throwable', name: 'Chlorine bouquet', em: '💐', price: 25, hit: .9, wife: true, throw: [{ type: 'stun', turns: 2 }, { type: 'calm', value: 20 }], learnedNote: 'Sneezing fit. Stunned for 2 turns.', release: 'mon' },
   glitter: { kind: 'throwable', name: 'Glitter bomb', em: '✨', price: 20, hit: .95, wife: true, throw: [{ type: 'blind', value: .35, turns: 3 }, { type: 'calm', value: 15 }], learnedNote: 'Blinded. Her aim gets worse.', release: 'mon' },
   giftcard: { kind: 'throwable', name: 'Gift card', em: '🎁', price: 40, hit: 1, wife: true, throw: [{ type: 'catchBonus', value: .6, turns: 3 }, { type: 'loseTurn', turns: 1 }, { type: 'calm', value: 30 }], learnedNote: 'Distracted. Easier to catch.', release: 'mon' },
-  ringbox: { kind: 'throwable', name: 'Ring box', em: '💍', price: 90, hit: 1, wife: true, throw: [{ type: 'calm', value: 100 }, { type: 'promiseDebt', value: 1 }], learnedNote: 'Instant calm. Adds promise debt.', release: 'mon' },
+  ringbox: { kind: 'throwable', name: 'Ring box', em: '💍', price: 250, hit: 1, wife: true, throw: [{ type: 'calm', value: 60 }, { type: 'promiseDebt', value: 1 }], learnedNote: 'Big calm. Adds promise debt.', release: 'mon' },
   chores: { kind: 'throwable', name: 'Chore chart', em: '📋', price: 8, hit: 1, wife: true, throw: [{ type: 'anger', value: 30 }], learnedNote: 'Backfires. She gets angrier.', release: 'mon' },
   // traps: place one on the map; after waitMin real minutes a dazed creature that likes the lure may sit in it
   fizzMk1: { kind: 'trap', name: 'Open energy drink', em: '⚡', price: 30, lure: 'FIZZ', tier: 1, waitMin: 3, catchBonus: .3, rare: [['genie', 4], ['owl', 4]], learnedNote: 'Attracts FIZZ.', release: 'mon' },
@@ -229,7 +235,7 @@ apps: {
   swish: { name: 'Swish', icon: '💸', lines: ['You swished 10 kr to {name}.\nYou meant to swish Löken.', 'Payment sent to {name}.\nMessage: "pizza"', '{name} received 10 kr.\nNobody knows why.'], use: [{ type: 'kr', value: -10 }], release: 'mon' },
   bankid: { name: 'BankID', icon: '🆔', lines: ['Open BankID on your other device.\nYou do not have another device.', 'Identification approved.\nDoors marked 🆔 open for you now.'], gate: 'door', release: 'wed' },
   strava: { name: 'Strava', icon: '🏃', lines: ['Today: {steps} steps inside ICA Maxi.\nNew personal record: aisle 4.', '{steps} steps. Kudos from: nobody.'], release: 'wed' },
-  klarna: { name: 'Klarna', icon: '🩷', lines: ['Buy now, pay later!\n+200 kr. Promise debt: {debt}.', 'Smoooth. +200 kr. You promised to pay. Again.'], use: [{ type: 'kr', value: 200 }, { type: 'promiseDebt', value: 1 }], once: 3, release: 'wed' }
+  klarna: { name: 'Klarna', icon: '🩷', lines: ['Buy now, pay later!\n+200 kr. Promise debt: {debt}.', 'Smoooth. +200 kr. You promised to pay. Again.'], use: [{ type: 'kr', value: 200 }, { type: 'promiseDebt', value: 1 }], once: 3, cooldownMin: 10, release: 'wed' }
 },
 
 /* ---------- NPCs: one entry each. role: talker | merchant | trainer | gym | dealer | filler
@@ -242,7 +248,7 @@ npcs: {
     lines: { pool: ['Arr. The van smells of Löken\'s gym bag.', 'I saw a pike with a crown. Swear on me parrot.', 'Something tall glows on the lawn when ye\'ve had the mushrooms.'], when: [{ flag: 'dead:loken', text: 'Arr… the lawn be quiet without Löken.' }] } },
   berit: { name: 'Bagging-area Berit', role: 'merchant', at: [5, 44], area: [2, 43, 9, 3], gossip: true, canDie: true, catchable: true, likes: 'buns', epitaph: 'Unexpected item in the grave area.',
     look: { skin: '#f0c8a8', hair: '#d8d8d8', style: 'bob', top: '#d8312f', legs: '#2a2a33' }, shop: ['bag', 'surstromming', 'banana', 'snus'], release: 'mon',
-    lines: { pool: ['Unexpected item in bagging area. Unexpected YOU.', 'Bags are 2 kr. Souls are extra.'] } },
+    lines: { pool: ['Unexpected item in bagging area. Unexpected YOU.', 'Bags are 10 kr. Souls are extra.'] } },
   pelle: { name: 'Bottle-return Pelle', role: 'talker', at: [37, 33], area: [35, 33, 8, 2], gossip: true, canDie: true, catchable: true, likes: 'buns', epitaph: 'Returned his last bottle.',
     look: { hair: '#8a6a4a', style: 'short', beard: '#9a9a9a', top: '#2e7d32', prop: 'bag' }, release: 'mon',
     lines: { pool: ['The machines make a funny noise. Like someone is breathing behind them.', 'One krona per can. I have three million cans.'] } },
@@ -283,8 +289,19 @@ npcs: {
   aiLjunky: { name: 'AI-Ljunky', role: 'trainer', at: [44, 12], canDie: true, catchable: true, likes: 'bitcoin', epitaph: 'SEGMENTATION FAULT (core dumped).',
     look: { skin: '#b8c4d0', hair: '#3dff8a', style: 'short', top: '#2a0a3a', legs: '#111', glasses: 1, prop: 'bow' }, party: [['wraith', 18], ['snake', 19], ['frog', 19], ['mummy', 20]], partyFallback: ['ghost', 18], release: 'tue', requires: 'ljunkyDone', robot: true,
     lines: { pool: ['HELLO. I AM LJUNKY. VERSION 2.0. NOW WITH 40 % MORE DIP.', 'ERROR: FEELINGS.EXE NOT FOUND. FIGHT? Y/N', 'I HAVE TRAINED ON 10,000 HOURS OF LJUNKY EXPLAINING CRYPTO. YOU CANNOT WIN.'] },
-    win: 'REBOOTING… I… LOVE… THIS… GYM.' }
+    win: 'REBOOTING… I… LOVE… THIS… GYM.' },
+  kenny: { name: 'Kenny the Fence', role: 'fence', at: [46, 62], canDie: true, catchable: true, likes: 'snus', epitaph: 'Fenced in. Finally.',
+    look: { skin: '#d8b090', hair: '#222', style: 'cap', cap: '#2a2a33', cap2: '#3ddc84', top: '#3a3a44', legs: '#222', stache: 1 }, release: 'mon',
+    lines: { pool: ['Psst. I buy animals. No paperwork, no questions, no real money.', 'Creatures? I know a guy in Norrtälje. He knows a guy.'] },
+    offer: ['What you got?', 'I pay cash. Not much cash.', 'Market is soft today. Very soft.'], thanks: ['{kr} kr. Pleasure doing business.', 'Here, {kr} kr. Don\'t tell Pelle.', '{kr} kr. Take it or… you already took it.'] },
+  ingvar: { name: 'Inkasso-Ingvar', role: 'trainer', at: [0, 0], canDie: false, catchable: false, offMap: true, release: 'wed',
+    look: { skin: '#e9b48c', hair: '#666', style: 'short', top: '#1d1d24', top2: '#e8eef3', topStyle: 'blazer', legs: '#1d1d24', glasses: 1, prop: 'clip' },
+    lines: { pool: ['Inkasso-Ingvar. You promised. Klarna remembers.'] }, win: 'Fine. I will put a note in your file.' }
 },
+/* Kenny the Fence pays kronor for creatures: rates[rarity] + level × perLv. Low on purpose */
+fence: { rates: { C: 3, U: 6, R: 12, E: 25, L: 40, M: 60 }, perLv: .5 },
+/* Inkasso-Ingvar shows up when promise debt reaches every `every` points. Pay `pay` kr or fight his team (levels = your best + lvUp) */
+debtCollector: { npc: 'ingvar', every: 3, pay: 250, team: ['golem', 'banshee', 'ghost'], lvUp: 2 },
 /* filler shoppers: generated from names + paper-doll parts. Count per release day. */
 fillers: {
   release: 'tue', count: 8, area: [2, 28, 28, 18], canDie: true, catchable: true, likes: 'buns', epitaph: 'Just came in for milk.',
@@ -332,7 +349,7 @@ zones: {
    Training: creatures left on the WOD board gain xpPerMin real-time XP, capped at the tier's level cap. ---------- */
 gyms: {
   box: { name: 'The Box', boss: 'ljunky', bossIfSelf: 'kenta', board: [41, 10], doneFlag: 'ljunkyDone', trainRelease: 'tue',
-    slots: 3, xpPerMin: 6, tiers: [{ cap: 12 }, { cap: 16, flag: 'aiBeaten' }, { cap: 20, flag: 'mythicCaught' }],
+    slots: 3, xpPerMin: 3, tiers: [{ cap: 15 }, { cap: 30, flag: 'aiBeaten' }, { cap: 45, flag: 'mythicCaught' }],
     wod: ['WOD: "THE MAXI"', '21-15-9', 'Kettlebell swings', 'Tyre flips', 'Rower 500 m'] }
 },
 
@@ -364,7 +381,7 @@ dealer: {
    first player chooses from 5, the second from 4… In practice/dev the claims are kept on this phone (?dev=all&claims=reset clears them). */
 opening: {
   blink: 4.2,                                   // seconds of eyelids opening and closing
-  thoughts: ['Zombies everywhere!', 'Did Löken run me over?', "No… that can't be. I have all my limbs intact.", 'But damn, my tummy hurts.'],
+  thoughts: ['Zombies everywhere!', 'Did {hero} run me over?', "No… that can't be. I have all my limbs intact.", 'But damn, my tummy hurts.'],
   strangerAfter: 12,                            // seconds of walking around before he shows up
   stranger: { name: '???', look: { skin: '#d8d0c8', hair: '#2a0a3a', style: 'hat', top: '#2a0a3a', top2: '#3dff8a', topStyle: 'blazer', legs: '#111', shoes: '#111', glasses: 1, big: 1 } },
   lines: ['You have been chosen.', 'Now it is your time to choose.'],

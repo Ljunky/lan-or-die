@@ -136,7 +136,7 @@ function train(dtMin) {
     if (c.lv >= cap || mins <= 0) continue;
     let amt = Math.floor((s.carry || 0) + mins * GYM.xpPerMin * (1 + EF.sum(c, 'xpRate')));
     s.carry = ((s.carry || 0) + mins * GYM.xpPerMin * (1 + EF.sum(c, 'xpRate'))) % 1;
-    while (amt > 0 && c.lv < cap) { const need = 10 + c.lv * 6 - c.xp, put = Math.min(need, amt); K.addXp(c, put, null); amt -= put; }
+    while (amt > 0 && c.lv < cap) { const need = K.xpNeed(c.lv) - c.xp, put = Math.min(need, amt); K.addXp(c, put, null); amt -= put; }
     if (c.lv >= cap) c.xp = 0;
   }
 }
@@ -231,7 +231,12 @@ async function phone() {
     const a = await K.ask('📱 ' + (new Date()).toTimeString().slice(0, 5) + ' · 4 % 🔋', ids.map(id => ({ label: R.apps[id].icon + ' ' + R.apps[id].name, value: id }))
       .concat([K.BACK('‹ Pocket')]));
     if (!a) return;
-    const app = R.apps[a], used = g.apps[a] || 0; g.apps[a] = used + 1;
+    const app = R.apps[a], used = g.apps[a] || 0, last = g.flags['appAt:' + a] || 0;
+    if (app.cooldownMin && app.use && used && (!app.once || used < app.once) && now() - last < app.cooldownMin * 60000 / Math.max(1e-6, K.trapSpeed)) {
+      const m = Math.ceil((app.cooldownMin * 60000 / Math.max(1e-6, K.trapSpeed) - (now() - last)) / 60000);
+      await K.say(app.name + ': "Your next payment plan opens in ' + m + ' min. Breathe."', { auto: false, who: app.icon + ' ' + app.name }); continue;
+    }
+    g.apps[a] = used + 1; g.flags['appAt:' + a] = now();
     let line;
     if (app.gate === 'door') { line = app.lines[used ? 1 : 0]; if (used) g.flags.bankid = 1; }
     else line = pick(app.lines);
