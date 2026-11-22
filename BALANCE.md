@@ -7,12 +7,12 @@ XP for the next level = 8 + 1.3 × lv²  ·  XP per win = foe lv × 7 (weaker fo
 ## Time to reach a level, grinding the best safe zone: MONDAY (the old map only)
 | level | minutes | fights | where |
 |---|---|---|---|
-| 10 | 6 (0.1 h) | 9 | sushi |
-| 15 | 21 (0.3 h) | 37 | boxpath |
-| 20 | 68 (1.1 h) | 181 | boxpath |
-| 25 | 224 (3.7 h) | 670 | boxpath |
-| 30 | 662 (11.0 h) | 2046 | boxpath |
-| 35 | 1659 (27.6 h) | 5204 | boxpath |
+| 10 | 6 (0.1 h) | 8 | barber |
+| 15 | 21 (0.3 h) | 38 | boxpath |
+| 20 | 68 (1.1 h) | 182 | boxpath |
+| 25 | 225 (3.8 h) | 671 | boxpath |
+| 30 | 662 (11.0 h) | 2047 | boxpath |
+| 35 | 1657 (27.6 h) | 5205 | boxpath |
 | 40 | not reachable | - | - |
 | 46 | not reachable | - | - |
 | 50 | not reachable | - | - |
@@ -22,15 +22,15 @@ The grind stalls at level 35: no zone gives a safe fight at that level (the old 
 ## Time to reach a level, grinding the best safe zone: TUESDAY/WEDNESDAY (the east is open)
 | level | minutes | fights | where |
 |---|---|---|---|
-| 10 | 6 (0.1 h) | 9 | sushi |
-| 15 | 19 (0.3 h) | 27 | band_n1 |
-| 20 | 37 (0.6 h) | 52 | band_s2 |
-| 25 | 68 (1.1 h) | 95 | band_s3 |
-| 30 | 99 (1.6 h) | 132 | foothills |
-| 35 | 140 (2.3 h) | 189 | mountain |
-| 40 | 200 (3.3 h) | 275 | mtrail |
-| 46 | 315 (5.3 h) | 498 | mountain |
-| 50 | 397 (6.6 h) | 628 | biglake |
+| 10 | 6 (0.1 h) | 8 | barber |
+| 15 | 19 (0.3 h) | 28 | band_s1 |
+| 20 | 37 (0.6 h) | 53 | band_s2 |
+| 25 | 70 (1.2 h) | 99 | band_s4 |
+| 30 | 100 (1.7 h) | 135 | foothills |
+| 35 | 139 (2.3 h) | 188 | mountain |
+| 40 | 200 (3.3 h) | 279 | mountain |
+| 46 | 316 (5.3 h) | 439 | deep2 |
+| 50 | 389 (6.5 h) | 536 | biglake |
 
 ## Which zones are a fair fight (win ≥ 90 %, loses ≤ 55 % HP on average)
 | your level | fair zones (levels) |
@@ -44,45 +44,45 @@ The grind stalls at level 35: no zone gives a safe fight at that level (the old 
 | 25 | fruit 4-7, pickmix 4-7, freezer 5-8, bakery 5-8, flowers 5-8, selfcheck 5-8, checkout 4-6, system 6-9, apotek 6-9, burger 6-9, pizza 6-9, sushi 6-9, barber 7-10, charger 6-9, boxpath 8-11, band_s1 11-14, band_s2 14-17, band_s3 17-20, band_s4 19-22, band_n1 11-14, band_n2 14-17, band_n3 17-20, golf 10-14, lawn 3-6, parking 2-5 |
 | 30 | fruit 4-7, pickmix 4-7, freezer 5-8, bakery 5-8, flowers 5-8, selfcheck 5-8, checkout 4-6, system 6-9, apotek 6-9, burger 6-9, pizza 6-9, sushi 6-9, barber 7-10, charger 6-9, boxpath 8-11, band_s1 11-14, band_s2 14-17, band_s3 17-20, band_s4 19-22, band_n1 11-14, band_n2 14-17, band_n3 17-20, foothills 24-28, forest1 23-26, golf 10-14, forest 23-28, lawn 3-6, parking 2-5 |
 | 35 | fruit 4-7, pickmix 4-7, freezer 5-8, bakery 5-8, flowers 5-8, selfcheck 5-8, checkout 4-6, system 6-9, apotek 6-9, burger 6-9, pizza 6-9, sushi 6-9, barber 7-10, charger 6-9, boxpath 8-11, band_s1 11-14, band_s2 14-17, band_s3 17-20, band_s4 19-22, band_n1 11-14, band_n2 14-17, band_n3 17-20, foothills 24-28, mtrail 28-32, forest1 23-26, forest2 26-30, golf 10-14, mountain 26-31, forest 23-28, lawn 3-6, parking 2-5 |
-| 40 | fruit 4-7, pickmix 4-7, freezer 5-8, bakery 5-8, flowers 5-8, selfcheck 5-8, checkout 4-6, system 6-9, apotek 6-9, burger 6-9, pizza 6-9, sushi 6-9, barber 7-10, charger 6-9, boxpath 8-11, band_s1 11-14, band_s2 14-17, band_s3 17-20, band_s4 19-22, band_n1 11-14, band_n2 14-17, band_n3 17-20, foothills 24-28, mtrail 28-32, forest1 23-26, forest2 26-30, golf 10-14, mountain 26-31, forest 23-28, lawn 3-6, parking 2-5 |
-| 45 | fruit 4-7, pickmix 4-7, freezer 5-8, bakery 5-8, flowers 5-8, selfcheck 5-8, checkout 4-6, system 6-9, apotek 6-9, burger 6-9, pizza 6-9, sushi 6-9, barber 7-10, charger 6-9, boxpath 8-11, band_s1 11-14, band_s2 14-17, band_s3 17-20, band_s4 19-22, band_n1 11-14, band_n2 14-17, band_n3 17-20, foothills 24-28, mtrail 28-32, forest1 23-26, forest2 26-30, golf 10-14, mountain 26-31, forest 23-28, lawn 3-6, parking 2-5 |
-| 50 | fruit 4-7, pickmix 4-7, freezer 5-8, bakery 5-8, flowers 5-8, selfcheck 5-8, checkout 4-6, system 6-9, apotek 6-9, burger 6-9, pizza 6-9, sushi 6-9, barber 7-10, charger 6-9, boxpath 8-11, band_s1 11-14, band_s2 14-17, band_s3 17-20, band_s4 19-22, band_n1 11-14, band_n2 14-17, band_n3 17-20, foothills 24-28, mtrail 28-32, forest1 23-26, forest2 26-30, deep1 34-37, deep2 37-40, biglake 34-40, golf 10-14, mountain 26-31, forest 23-28, deepforest 35-41, lawn 3-6, parking 2-5 |
+| 40 | fruit 4-7, pickmix 4-7, freezer 5-8, bakery 5-8, flowers 5-8, selfcheck 5-8, checkout 4-6, system 6-9, apotek 6-9, burger 6-9, pizza 6-9, sushi 6-9, barber 7-10, charger 6-9, boxpath 8-11, band_s1 11-14, band_s2 14-17, band_s3 17-20, band_s4 19-22, band_n1 11-14, band_n2 14-17, band_n3 17-20, foothills 24-28, mtrail 28-32, forest1 23-26, forest2 26-30, deep2 31-34, golf 10-14, mountain 26-31, forest 23-28, lawn 3-6, parking 2-5 |
+| 45 | fruit 4-7, pickmix 4-7, freezer 5-8, bakery 5-8, flowers 5-8, selfcheck 5-8, checkout 4-6, system 6-9, apotek 6-9, burger 6-9, pizza 6-9, sushi 6-9, barber 7-10, charger 6-9, boxpath 8-11, band_s1 11-14, band_s2 14-17, band_s3 17-20, band_s4 19-22, band_n1 11-14, band_n2 14-17, band_n3 17-20, foothills 24-28, mtrail 28-32, forest1 23-26, forest2 26-30, deep1 29-32, deep2 31-34, deep3 33-36, golf 10-14, mountain 26-31, forest 23-28, lawn 3-6, parking 2-5 |
+| 50 | fruit 4-7, pickmix 4-7, freezer 5-8, bakery 5-8, flowers 5-8, selfcheck 5-8, checkout 4-6, system 6-9, apotek 6-9, burger 6-9, pizza 6-9, sushi 6-9, barber 7-10, charger 6-9, boxpath 8-11, band_s1 11-14, band_s2 14-17, band_s3 17-20, band_s4 19-22, band_n1 11-14, band_n2 14-17, band_n3 17-20, foothills 24-28, mtrail 28-32, forest1 23-26, forest2 26-30, deep1 29-32, deep2 31-34, deep3 33-36, biglake 34-40, golf 10-14, mountain 26-31, forest 23-28, deepforest 35-41, lawn 3-6, parking 2-5 |
 
 ## One wild fight: a lead of level L against a creature of level L + d (average of the three starters vs average zone creature)
 Turns are counted over won fights only.
 | lead level | foe −3 | foe +0 | foe +3 | foe +6 |
 |---|---|---|---|---|
-| 5 | 100 % win · 1.3 turns · −5 % HP | 60 % win · 2.8 turns · −65 % HP | 0 % win · 0.0 turns · −0 % HP | 0 % win · 0.0 turns · −0 % HP |
-| 10 | 100 % win · 1.9 turns · −18 % HP | 64 % win · 2.8 turns · −64 % HP | 14 % win · 3.1 turns · −80 % HP | 0 % win · 6.0 turns · −77 % HP |
-| 20 | 99 % win · 2.4 turns · −44 % HP | 69 % win · 2.7 turns · −61 % HP | 26 % win · 3.1 turns · −78 % HP | 4 % win · 3.8 turns · −66 % HP |
-| 30 | 94 % win · 2.7 turns · −52 % HP | 71 % win · 2.9 turns · −63 % HP | 36 % win · 3.1 turns · −69 % HP | 15 % win · 3.6 turns · −77 % HP |
-| 40 | 88 % win · 2.9 turns · −56 % HP | 68 % win · 2.9 turns · −60 % HP | 47 % win · 3.0 turns · −69 % HP | 21 % win · 3.0 turns · −79 % HP |
-| 50 | 88 % win · 2.9 turns · −57 % HP | 71 % win · 2.9 turns · −61 % HP | 48 % win · 3.3 turns · −66 % HP | 38 % win · 3.1 turns · −66 % HP |
+| 5 | 100 % win · 1.3 turns · −6 % HP | 68 % win · 2.8 turns · −61 % HP | 0 % win · 0.0 turns · −0 % HP | 0 % win · 0.0 turns · −0 % HP |
+| 10 | 100 % win · 1.9 turns · −17 % HP | 65 % win · 2.8 turns · −62 % HP | 11 % win · 3.1 turns · −84 % HP | 0 % win · 0.0 turns · −0 % HP |
+| 20 | 97 % win · 2.3 turns · −41 % HP | 69 % win · 2.8 turns · −61 % HP | 29 % win · 3.0 turns · −75 % HP | 7 % win · 4.4 turns · −74 % HP |
+| 30 | 94 % win · 2.7 turns · −52 % HP | 64 % win · 2.8 turns · −55 % HP | 42 % win · 3.1 turns · −71 % HP | 13 % win · 3.4 turns · −75 % HP |
+| 40 | 90 % win · 2.9 turns · −56 % HP | 74 % win · 2.9 turns · −59 % HP | 46 % win · 3.2 turns · −68 % HP | 28 % win · 2.9 turns · −82 % HP |
+| 50 | 85 % win · 2.9 turns · −56 % HP | 63 % win · 2.9 turns · −58 % HP | 49 % win · 3.2 turns · −71 % HP | 34 % win · 3.2 turns · −71 % HP |
 
 ## The four hero bosses (3 creatures each, the lead fights them one after the other, no healing; the boss level rises by 2 per hero you have beaten)
 | heroes beaten | boss team | your lead lv | wins all 3 | with 4 creatures of that level |
 |---|---|---|---|---|
 | 0 | 7/8/9 | 6 | 0 % | 0 % |
-| 0 | 7/8/9 | 8 | 0 % | 17 % |
-| 0 | 7/8/9 | 11 | 3 % | 100 % |
+| 0 | 7/8/9 | 8 | 0 % | 14 % |
+| 0 | 7/8/9 | 11 | 2 % | 100 % |
 | 1 | 9/10/11 | 8 | 0 % | 0 % |
-| 1 | 9/10/11 | 10 | 0 % | 13 % |
+| 1 | 9/10/11 | 10 | 0 % | 15 % |
 | 1 | 9/10/11 | 13 | 2 % | 100 % |
 | 2 | 11/12/13 | 10 | 0 % | 0 % |
-| 2 | 11/12/13 | 12 | 0 % | 10 % |
-| 2 | 11/12/13 | 15 | 0 % | 100 % |
+| 2 | 11/12/13 | 12 | 0 % | 8 % |
+| 2 | 11/12/13 | 15 | 1 % | 100 % |
 | 3 | 13/14/15 | 12 | 0 % | 0 % |
-| 3 | 13/14/15 | 14 | 0 % | 10 % |
-| 3 | 13/14/15 | 17 | 1 % | 100 % |
-With a house puzzle solved (−3 levels): lead = boss level, 0 heroes beaten → 28 % (instead of 0 %).
+| 3 | 13/14/15 | 14 | 0 % | 7 % |
+| 3 | 13/14/15 | 17 | 0 % | 100 % |
+With a house puzzle solved (−3 levels): lead = boss level, 0 heroes beaten → 31 % (instead of 0 %).
 
 ## Dev Ljunky (level 46, HP ×2.6, his real AI: Glitch Slap, spawns a bug, heals twice, Rage Quit under 28 % HP = 45 % of your lead's HP)
 Your party: four creatures of the same level (Starter-type mix), one after the other, Dev keeps his HP between them. No items, no swapping mid-fight: this is the floor, a real player with Fizz tablets and type swaps does better.
 | your party level | wins | creatures lost on average |
 |---|---|---|
-| 40 | 54 % | 3.3 of 4 |
-| 46 | 100 % | 1.9 of 4 |
-| 50 | 100 % | 1.2 of 4 |
+| 40 | 64 % | 3.2 of 4 |
+| 46 | 100 % | 1.8 of 4 |
+| 50 | 100 % | 1.3 of 4 |
 A party that has to level four creatures to 46 needs about 2.3× the grind time of the lead alone (bench XP share 0.25).
 
 ## Money
