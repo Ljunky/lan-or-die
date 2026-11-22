@@ -138,6 +138,19 @@ apps.tinder:      { name: 'Tinder', icon: '🔥', lines: ['It\'s a match! With {
 ```
 App line variables: `{steps}`, `{price}`, `{name}`, `{kr}`, `{debt}`.
 
+## Balance, Kenny the Fence, Inkasso-Ingvar
+```js
+tuning: { XP_BASE: 8, XP_SQ: 1.3,   // XP for the next level = XP_BASE + XP_SQ × level²   (LV_MAX: 50)
+  XP_LOW: 3,                        // a foe below your level gives XP × (foe lv / your lv)^XP_LOW; a stronger foe at most ×1.5
+  XP_SHARE: .25, BOSS_XP: 1.2, WILD_KR: 1.5,   // bench share, bosses/trainers, kronor per foe level from wild fights
+  KO_CATCH: {…}, CATCH_R: {…},      // catch chances by rarity (catching gives no XP)
+  PTS: { hero: 30000, dev: 50000, egg: 50000, species: 2000, speciesMax: 20, item: 2500, partner: 4000 } }  // goals only, max 300 000
+fence: { rates: { C: 3, U: 6, R: 12, E: 25, L: 40, M: 60 }, perLv: .5 }       // Kenny pays rates[rarity] + level × perLv kronor
+debtCollector: { npc: 'ingvar', every: 3, pay: 250, team: ['golem', 'banshee', 'ghost'], lvUp: 2 }   // every 3 promise debt: pay or fight
+apps.klarna: { …, once: 3, cooldownMin: 10 }                                 // max 3 uses, one per 10 real minutes
+```
+`role: 'fence'` on an NPC makes them buy creatures. The opening thought can use `{hero}`, which is a random hero other than yours.
+
 ## Opening and blackout
 ```js
 opening: { blink: 4.2, thoughts: ['Zombies everywhere!', …], strangerAfter: 12, stranger: { name: '???', look: {…} },

@@ -127,7 +127,13 @@ async function pickStarter(p, name) {
   await E(p, () => { window.__m3.bagMenu(); }); await until(p, 'Phone'); await until(p, 'Swish'); await p.waitForTimeout(80);
   t = await E(p, () => document.querySelector('#m3ui .m3txt').textContent);
   ok(/swish|Payment|received/i.test(t) && await E(p, k => window.__m3.G.kr === k - 10, kr0), 'Swish sends 10 kr to the wrong person: "' + t.replace(/\s+/g, ' ').slice(0, 50) + '"');
-  for (let i = 0; i < 4; i++) { await until(p, 'Klarna'); await p.waitForTimeout(60); }
+  await until(p, 'Klarna'); await p.waitForTimeout(60);
+  ok(await E(p, () => window.__m3.G.debt === 1), 'Klarna once');
+  await until(p, 'Klarna'); await p.waitForTimeout(60);
+  ok(/Breathe|min/.test(await E(p, () => document.querySelector('#m3ui .m3txt').textContent)) && await E(p, () => window.__m3.G.debt === 1), 'Klarna again at once: wait 10 minutes');
+  await E(p, () => { window.__m3.trapSpeed = 1e6; }); // real minutes pass
+  for (let i = 0; i < 3; i++) { await until(p, 'Klarna'); await p.waitForTimeout(60); }
+  await E(p, () => { window.__m3.trapSpeed = 1; });
   let g = await E(p, () => ({ kr: window.__m3.G.kr, debt: window.__m3.G.debt }));
   ok(g.kr === kr0 - 10 + 600 && g.debt === 3, 'Klarna: +200 kr and promise debt, three times max (' + JSON.stringify(g) + ')');
   ok(await E(p, () => window.__m3.S.blocked(41, 18) || true) && await E(p, () => { const m = window.__m3; m.G.p.y = 20 * 16; return m.S.blocked(41, 18); }), 'BankID blocks The Box door before approval');
@@ -142,6 +148,43 @@ async function pickStarter(p, name) {
   await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await p.mouse.down(); await p.waitForTimeout(800); await p.mouse.up();
   ok(await E(p, () => Array.isArray(window.__m3.devTile) && Math.abs(window.__m3.devTile[0] - 12) <= 2 && Math.abs(window.__m3.devTile[1] - 59) <= 2), 'dev: long-press shows the tile (' + JSON.stringify(await E(p, () => window.__m3.devTile)) + ')');
   ok(p.errs.length === 0, 'no page errors (start/phone)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
+  await p.close();
+
+  // ---------- balance (point 1): XP curve, anti-grind, no XP for catching, money, Kenny, Inkasso-Ingvar ----------
+  p = await open(b); await play(p);
+  ok(await E(p, () => { const m = window.__m3; return m.xpNeed(10) === 138 && m.xpNeed(1) === 9 && m.CFG.LV_MAX === 50 && m.D.raw.items.bag.price === 10; }), 'XP for next level = 8 + 1.3 × lv², LV_MAX 50, bags 10 kr');
+  const xpRun = async (myLv, foeLv, how) => {
+    await E(p, ([a, f]) => { const m = window.__m3; m.G.party = [m.mk('frog', a)]; m.G.party[0].hp = 9999; m.startWild(m.ZONES.find(z => z.id === 'parking')); }, [myLv, foeLv]);
+    await p.waitForTimeout(200); await E(p, f => { const x = window.__m3.B.foes[0]; x.lv = f; x.hp = 1; window.__m3.G.me.fx.push({ type: 'catchBonus', value: 50, t: 60, n: 1, src: 'test' }); }, foeLv);
+    await drive(p, how === 'catch' ? ['^🛍️ Catch', '^⚔️ Fight', 'Foam|Body|Can|Burp'] : ['Walk away', '^⚔️ Fight', 'Foam|Body|Can|Burp']);
+    return E(p, () => ({ xp: window.__m3.G.party[0].xp, lv: window.__m3.G.party[0].lv, caught: window.__m3.G.party.length + window.__m3.G.box.length }));
+  };
+  let x1 = await xpRun(20, 20, 'win'), x2 = await xpRun(20, 5, 'win'), x3 = await xpRun(20, 40, 'win'), x4 = await xpRun(20, 20, 'catch');
+  ok([112, 140, 168].includes(x1.xp) && x2.xp <= 3 && x3.xp <= 40 * 7 * 1.5 * 1.2 && x3.xp > x1.xp, 'XP: equal foe ' + x1.xp + ', a lv 5 foe almost nothing (' + x2.xp + '), a lv 40 foe at most ×1.5 (' + x3.xp + ')');
+  ok(x4.xp === 0 && x4.caught === 2, 'catching gives no XP');
+  await E(p, () => { window.__m3.G.kr = 0; const m = window.__m3; m.G.party = [m.mk('frog', 30)]; m.G.party[0].hp = 9999; m.startWild(m.ZONES.find(z => z.id === 'parking')); }); await p.waitForTimeout(200);
+  await E(p, () => { const x = window.__m3.B.foes[0]; x.lv = 10; x.hp = 1; }); await drive(p, ['Walk away', '^⚔️ Fight', 'Foam|Body|Can|Burp']);
+  ok(await E(p, () => window.__m3.G.kr === 15), 'less money from wild fights: lv 10 foe = 15 kr (' + (await E(p, () => window.__m3.G.kr)) + ')');
+  await E(p, () => { const m = window.__m3; m.G.party = [m.mk('frog', 20)]; m.G.box = [m.mk('golem', 12)]; m.G.kr = 0; });
+  await at(p, 46, 61); await p.waitForTimeout(250);
+  ok(await E(p, () => window.__m3.G.near && window.__m3.G.near.ref && window.__m3.G.near.ref.id === 'kenny'), 'Kenny the Fence stands in the parking lot');
+  await E(p, () => { window.__m3.interact(); }); await until(p, 'Trolley Golem'); await until(p, '^‹ Leave'); await drive(p, []);
+  g = await E(p, () => ({ kr: window.__m3.G.kr, box: window.__m3.G.box.length }));
+  ok(g.box === 0 && g.kr > 0 && g.kr <= 15, 'Kenny buys a creature for very little (' + g.kr + ' kr)');
+  await E(p, () => { const m = window.__m3; m.G.party = ['frog', 'cuke'].map(s => m.mk(s, 20)); m.G.kr = 300; m.G.debt = 3; m.G.flags.debtSeen = 0; });
+  await at(p, 20, 60); await p.waitForTimeout(400);
+  ok(/Inkasso|promised/.test(await E(p, () => document.querySelector('#m3ui .m3txt').textContent)), 'promise debt 3: Inkasso-Ingvar shows up');
+  await until(p, 'Pay 250'); await drive(p, []);
+  ok(await E(p, () => window.__m3.G.kr === 50 && window.__m3.G.flags.debtSeen === 3), 'paid Ingvar 250 kr; he comes back at debt 6');
+  ok(p.errs.length === 0, 'no page errors (balance)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
+  await p.close();
+
+  // ---------- opening: the "run me over" thought names another hero, never your own ----------
+  p = await open(b);
+  await E(p, () => localStorage.removeItem('lod.save.m3.Ljunky')); await toBrief(p, 'loken'); await p.click('#brief-go'); await p.waitForTimeout(300); await E(p, () => { window.__m3.speed = 25; });
+  let thought = '';
+  for (let i = 0; i < 200 && !thought; i++) { thought = await E(p, () => { const t = document.querySelector('#m3ui .m3txt').textContent; const pd = window.__m3.pending; if (/run me over/.test(t)) return t; if (pd && pd.say) pd.res(); return ''; }); await p.waitForTimeout(30); }
+  ok(/(BigWman|Wizcudi|Jrohn|Ljunky) run me over/.test(thought) && !/Löken run me over/.test(thought), 'playing Löken: "' + thought.replace(/^.*?💭 \S+/, '') + '"');
   await p.close();
 
   // ---------- losing a fight: no taps needed, you wake up in the van ----------
@@ -321,8 +364,9 @@ async function pickStarter(p, name) {
 
   // ---------- dealer: trade + wife refusal ----------
   await E(p, () => { window.__m3.startPartner('cicci'); }); await p.waitForTimeout(200);
-  await E(p, () => { window.__m3.give('ringbox'); window.__m3.G.me.fx.push({ type: 'catchBonus', value: 50, t: 60, n: 1, src: 'test' }); });
-  await until(p, '^🎯 Throw'); await until(p, 'Ring box'); await drive(p, ['^🛍️ Catch', 'Talk', 'checkouts']);
+  await E(p, () => { window.__m3.give('ringbox', 2); window.__m3.G.me.fx.push({ type: 'catchBonus', value: 50, t: 60, n: 1, src: 'test' }); });
+  for (let k = 0; k < 8 && await E(p, () => window.__m3.B && window.__m3.B.foes[0].hp > 0 && window.__m3.G.items.ringbox > 0); k++) { await until(p, '^🎯 Throw'); await until(p, 'Ring box'); await p.waitForTimeout(400); }
+  await drive(p, ['^🛍️ Catch', 'Talk', 'checkouts']);
   ok(await E(p, () => window.__m3.G.party.concat(window.__m3.G.box).some(c => c.sp === 'w_cicci') && window.__m3.G.solved.includes('cicci')), 'ring box calms Cicci -> knocked out -> caught (counts as solved)');
   await at(p, 45, 34); await p.waitForTimeout(200);
   ok(await E(p, () => window.__m3.G.near && window.__m3.G.near.ref && window.__m3.G.near.ref.id === 'dealer'), 'the dealer hides behind the bottle machines');
@@ -360,7 +404,7 @@ async function pickStarter(p, name) {
   ok(await E(p, () => window.__m3.G.gym.slots.length === 1), 'a creature is left on the WOD board');
   await E(p, () => { window.__m3.S.train(30); });
   g = await E(p, () => ({ lv: window.__m3.G.gym.slots[0].c.lv, cap: window.__m3.S.tierCap() }));
-  ok(g.lv > 5 && g.lv <= g.cap && g.cap === 16, 'training gains XP over time, capped per tier (' + JSON.stringify(g) + ')');
+  ok(g.lv > 5 && g.lv <= g.cap && g.cap === 30, 'training gains XP over time, capped per tier (' + JSON.stringify(g) + ')');
   await E(p, () => { window.__m3.S.train(9999); });
   ok(await E(p, () => window.__m3.G.gym.slots[0].c.lv === window.__m3.S.tierCap()), 'never above the tier cap');
   await E(p, () => window.__m3.give('coke', 4));

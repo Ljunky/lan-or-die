@@ -84,7 +84,7 @@ async function pickStarter(p, name) {
   ok(await pickStarter(p, 'Cucumber Dragon'), 'the stranger walks up and you choose a starter');
   let g = await E(p, () => { const G = window.__m3.G; return { party: G.party.map(c => c.sp + c.lv), caught: Object.keys(G.caught), score: G.score }; });
   ok(g.party.join() === 'cuke5' && g.caught.join() === 'cuke', 'starter chosen: ' + g.party.join());
-  ok(g.score === 2500 + 500, 'score = 1 species + party levels (' + g.score + ')');
+  ok(g.score === 2000, 'score = goals only: 1 species, levels give nothing (' + g.score + ')');
   ok(await E(p, () => document.querySelector('#btn-fire').hidden && !document.querySelector('#m3ui .m3bag').hidden), 'no fire button, bag button shown');
   await p.screenshot({ path: OUT + '/M3_map.png' });
 
@@ -157,7 +157,7 @@ async function pickStarter(p, name) {
   }
   ok(await E(p, () => window.__m3.walkable(...window.__m3.tc(16, 27))), 'stock room opens after 4 heroes');
   g = await E(p, () => window.__m3.goals());
-  ok(g.heroes === 4 && g.rows.find(r => /Heroes/.test(r[0]))[1] === 80000, 'heroes count 4 × 20 000');
+  ok(g.heroes === 4 && g.rows.find(r => /Heroes/.test(r[0]))[1] === 120000, 'heroes count 4 × 30 000');
   ok(await E(p, () => window.__m3.G.score === window.__m3.goals().total), 'G.score always equals the goals total');
 
   // ---------- save + continue ----------
@@ -172,8 +172,8 @@ async function pickStarter(p, name) {
   ok(g.beat === 4 && g.solved === 2 && g.party === 4 && g.t >= 400 && g.scene === 'map', 'Continue restores heroes, partners, party and playtime');
 
   // ---------- Dev Ljunky -> finish -> result ----------
-  await E(p, () => { window.__m3.speed = 20; for (const c of window.__m3.G.party) c.hp = 999; });
-  await E(p, () => window.__m3.startDev()); await p.waitForTimeout(1200);
+  await strong(50); await E(p, () => { window.__m3.speed = 20; for (const c of window.__m3.G.party) c.hp = 9999; });
+  await E(p, () => { window.__m3.startDev(); }); await p.waitForTimeout(1200);
   await p.screenshot({ path: OUT + '/M3_dev.png' });
   const r = await drive(p, ['Fight', 'Burp|Dill|Peas|Hug|Patty|Can|Pickle|Body'], 'map', 800);
   ok(await E(p, () => !!window.__m3.G.dev), 'Dev Ljunky beaten (' + r + ')');
@@ -203,12 +203,12 @@ async function pickStarter(p, name) {
   await E(q, () => { window.__m3.speed = 20; });
   await pickStarter(q, 'Freezer');
   await E(q, () => { window.__lod.G.saveT = 9.9; }); await q.waitForTimeout(400);
-  ok(posts.length === 1 && posts[0].mission === 3 && posts[0].score === 3000 && posts[0].name === 'BigWman', 'autosave sends the new best (' + JSON.stringify(posts[0] || {}) + ')');
+  ok(posts.length === 1 && posts[0].mission === 3 && posts[0].score === 2000 && posts[0].name === 'BigWman', 'autosave sends the new best (' + JSON.stringify(posts[0] || {}) + ')');
   await E(q, () => { window.__lod.G.saveT = 9.9; }); await q.waitForTimeout(400);
   ok(posts.length === 1, 'same score is not sent again');
   await E(q, () => { window.__m3.G.solved.push('cicci'); });
   await q.click('#btn-pause'); await q.waitForTimeout(300);
-  ok(posts.length === 2 && posts[1].score === 8000, 'leaving (pause) sends a higher score right away (' + (posts[1] || {}).score + ')');
+  ok(posts.length === 2 && posts[1].score === 6000, 'leaving (pause) sends a higher score right away (' + (posts[1] || {}).score + ')');
   ok(await E(q, () => !document.getElementById('scr-pause').hidden), 'pause screen is shown');
   ok(q.errs.length === 0, 'no page errors (autosubmit)' + (q.errs.length ? ': ' + q.errs.join(' | ') : ''));
   await b.close();
