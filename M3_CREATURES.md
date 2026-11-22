@@ -25,16 +25,18 @@ A new 6-type cycle; each beats the next one:
 
 MIND stays neutral, for people (heroes, wives, NPCs, Dev Ljunky). Drug forms keep their base type but get a **trip trait** (section 4).
 
+**Decided:** rename the types. The old FIZZ / GRUB / WILD / TECH / FROST / RUSTLE are gone everywhere: moves, items with `vs`/`good`, traps' `lure`, colours. New colours, e.g.: FANG red-brown, WING sky blue, ROOT green, WATER blue, STONE grey, SHELL amber.
+
 ## 3. Evolution and feeding rules
 - **Stats:** stage 1 ≈ 75 % of the line's adult stats, stage 2 ≈ 100 %, stage 3 ≈ 125 %. Drug forms ≈ 130 %, with a trade-off.
 - **Normal evolution:** happens at the level in `evolve`, with a short flash animation.
 - **Feeding:** Bag → Use → choose a drug → choose a creature.
   - If it is the right stage and at or above `feedLv`, it evolves into the drug form right away.
   - If it is too young or too weak, nothing happens except the drug's normal effect: "Badger cub is very relaxed. Nothing else happens. Yet."
-- **Risk:** each feed has a bad-trip chance (5–12 % per drug). The creature is "sketchy" for 30 real minutes and can't fight. No deaths from feeding.
+- **Risk (decided):** each feed has a bad-trip chance (5–12 % per drug). The creature is "sketchy" for 30 real minutes: it can't fight and is shown grey with 🥴 in the party. No deaths from feeding. The timer keeps running while the game is closed.
 - **Knowledge layer:**
-  - Which drug makes which form is `???` in the Dex until someone tells you (the dealer, the shaman, Hasse…) or you try it.
-  - The Dex shows a branch form as a black silhouette once you have seen its line.
+  - Which drug makes which form is `???` in Fältboken (section 7b) until someone tells you (the dealer, the shaman, Hasse…) or you try it.
+  - Fältboken shows a branch form as a black silhouette once you have seen its line.
 - **Wild drug forms:** a few appear in the wild, only where it makes sense: Trancequirrel at the rave at night, Methmoth at city lamps at night, Trippopotamus only while you are tripping.
 
 ## 4. Trip traits (one per drug)
@@ -110,7 +112,36 @@ Levels are the zone's. Sizes: S = bag OK, M = bag only as a youngling, L / XL = 
 | Eagle (WING, L) | Eaglet → Eagle (28) → Golden Eagle (42) | mountain top; Eaglets in nests along the path | – |
 | Wolverine (FANG, M) | Kit → Wolverine (34) | high mountain | – (stays mean without drugs) |
 
-**Dex goal:** "New species" counts **lines** (the first form you catch from each line), not forms. There are 20 wild lines + Trippopotamus, so 20 species = real exploring. Evolving never gives points.
+**Species goal:** "New species" counts **lines** (the first form you catch from each line), not forms. There are 20 wild lines + Trippopotamus, so 20 species = real exploring. Evolving never gives points.
+
+### How many animals in total
+| | Lines | Forms (each needs a 48 × 48 PNG) | Of which drug forms |
+|---|---|---|---|
+| Starters (never in the wild) | 5 | 23: Badger 7, Lynx 4, Toad 4, Hedgehog 4, Deer 4 | 8 |
+| Wild | 21 | 72 | 16 |
+| **Total** | **26** | **95** (96 with the joke Snapskräfta) | **24** |
+
+Wild forms per line:
+- Rat 3, Cockroach 4, Crow 4, Ladybug 3, Perch 3
+- Squirrel 4, Beetle 3, Tortoise 4
+- Crayfish 3, Pike 4, Mantis 3, Trippopotamus 1
+- Fox 4, Boar 5, Moth 4, Moose 5, Bear 4
+- Adder 4, Mountain Hare 2, Eagle 3, Wolverine 2
+
+If 95 drawings is too many for 25 Nov, cut in this order: Wolverine, Mountain Hare, Eagle, Perch, Rat (−12 forms → 83). Every remaining line still has a home.
+
+## 6b. Bosses use drug forms (decided)
+The house bosses fight with drug forms from the wild lines (never the starter-only lines). Team levels = gate level −2 / ±0 / +2.
+
+| Boss · house · gate | Team | Why |
+|---|---|---|
+| Ljunky · The Box · 10 | Cokeroach, Ladd-ybug, Ketacrow | "He fed them early. Irresponsible." |
+| Wizcudi · electronics store · 20 | Methmoth, Speedbeetle, Mantis Shroom | moths at his lamps, a mantis shrimp from his aquarium |
+| Jrohn · shaman cave · 30 | Acidadder, Shroomboar, Shroomoose | the shaman's mushrooms |
+| Löken · castle · 40 | Snortoise, Mollipike, Ketamoose | the lake and the castle grounds |
+| BigWman · rave · 40 | Trancequirrel, Blowboar, Psilocybear | the 24-hour rave |
+
+If you play a hero, their house is your home, so that team never appears. Seeing a drug form in a boss team marks its silhouette in the field guide (section 7b).
 
 ## 7. Traps: ladders you upgrade
 Traps work like today: place one, wait real minutes, come back. New rules:
@@ -134,7 +165,39 @@ Traps work like today: place one, wait real minutes, come back. New rules:
 | **Ground** (from mouse to moose) | Mouse trap: S (mice, beetles) | Live box: S / M (squirrel, fox kit, crowling) | Snare: M (fox, adder, boarlet) | Pit trap: L (boar, deer-sized) | **Moose pen** with salt lick: XL (moose, bear) |
 | **Air / night** | Jam jar: ladybugs, beetles | Mist net: crows, eaglets | Light trap: moths at night (Methmoth rare) | – | – |
 
+### Traps never promise the catch
+A trap only opens the **possibility** of its tier. Every creature form has a `tier` from 1 to 5 (mouse 1 … moose 5; shore 1 … deepest water 5). When you check a ready trap of tier T, it rolls:
+
+| Result | Base chance | What happens |
+|---|---|---|
+| Nothing | 25 % | "The bait is gone. Something laughed at you." |
+| Lower tier (T − 1) | 25 % | A smaller creature from the same habitat (on tier 1: a junk item instead, e.g. a boot or a shopping bag). |
+| Its own tier (T) | 40 % | A creature of that tier, picked from the habitat's table and weighted by the bait. |
+| Higher tier (T + 1) | 10 % | Something too big got in. It **wrecked the trap** (the trap is gone; Trapper Tore can repair it for half price), but it is still there, dazed: fight it, and catching it is possible but hard. |
+
+What shifts the odds (never to a sure catch; "own tier" is capped at 60 %):
+- **Matching bait:** −10 % nothing, +10 % own tier.
+- **Each upgrade step** of the same ladder: −5 % nothing, +5 % own tier.
+- **Night** for night creatures, **depth** for water traps: wrong place = mostly nothing.
+- **Drugged bait:** an own-tier result has a 30 % chance of being that line's drug form, but "nothing" also goes up 10 % ("it took the bait and left, very happy").
+- **Rare spawns** (e.g. Trippopotamus in the trawl) roll before the table and only when their condition is true.
+
 **Materials** come from **Finish off** in battle, which today only makes a grave. Now it also drops a material from the creature: fur, feather, scale, chitin, shell, antler. That gives killing a reason and a cost: catch it, or turn it into a trap upgrade?
+
+## 7b. No Pokédex on the phone: "Fältboken"
+There is **no creature list at the start**, and no app for it on the phone. Until you have the book, you only see the creatures you own (party and van).
+
+**Fältboken** ("the field book"): someone's old, coffee- and weed-stained copy of *Nordens Djur*, full of handwritten notes in the margins about what each animal does on what. Two ways to get it:
+1. **Buy it** from the guy behind the bottle machines for creature points (expensive early: about 4 points, i.e. two uncommon creatures). He says: "Field research. Very academic."
+2. **Find it** for free in the camper van in the deep forest (the Methmoth guy left it behind). Hard to reach before you're strong, so it's a reward for exploring.
+
+What it shows, page by page, as you learn things:
+- **Seen** lines show the drawing and the name. **Caught** lines add habitat, size, bait and trap tier.
+- Drug forms are **black silhouettes** with "??? + ???" until someone tells you the recipe or you feed it yourself. Then the handwriting appears: "Badger + Xanax (Lv 24+) = Xanadger. Sleepy but tough."
+- Tracks you've been taught (footprints, feathers) get their own page.
+- Margin notes in the previous owner's voice, different for each line, e.g. "DO NOT give the moose ketamine indoors."
+
+The goal counter (species 20) still works without the book; the book is the knowledge, not the score.
 
 ## 8. Where the drugs come from
 These are the existing items (coke, weed, shrooms) plus new ones: Xanax, Molly, Ketamine, LSD, Speed, Meth, DMT. Each is also usable on yourself (screen effects like today).
@@ -175,9 +238,11 @@ Zones list creatures by **line**; the game picks the stage from the level, so a 
 - **Nicknames** for your creatures, and a "raised from Lv 1" star that gives +5 % stats (rewards raising younglings instead of buying adults).
 - **Trophy wall at your home:** Finish off a rare adult and the taxidermist can mount it (cosmetic). Wives react to it.
 - **Wives react to your creatures:** a Ketadger in the party makes a wife angrier; a MolLynx calms her.
-- **Dex page per line:** habitat, size, bait, which drugs work (as `???` until you learn it), and who told you.
+- **Fältboken page per line** (section 7b): habitat, size, bait, which drugs work (`???` until you learn it), and who told you.
 
-## 11. Decisions for the owner
-1. Rename the types to FANG / WING / ROOT / WATER / STONE / SHELL? (Recommended. The old FIZZ / GRUB / TECH names are grocery-store words.)
-2. Feeding risk: a temporary "sketchy" status (recommended), or real deaths (graves)?
-3. Should drug forms also exist in bosses' teams (e.g. BigWman's rave team: Trancequirrel, Speedbeetle, Methmoth)?
+## 11. Decided by the owner
+1. Types renamed to FANG / WING / ROOT / WATER / STONE / SHELL (section 2).
+2. A bad trip = "sketchy" for 30 real minutes, no deaths (section 3).
+3. Bosses fight with drug forms (section 6b).
+4. Traps open up a tier but never guarantee the catch: nothing, lower, own or higher tier (section 7).
+5. No creature list on the phone at the start: Fältboken is bought from the dealer or found in the deep forest (section 7b).
