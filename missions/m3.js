@@ -226,19 +226,29 @@ function renderMap() {
 
 /* ===================== UI: GBA text box + one-tap menus + bag button ===================== */
 const CSS = `
-#m3ui{position:absolute;inset:0;pointer-events:none}
+#m3ui{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none}
+#m3ui .m3dim{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(8,12,20,.45),rgba(8,12,20,.72));opacity:0;transition:opacity .18s;pointer-events:none}
+#m3ui.center .m3dim{opacity:1}
+/* the box: docked at the bottom (speech, battle menus) or a centered card (menus on the map, long texts) */
 #m3ui .m3box{position:absolute;left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px));
   pointer-events:auto;background:#fbf6e8;color:#1c1c2a;border:4px solid #1F2A44;border-radius:12px;box-shadow:0 0 0 3px #fbf6e8,0 8px 24px rgba(0,0,0,.55);
-  padding:10px 12px 12px;font:700 17px/1.32 Barlow,system-ui,sans-serif;max-height:62%;overflow-y:auto;-webkit-user-select:none;user-select:none}
-#m3ui .m3txt{min-height:46px;white-space:pre-line;position:relative;padding-right:16px}
+  padding:10px 12px 12px;font:700 17px/1.32 Barlow,system-ui,sans-serif;max-height:58%;display:flex;flex-direction:column;-webkit-user-select:none;user-select:none}
+#m3ui.center .m3box{left:50%;right:auto;bottom:auto;top:50%;width:min(calc(100% - 24px),440px);max-height:calc(100% - 96px);transform:translate(-50%,-50%);animation:m3pop .16s ease-out}
+@keyframes m3pop{from{transform:translate(-50%,-48%) scale(.96);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+#m3ui .m3txt{min-height:46px;white-space:pre-line;position:relative;padding-right:16px;flex:none;overflow-y:auto;max-height:40vh}
+#m3ui.center .m3txt{min-height:0;padding-bottom:2px}
 #m3ui .m3txt.more::after{content:'▼';position:absolute;right:0;bottom:-2px;font-size:12px;color:#e3000f;animation:m3b .7s infinite alternate}
 @keyframes m3b{to{transform:translateY(3px)}}
 #m3ui .m3who{display:inline-block;font:400 13px Bungee,Impact,sans-serif;color:#fff;background:#1F2A44;border-radius:6px;padding:2px 8px;margin-bottom:4px}
-#m3ui .m3grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
-#m3ui .m3grid.one{grid-template-columns:1fr}
+#m3ui .m3grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:max-content;align-content:start;gap:6px;margin-top:8px;overflow-y:auto;min-height:0;flex:1 1 auto;overscroll-behavior:contain;padding:2px;margin-left:-2px;margin-right:-2px}
+#m3ui .m3grid.one{grid-template-columns:minmax(0,1fr)}
 #m3ui .m3grid:empty{display:none}
+#m3ui .m3more{flex:none;height:0;position:relative;pointer-events:none}
+#m3ui .m3box.scroll .m3more::before{content:'';position:absolute;left:0;right:0;bottom:0;height:34px;background:linear-gradient(rgba(251,246,232,0),#fbf6e8)}
+#m3ui .m3box.scroll .m3more::after{content:'▼';position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);font-size:13px;color:#e3000f;background:#fbf6e8;border:2px solid #1F2A44;border-radius:10px;padding:0 8px;line-height:16px;animation:m3b .7s infinite alternate}
 #m3ui .m3grid button{font:700 16px/1.15 Barlow,system-ui,sans-serif;min-height:50px;border-radius:9px;border:2px solid #1F2A44;background:#fff;color:#1c1c2a;
-  text-align:left;padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;touch-action:manipulation}
+  text-align:left;padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;touch-action:manipulation;min-width:0;height:auto}
+#m3ui .m3grid button>span{min-width:0;overflow-wrap:break-word}
 #m3ui .m3grid button:active{background:#ffe9a8}
 #m3ui .m3grid button[disabled]{opacity:.42}
 #m3ui .m3grid button.hot{background:#ffd23a;border-color:#8a6a00}
@@ -247,7 +257,7 @@ const CSS = `
 #m3ui .m3grid button small{display:block;font-weight:600;font-size:12px;opacity:.72}
 #m3ui .m3grid button small.unk{letter-spacing:.2em}
 #m3ui .m3grid button img{width:34px;height:34px;image-rendering:pixelated;flex:none}
-#m3ui .m3grid button .ty{font:400 10px Bungee,Impact,sans-serif;color:#fff;border-radius:4px;padding:1px 4px;margin-left:4px}
+#m3ui .m3grid button .ty{display:inline-block;white-space:nowrap;vertical-align:2px;font:400 10px Bungee,Impact,sans-serif;color:#fff;border-radius:4px;padding:1px 4px;margin-left:4px}
 #m3ui .m3grid button .hp{display:block;height:5px;border-radius:3px;background:#ddd;margin-top:3px;overflow:hidden}
 #m3ui .m3grid button .hp i{display:block;height:100%;background:#3ddc84}
 #m3ui .m3bag{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));width:66px;height:66px;border-radius:50%;
@@ -269,9 +279,11 @@ function buildUI() {
   if (ui.root) return;
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   const root = document.createElement('div'); root.id = 'm3ui'; root.hidden = true;
-  root.innerHTML = '<div class="m3box" hidden><div class="m3txt"></div><div class="m3grid"></div></div><button class="m3bag" aria-label="Bag" hidden>🎒<small>BAG</small></button>';
+  root.innerHTML = '<div class="m3dim"></div><div class="m3box" hidden><div class="m3txt"></div><div class="m3grid"></div><div class="m3more"></div></div><button class="m3bag" aria-label="Bag" hidden>🎒<small>BAG</small></button>';
   LOD.cv.after(root);
   Object.assign(ui, { root, box: root.querySelector('.m3box'), txt: root.querySelector('.m3txt'), grid: root.querySelector('.m3grid'), bag: root.querySelector('.m3bag') });
+  ui.grid.addEventListener('scroll', scrollHint, { passive: true });
+  ui.txt.addEventListener('scroll', scrollHint, { passive: true });
   ui.box.addEventListener('click', e => { if (!e.target.closest('button') && pending && pending.say) pending.res(); });
   ui.grid.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b || b.disabled || !pending || pending.say) return;
@@ -284,16 +296,25 @@ function buildUI() {
     if (root.hidden === on) root.hidden = !on;
     const bagOn = on && G.scene === 'map' && G.mode === 'play';
     if (ui.bag.hidden === bagOn) ui.bag.hidden = !bagOn;
+    if (on) { // keep the UI inside what the browser really shows (toolbars, keyboards, odd in-app browsers)
+      const r = LOD.stage.getBoundingClientRect(), vv = window.visualViewport, visTop = vv ? vv.offsetTop : 0, visBot = vv ? vv.offsetTop + vv.height : window.innerHeight;
+      const top = Math.max(0, visTop - r.top) + 'px', bot = Math.max(0, r.bottom - visBot) + 'px';
+      if (root.style.top !== top) root.style.top = top; if (root.style.bottom !== bot) root.style.bottom = bot;
+    }
     requestAnimationFrame(sync);
   };
   requestAnimationFrame(sync);
 }
-function hideBox() { ui.box.hidden = true; ui.grid.innerHTML = ''; pending = null; }
+function hideBox() { ui.box.hidden = true; ui.grid.innerHTML = ''; pending = null; layout(false); }
+/* where the box goes: menus on the map and long texts = centered card; speech and battle = docked at the bottom */
+function layout(center) { ui.root.classList.toggle('center', !!center); requestAnimationFrame(scrollHint); }
+function scrollHint() { const g = ui.grid, t = ui.txt; const more = (g.scrollHeight - g.scrollTop - g.clientHeight > 6) || (t.scrollHeight - t.scrollTop - t.clientHeight > 6); ui.box.classList.toggle('scroll', more); }
 function boxText(text, who) { ui.txt.innerHTML = (who ? '<span class="m3who">' + esc(who) + '</span><br>' : '') + esc(text); }
 function say(text, o = {}) {
   const tok = FLOW;
   return new Promise(res => {
-    ui.box.hidden = false; boxText(text, o.who); ui.grid.innerHTML = ''; ui.txt.classList.add('more');
+    ui.box.hidden = false; boxText(text, o.who); ui.grid.innerHTML = ''; ui.txt.classList.add('more'); ui.txt.scrollTop = 0;
+    layout(o.center != null ? o.center : G.scene !== 'battle' && text.split('\n').length > 4);
     const done = () => { if (pending && pending.res === done) pending = null; ui.txt.classList.remove('more'); if (tok === FLOW) res(); };
     pending = { res: done, say: true };
     const auto = o.auto != null ? o.auto : G.scene === 'battle';
@@ -305,7 +326,9 @@ function ask(text, opts, o = {}) {
   const tok = FLOW;
   return new Promise(res => {
     ui.box.hidden = false; boxText(text, o.who); ui.txt.classList.remove('more');
-    ui.grid.className = 'm3grid' + (o.one ? ' one' : '');
+    const one = o.one != null ? o.one : G.scene !== 'battle' && (opts.length > 7 || opts.some(q => (q.label || '').length > 22)); // long lists read better in one column
+    ui.grid.className = 'm3grid' + (one ? ' one' : ''); ui.grid.scrollTop = 0;
+    layout(o.center != null ? o.center : G.scene !== 'battle');
     ui.grid.innerHTML = opts.map((q, i) => '<button data-i="' + i + '"' + (q.dis ? ' disabled' : '') + (q.cls ? ' class="' + q.cls + '"' : '') + '>' +
       (q.img ? '<img src="' + q.img + '" alt="">' : '') + '<span>' + esc(q.label) + (q.ty ? '<span class="ty" style="background:' + (TCOL[q.ty] || '#888') + '">' + q.ty + '</span>' : '') +
       (q.unk ? '<small class="unk">???</small>' : q.sub ? '<small>' + esc(q.sub) + '</small>' : '') + (q.hp != null ? '<span class="hp"><i style="width:' + Math.round(q.hp * 100) + '%;background:' + hpCol(q.hp) + '"></i></span>' : '') + '</span></button>').join('');
@@ -1534,7 +1557,7 @@ async function chooseStarter() {
     const claims = await loadClaims(), me = LOD.player, mine = claims[me] && OP.starters.includes(claims[me]) ? claims[me] : null;
     let avail = mine ? [mine] : OP.starters.filter(sp => !Object.keys(claims).some(n => n !== me && claims[n] === sp));
     if (!avail.length) avail = OP.starters.slice();
-    const s = await ask(OP.lines[1], avail.map(sp => ({ label: SP[sp].name, img: creatureIcon(sp), ty: SP[sp].type, value: sp })), { one: avail.length < 3, who: OP.stranger.name });
+    const s = await ask(OP.lines[1], avail.map(sp => ({ label: SP[sp].name, img: creatureIcon(sp), ty: SP[sp].type, value: sp })), { one: true, who: OP.stranger.name });
     if (await claimStarter(s)) return s;
     await say2(OP.stranger.name, OP.tooSlow);
   }
