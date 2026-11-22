@@ -22,14 +22,14 @@ A mobile zombie mini-game for 5 friends (Löken, Wizcudi, Jrohn, BigWman, Ljunky
 - Engine handles ranking badges (Legendary/Epic/Rare/Common/Participated), the 👑 Sidequest King (longest round), the scoreboard and the date lock. Missions don't touch these.
 - No copyrighted characters.
 - M2 zombies are drawn in canvas with `drawZombie()` (pale skin, glowing eyes, torn clothes, reaching arms; gold variant for bonus).
-- M3 (portrait RPG, `missions/m3.js` + `missions/m3-systems.js`): **all content is data** in `data/m3-data.js` (creatures, moves, items, NPCs, heroes, wives, zones, gym, graves, dealer, apps, tuning). Add content there without code; see `DATA.md`. Entries have `release: 'mon'|'tue'|'wed'`. The roster is 96 forms in 26 lines (younglings, 3-stage evolutions, drug forms by feeding, trip traits, trap ladders; design in `M3_CREATURES.md`, types FANG/WING/ROOT/WATER/STONE/SHELL). Creature art = one 48x48 PNG per form in `assets/creatures/<id>.png`, added with `art:` on the entry (until then the game shows ❔); fight-intro portraits in `assets/portraits/<id>.png`.
+- M3 (portrait RPG, `missions/m3.js` + `missions/m3-systems.js`): **all content is data** in `data/m3-data.js` (creatures, moves, items, NPCs, heroes, wives, zones, gym, graves, dealer, apps, tuning). Add content there without code; see `DATA.md`. Entries have `release: 'mon'|'tue'|'wed'`. The roster is 96 forms in 26 lines (younglings, 3-stage evolutions, drug forms by feeding, trip traits, trap ladders; design in `M3_CREATURES.md`, types FANG/WING/ROOT/WATER/STONE/SHELL). Creature art = one 48x48 PNG per form in `assets/creatures/<id>.png`, added with `art:` on the entry (no `art:` line needed: the file is found by name, until then the game shows a "?" disc; `node tools/import-art.js <image> <id>` or `tools/import-art.html` makes the PNG from any picture); fight-intro portraits in `assets/portraits/<id>.png`.
 - Generic engine kit `engine/*.js` (`window.PX`: sprites, fx, effects, data) knows nothing about LAN OR DIE. Only M3 uses it; M1/M2 never touch it. `?fx=off` turns off shake/particles/hit-stop.
 - M2 (landscape): edit `CFG` (CAM_HEIGHT zoom, SPACE_TIME, MISS_PENALTY…), `BILLBOARDS` (hero face + lines) and `WIFE` (texts) at the top of `missions/m2.js`. Running over a friend voids the round (`noSubmit`); Jrohn's space trip turns cars/zombies into asteroids.
 
 ## Mission lifecycle
 `Who's playing?` → title/mission list → character select → intro cutscene (phone chat) → brief → **play** (`init` → `start` → `update`/`draw` each frame) → `LOD.finish(win, why)` → optional outro cutscene → result screen → score submitted (only if the mission is LIVE today).
 
-Date fields: `unlock: 'YYYY-MM-DD'`, `until: 'YYYY-MM-DD'`. Before unlock = locked, between = LIVE (scores count), after = Practice (playable, no points). Test with `?dev=all` or `?dev=all&date=2026-11-21`.
+Date fields: `unlock: 'YYYY-MM-DD'`, `until: 'YYYY-MM-DD'`. Before unlock = locked, between = LIVE (scores count), after = Practice (playable, no points). Test with `?dev=all` or `?dev=all&date=2026-11-21`; `?dev=day&date=2026-11-23` plays a day the way players get it (release days and locks respected, nothing sent). Missions with `save: true` have a "Save code" button in the pause menu and on the brief to move a save to another phone.
 
 ## Mission template
 ```js

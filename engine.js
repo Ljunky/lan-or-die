@@ -805,8 +805,10 @@ const fmt = n => Math.round(n).toLocaleString('en-US').replace(/,/g, ' ');
 const mmss = t => { t = Math.max(0, Math.floor(t)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
 const store = LOD.store, music = LOD.music;
 const params = new URLSearchParams(location.search);
-const DEV = params.get('dev') === 'all';
-const FAKE_DATE = DEV && /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') || '') ? params.get('date') : null;
+const DEV = params.get('dev') === 'all';                 // ?dev=all: everything unlocked, any date, nothing locked
+const DEVDAY = params.get('dev') === 'day';              // ?dev=day&date=YYYY-MM-DD: a test day that respects release days and locks, nothing is ever sent
+const TEST = DEV || DEVDAY;
+const FAKE_DATE = TEST && /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') || '') ? params.get('date') : null;
 
 /* ---------- dates, lock, practice ---------- */
 const dayKey = ts => new Intl.DateTimeFormat('sv-SE', { timeZone: CFG.TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ts));
@@ -821,7 +823,7 @@ function status(def) { // 'live' | 'practice' | 'locked'
   if (def.unlock < t) return 'practice';
   return DEV ? 'practice' : 'locked';
 }
-const counts = def => status(def) === 'live' && !FAKE_DATE; // only live rounds are sent to the board
+const counts = def => status(def) === 'live' && !FAKE_DATE && !DEVDAY; // only live rounds are sent to the board
 
 /* ---------- Telegram (only inside a Telegram Mini App) ---------- */
 let TG = null;
@@ -1291,10 +1293,65 @@ function autoSubmit(leaving) {
   submit({ name: playerName, mission: M.id, score: total, time, ts: Date.now() });
 }
 function leaveSave() { if (M && M.save) { saveNow(); autoSubmit(true); } }
+
+/* ---------- save code: move a save to another phone (opt-in: missions with save: true) ----------
+   Export: the save (+ best score, mission id, player name) as one text code, compressed when the browser can (CompressionStream), with a checksum.
+   Import: paste the code or pick the saved .txt file. It only fits the same mission and the same player name, and replaces the save on this phone
+   after a second tap. Needs no backend: nothing is sent anywhere. Where: the pause menu and the brief of a save mission (also on a phone with no save yet). */
+const b64u = bytes => { let t = ''; for (const b of bytes) t += String.fromCharCode(b); return btoa(t).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const unb64u = str => { str = str.replace(/-/g, '+').replace(/_/g, '/'); while (str.length % 4) str += '='; const t = atob(str), a = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) a[i] = t.charCodeAt(i); return a; };
+const hash32 = t => { let h = 2166136261; for (let i = 0; i < t.length; i++) h = Math.imul(h ^ t.charCodeAt(i), 16777619); return (h >>> 0).toString(16).padStart(8, '0'); };
+const streamed = async (bytes, S) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new S('deflate-raw'))).arrayBuffer());
+async function makeSaveCode() {
+  saveNow(); const sv = store.get(saveKey(), null); if (!sv) return '';
+  let bytes = new TextEncoder().encode(JSON.stringify({ m: M.id, p: playerName, ts: Date.now(), best: store.get(bestKey(), 0), s: sv })), tag = 'LOD1';
+  if (window.CompressionStream) { try { bytes = await streamed(bytes, CompressionStream); tag = 'LOD1z'; } catch (e) {} }
+  const body = b64u(bytes); return tag + '.' + body + '.' + hash32(body);
+}
+async function readSaveCode(code) { // -> { err } or { obj }
+  const parts = String(code || '').replace(/\s+/g, '').split('.');
+  if (!/^LOD1z?$/.test(parts[0])) return { err: 'That is not a save code.' };
+  if (parts.length !== 3) return { err: 'The code is damaged or cut off. Copy it again, all of it.' };
+  if (hash32(parts[1]) !== parts[2]) return { err: 'The code is damaged or cut off. Copy it again, all of it.' };
+  let obj; try { let bytes = unb64u(parts[1]); if (parts[0] === 'LOD1z') bytes = await streamed(bytes, DecompressionStream); obj = JSON.parse(new TextDecoder().decode(bytes)); } catch (e) { return { err: 'The code could not be read.' }; }
+  if (!obj || !obj.s || !obj.s.data) return { err: 'There is no saved game in that code.' };
+  if (obj.m !== M.id) return { err: 'That code belongs to another mission.' };
+  if (obj.p !== playerName) return { err: 'That code is for ' + obj.p + '. Choose that name first (the player name on this phone is ' + playerName + ').' };
+  return { obj };
+}
+let scFrom = 'scr-pause', scArm = 0;
+function openSaveCode(from) {
+  scFrom = from; scArm = 0;
+  const s = panel('scr-savecode', `<div class="inner"><h2>Save code</h2>
+    <p class="note" id="sc-note"></p><textarea id="sc-text" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Paste a save code here to import it"></textarea>
+    <div class="row"><button id="sc-copy" class="btn">Copy code</button><button id="sc-file" class="btn ghost">Save as file</button></div>
+    <div class="row"><button id="sc-pick" class="btn ghost">Choose file…</button><button id="sc-import" class="btn">Import</button></div>
+    <button id="sc-close" class="btn ghost">Back</button><input id="sc-input" type="file" accept=".txt,text/plain" hidden></div>`, { nofocus: true });
+  show('scr-savecode');
+  const note = t => { $('#sc-note').textContent = t; }, ta = $('#sc-text');
+  note('Your save as a text code. Send it to yourself (copy, or as a file) and import it on another phone. Same player name, same mission.');
+  makeSaveCode().then(c => { if (c && !ta.value) { ta.value = c; ta.dataset.mine = c; note('Your save as a text code (' + c.length + ' characters). Copy it, or save it as a file if it is too long to paste. Import it on the other phone with the same player name.'); } else if (!c) note('There is no saved game yet. Play a little first, or paste a code below to import one.'); });
+  $('#sc-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(ta.value); note('Copied.'); } catch (e) { ta.focus(); ta.select(); note('Select the text and copy it by hand.'); } });
+  $('#sc-file').addEventListener('click', () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ta.value], { type: 'text/plain' })); a.download = 'lan-or-die-m' + M.id + '-' + playerName + '.txt'; document.body.appendChild(a); a.click(); a.remove(); });
+  $('#sc-pick').addEventListener('click', () => $('#sc-input').click());
+  $('#sc-input').addEventListener('change', async e => { const f = e.target.files && e.target.files[0]; if (f) { ta.value = (await f.text()).trim(); scArm = 0; $('#sc-import').textContent = 'Import'; note('File loaded. Tap Import.'); } });
+  ta.addEventListener('input', () => { scArm = 0; $('#sc-import').textContent = 'Import'; });
+  $('#sc-import').addEventListener('click', async () => {
+    const r = await readSaveCode(ta.value); if (r.err) { note(r.err); return; }
+    if (ta.value.replace(/\s+/g, '') === (ta.dataset.mine || '').replace(/\s+/g, '')) { note('That is the code of the save on this phone.'); return; }
+    const cur = store.get(saveKey(), null);
+    if (cur && Date.now() - scArm > 4000) { scArm = Date.now(); $('#sc-import').textContent = 'Tap again: replace this phone\'s save'; note('This phone has a save (' + mmss(cur.t || 0) + ' played). The code holds ' + mmss(r.obj.s.t || 0) + '. Tapping Import again REPLACES the one on this phone.'); return; }
+    try { store.set(saveKey(), r.obj.s); store.set(bestKey(), Math.max(store.get(bestKey(), 0), r.obj.best || 0)); } catch (e) { note('Could not write the save.'); return; }
+    G = null; note('Imported. Reloading…'); setTimeout(() => location.reload(), 400);   // G = null: leaving must not overwrite the import
+  });
+  $('#sc-close').addEventListener('click', () => { if (scFrom === 'scr-pause' && G && G.mode === 'pause') show('scr-pause'); else if (scFrom === 'scr-brief') showBrief(); else goTitle(); });
+}
+LOD.openSaveCode = openSaveCode;
 function briefSave() { // Continue / New game on the brief of a save mission
   const go = $('#brief-go'); let nb = $('#brief-new');
   const sv = savedGame();
   go.textContent = sv ? 'Continue' : 'Go';
+  let cb = $('#brief-code'); if (cb && !M.save) cb.remove(); else if (!cb && M.save) { cb = document.createElement('button'); cb.id = 'brief-code'; cb.className = 'btn ghost small'; cb.textContent = 'Save code (move or import a save)'; go.after(cb); cb.addEventListener('click', () => openSaveCode('scr-brief')); }
   if (!sv) { if (nb) nb.remove(); return; }
   if (!nb) { nb = document.createElement('button'); nb.id = 'brief-new'; nb.className = 'btn ghost'; go.after(nb); nb.addEventListener('click', newGameClick); }
   nb.textContent = 'New game'; nb.classList.remove('danger'); newArm = 0;
@@ -1372,7 +1429,7 @@ function beginPlay() {
   if (M.start) M.start(G, !!sv);
 }
 function resume() { G.mode = 'play'; hideAll(); $('#btn-pause').hidden = false; music.duck(false); last = performance.now(); }
-function pauseGame() { if (!G || G.mode !== 'play') return; leaveSave(); G.mode = 'pause'; J = null; fireHeld = false; music.duck(true); show('scr-pause'); }
+function pauseGame() { if (!G || G.mode !== 'play') return; leaveSave(); G.mode = 'pause'; J = null; fireHeld = false; music.duck(true); const sc = $('#sc-open-pause'); if (sc) sc.hidden = !(M && M.save); show('scr-pause'); }
 function resumeGame() { if (!G || G.mode !== 'pause') return; resume(); }
 
 function finish(win, why) {
@@ -1540,7 +1597,7 @@ function renderTitle() {
   const lan = CFG.LAN_DATE, days = Math.round((Date.parse(lan + 'T12:00:00Z') - Date.parse(t + 'T12:00:00Z')) / 864e5);
   $('#days').textContent = days > 0 ? days : '0';
   $('#days-label').textContent = days > 1 ? 'days to the LAN' : days === 1 ? 'day to the LAN' : days === 0 ? 'LAN day!' : 'LAN is over';
-  if (DEV) $('#missions-note').textContent += ' DEV mode' + (FAKE_DATE ? ' · date ' + FAKE_DATE + ' · nothing is sent' : '') + '.';
+  if (TEST) $('#missions-note').textContent += (DEV ? ' DEV mode' : ' DAY-TEST mode (release days respected, nothing is sent)') + (FAKE_DATE ? ' · date ' + FAKE_DATE + ' · nothing is sent' : '') + '.';
 }
 function setName(n) { playerName = n; store.set('lod.name', n); syncNames(); renderTitle(); renderWeapons(); }
 function syncNames() { const n = $('#player-name'); if (n) n.textContent = playerName || '?'; }
@@ -1601,6 +1658,7 @@ function initUI() {
   $('#board-back').addEventListener('click', () => { if (board.from === 'scr-result' && G && G.mode === 'result') show('scr-result'); else goTitle(); });
   $('#btn-pause').addEventListener('click', pauseGame);
   $('#resume').addEventListener('click', resumeGame);
+  $('#sc-open-pause').addEventListener('click', () => openSaveCode('scr-pause'));
   $('#quit').addEventListener('click', goTitle);
 }
 window.addEventListener('keydown', e => {
@@ -1638,7 +1696,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 
 /* ---------- public API ---------- */
 Object.assign(LOD, {
-  mission, missions: MISSIONS, status, today, dayKey, prettyDay, dev: DEV,
+  mission, missions: MISSIONS, status, today, dayKey, prettyDay, dev: DEV, devDay: DEVDAY, test: TEST,
   view, cam, ctx, cv, stage, input, toScreen,
   addScore, combo, comboBreak, pop, toast, burst, after, ramp, tickFx, em, rrect, haptic,
   perk, weak, egg, beer, tryShield, callout, abilityCallout, weakCallout, eggFound, PERKS,

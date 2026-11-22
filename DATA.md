@@ -37,7 +37,7 @@ xanadger: { line: 'badger', stage: 'drug', name: 'Xanadger', trip: 'xanax', feed
 | `needs: 'reveal'` | Only while something reveals it: mushrooms, LSD, a Ladd-ybug in the party. (Trippopotamus.) |
 | `ability` | `noDrops` (ignores stat drops: Honey Badger), `reveal` (Ladd-ybug). |
 | `rarity` | `C` `U` `R` `E` `L` `M`: catch odds, XP stats, Kenny's and the dealer's prices. `M`: add `trapOnly: 'mythicTrap'`. |
-| `art` | **Add it when you have drawn it:** `art: 'assets/creatures/badgerCub.png'` (48 × 48, transparent). Until then the game shows `❔` and that is **not** a warning. |
+| `art` | **Not needed any more:** put a 48 × 48 PNG named after the form id in `assets/creatures/` (`assets/creatures/badgerCub.png`) and the game uses it (looked up once when the mission opens; a missing file is silent and shows a dark disc with a `?`). An explicit `art: '…'` still works and warns when its file is missing. Make the PNG from any picture with `node tools/import-art.js photo.jpg badgerCub` (or open `tools/import-art.html`): background removed, cropped, 48 × 48, palette-snapped, navy outline. |
 
 **Where things name creatures** (zones, trainer `party`, `debtCollector.team`, fishing `catch`, quests `carry:`): a **line** id (`'rat'`) means "the form that lives at that level" (Mouse below Lv 12, Rat to 29, Rat King from 30), an exact form id (`'cokeroach'`, `'pikezilla'`) means that form. `carry: 'rat'` matches any form of the line. Hero teams (`heroes.x.team`) are exact drug forms; their levels follow `tuning.BOSS_LV` + steps per hero beaten, or with `BOSS_AT_GATE: true` the house gate −2 / ±0 / +2. A line you add needs at least one form with `stage: 1` (the youngling) to be found.
 
@@ -352,6 +352,6 @@ sprites: { coin: { grid: ['..yy..', '.yYYy.', 'yYwYYy', '.yYYy.', '..yy..'] } } 
 ```
 
 ## Checklist after a data drop
-1. Open `?dev=all&date=<the drop day>` and check that the console shows no `[PX.data]` warnings.
+1. Open `?dev=all&date=<the drop day>` and check that the console shows no `[PX.data]` warnings. `?dev=day&date=<the drop day>` plays that day as players get it (nothing from later days).
 2. Run `bash tests/run.sh` and make sure it ends with `ALL PASSED`.
 3. Commit only `data/m3-data.js` plus any new PNGs.

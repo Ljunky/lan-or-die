@@ -19,6 +19,8 @@ Motorn (`engine.js`) äger allt som är lika i alla missions. En mission är en 
 - `unlock: 'YYYY-MM-DD'` = missionens första dag, `until: 'YYYY-MM-DD'` (valfri) = sista dagen den räknas. En gemensam rankning för hela perioden. Före: låst. Samma dag: **LIVE** (poäng skickas). Efter: **Practice** (spelbar, poäng skickas inte, räknas inte).
 - Rankbadges och 👑 räknas bara på missionens egen dag. Slutgiltiga 23:59.
 - `?dev=all` låser upp allt (som Practice). `?dev=all&date=2026-11-20` låtsas att det är ett annat datum (skickar aldrig poäng).
+- `?dev=day&date=2026-11-23` är ett **testläge som respekterar release-dagar och lås** (en mission före sitt unlock-datum är låst, M3 släpper bara det som är releasat den dagen). Skickar aldrig något till tavlan. `LOD.devDay`, `LOD.test` (= dev=all eller dev=day).
+- **Sparkod (opt-in, missions med `save: true`):** pausmenyn och briefen har "Save code": hela sparningen (+ bästa poäng) som en textkod med checksumma (komprimerad när webbläsaren kan), som man kan kopiera eller spara som fil och importera på en annan telefon. Bara samma mission och samma spelarnamn; ersätter sparningen först efter ett andra tryck. Ingen backend behövs.
 
 ## Mission-definition
 ```js

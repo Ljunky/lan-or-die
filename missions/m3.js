@@ -92,6 +92,18 @@ function lookOf(sp) {
   return null;
 }
 for (const id in D.raw.creatures) { const c = D.raw.creatures[id]; if (c.art) PX.sprites.define('cr:' + id, { png: c.art, onMissing: (i, u) => D.warnings.push('art missing ' + u) }); }
+/* art without an `art:` line: drop a 48x48 PNG named after the form into assets/creatures/<id>.png and it is used. Probed once, when the mission is opened
+   (96 tiny requests, the ones that do not exist just answer 404). An explicit `art:` still wins and warns when its file is missing. */
+let artProbed = false;
+function probeArt() {
+  if (artProbed) return; artProbed = true;
+  for (const id in D.raw.creatures) {
+    const c = D.raw.creatures[id]; if (c.art) continue;
+    const url = 'assets/creatures/' + id + '.png', img = new Image();
+    img.onload = () => { c.art = url; delete iconCache[id]; PX.sprites.define('cr:' + id, { png: url }); };
+    img.src = url;   // onerror: nothing, the placeholder stays
+  }
+}
 for (const id in (D.raw.sprites || {})) PX.sprites.define(id, D.raw.sprites[id]);
 function spriteOf(sp) { // creature or person -> sprite id at battle size
   const L = lookOf(sp); if (L) return battleDoll(sp, L);
@@ -1535,7 +1547,7 @@ async function fieldBook() {
     await say(FB.locked + '\n\nYou have: ' + (mine.length ? mine.map(c => cname(c) + ' Lv ' + c.lv).join(', ') : 'nothing yet') + '.', { auto: false }); return;
   }
   for (;;) {
-    const ls = WILD_LINES().concat(Object.keys(LINES).filter(l => SP[LINES[l][0]].starter && LINES[l].some(k => G.seen[k] || G.caught[k]))).filter(l => LINES[l].some(k => rel(SP[k]) || G.caught[k]));
+    const ls = WILD_LINES().concat(Object.keys(LINES).filter(l => SP[LINES[l][0]].starter && LINES[l].some(k => G.seen[k] || G.caught[k]))).filter(l => LINES[l].some(k => rel(SP[k]) || G.caught[k] || G.seen[k]));   // a line you met in a boss team shows up even before its release day
     const l = await ask((FB.intro || 'Fältboken') + ' · ' + Object.keys(G.lines).length + '/' + WILD_LINES().length + ' lines caught', ls.map(l => { const any = LINES[l].some(k => G.seen[k] || G.caught[k]), got = LINES[l].some(k => G.caught[k]);
       return { label: (got ? '● ' : any ? '○ ' : '· ') + (any ? lineLabel(l) : '???'), img: any ? creatureIcon(LINES[l].find(k => SP[k].stage === 1) || LINES[l][0]) : '', ty: any ? SP[LINES[l][0]].type : '', value: l }; }).concat([BACK('‹ Close')]), { one: true });
     if (!l) return;
@@ -1738,7 +1750,7 @@ function hud(ctx, G) {
       ctx.fillStyle = '#fbf6e8'; LOD.rrect(W / 2 - w / 2, 40, w, 24, 6); ctx.fill(); ctx.strokeStyle = '#1F2A44'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = '#1F2A44'; ctx.fillText(zn, W / 2, 52.5); ctx.globalAlpha = 1;
     }
   }
-  if (LOD.dev && devTile) { ctx.font = '700 12px Barlow, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(10,16,22,.8)'; LOD.rrect(W / 2 - 80, 70, 160, 22, 6); ctx.fill(); ctx.fillStyle = '#3ddc84'; ctx.fillText('tile [' + devTile.join(', ') + '] copied', W / 2, 81); }
+  if (LOD.test && devTile) { ctx.font = '700 12px Barlow, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(10,16,22,.8)'; LOD.rrect(W / 2 - 80, 70, 160, 22, 6); ctx.fill(); ctx.fillStyle = '#3ddc84'; ctx.fillText('tile [' + devTile.join(', ') + '] copied', W / 2, 81); }
 }
 function drawScreen(ctx, G, t) {
   if (G.scene === 'battle' && B) drawBattle(ctx, t);
@@ -1873,7 +1885,7 @@ async function strangerTalk() {
 }
 /* starter claims: first come, first served across the five players */
 const CLAIM_KEY = 'lod.claims.m3';
-const liveClaims = () => LOD.status(DEF) === 'live' && !LOD.dev && !!LOD.CFG.API_URL;
+const liveClaims = () => LOD.status(DEF) === 'live' && !LOD.test && !!LOD.CFG.API_URL;
 let claimsApi = false;
 async function fetchJSON(url, opt = {}, ms = 4000) {
   const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
@@ -1909,13 +1921,13 @@ async function chooseStarter() {
     await say2(OP.stranger.name, OP.tooSlow);
   }
 }
-if (LOD.dev && new URLSearchParams(location.search).get('claims') === 'reset') { try { localStorage.removeItem(CLAIM_KEY); } catch (e) {} }
+if (LOD.test && new URLSearchParams(location.search).get('claims') === 'reset') { try { localStorage.removeItem(CLAIM_KEY); } catch (e) {} }
 
 /* ===================== INPUT: tap = talk / next. ?dev: long-press shows + copies the tile ===================== */
 let tap = null, devTile = null, devTileT = 0, holdTimer = 0;
 LOD.cv.addEventListener('pointerdown', e => {
   tap = { x: e.clientX, y: e.clientY, t: performance.now() };
-  if (LOD.dev && LOD.M === DEF && G && G.scene === 'map') { clearTimeout(holdTimer); holdTimer = setTimeout(() => { if (!tap) return; const r = LOD.cv.getBoundingClientRect(), v = LOD.view, wx = LOD.cam.x + (tap.x - r.left - v.W / 2) / v.scale, wy = LOD.cam.y + (tap.y - r.top - v.H / 2) / v.scale; devTile = [Math.floor(wx / T), Math.floor(wy / T)]; devTileT = 4; console.log('[m3] tile', devTile); try { navigator.clipboard.writeText('[' + devTile.join(', ') + ']').catch(() => {}); } catch (err) {} }, 650); }
+  if (LOD.test && LOD.M === DEF && G && G.scene === 'map') { clearTimeout(holdTimer); holdTimer = setTimeout(() => { if (!tap) return; const r = LOD.cv.getBoundingClientRect(), v = LOD.view, wx = LOD.cam.x + (tap.x - r.left - v.W / 2) / v.scale, wy = LOD.cam.y + (tap.y - r.top - v.H / 2) / v.scale; devTile = [Math.floor(wx / T), Math.floor(wy / T)]; devTileT = 4; console.log('[m3] tile', devTile); try { navigator.clipboard.writeText('[' + devTile.join(', ') + ']').catch(() => {}); } catch (err) {} }, 650); }
 });
 LOD.cv.addEventListener('pointerup', e => {
   clearTimeout(holdTimer);
@@ -1979,6 +1991,7 @@ const DEF = {
   intensity: G => G.scene === 'battle' ? (B && B.kind !== 'wild' ? .9 : .5) : .12,
 
   init(G_) {
+    probeArt();
     G = G_; FLOW++; waits.length = 0; B = null; pending = null; FX.reset(); layer.clear(); stranger = null; wakeT = 0;
     buildUI(); hideBox();
     if (!mapCv) mapCv = renderMap();
