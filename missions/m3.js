@@ -6,7 +6,7 @@
 'use strict';
 const { clamp, rand, pick, fmt, mmss, esc } = LOD;
 const FX = PX.fx, EF = PX.effects;
-const T = 16, MW = 48, MH = 74; // tile size and map size in tiles
+const T = 16, MW = 160, MH = 74, OW = 48; // the old map is OW wide; the world now goes east to MW // tile size and map size in tiles
 let G = null, B = null;
 
 /* ===================== DATA ===================== */
@@ -16,9 +16,10 @@ const SCHEMA = {
   items: { req: ['kind', 'name'], enums: { kind: ['throwable', 'trap', 'lure', 'weapon', 'drug', 'app', 'key'] }, nums: ['price', 'waitMin', 'tier'], refs: { upgradesTo: 'items', rare: 'creatures', spawn: 'creatures' } },
   heroes: { req: ['name', 'team', 'at', 'look'], refs: { team: 'creatures', moves: 'moves' } },
   partners: { req: ['name', 'guy', 'at', 'look'], refs: { guy: 'heroes' } },
-  npcs: { req: ['name', 'role', 'at'], enums: { role: ['talker', 'merchant', 'trainer', 'gym', 'dealer', 'filler', 'fence'] }, refs: { shop: 'items', party: 'creatures' } },
+  npcs: { req: ['name', 'role', 'at'], enums: { role: ['talker', 'merchant', 'trainer', 'gym', 'dealer', 'filler', 'fence', 'boatman'] }, refs: { shop: 'items', party: 'creatures' } },
   zones: { req: ['name', 'r'], refs: { enc: 'creatures' } },
-  apps: { req: ['name', 'icon', 'lines'] }
+  apps: { req: ['name', 'icon', 'lines'] },
+  houses: { req: ['name', 'hero', 'level', 'door'], refs: { hero: 'heroes' }, nums: ['level'] }
 };
 const D = PX.data.load(window.M3_DATA, SCHEMA, { today: LOD.today, devAll: LOD.dev, flag: f => !!(G && (f.startsWith('know:') ? G.know && G.know[f.slice(5)] : G.flags && G.flags[f])) });
 const CFG = D.raw.tuning, TY = D.raw.types, TYPES = TY.cycle, TCOL = TY.colors;
@@ -108,8 +109,8 @@ function building(x, y, w, h, door, doorTop) {
   const dy = doorTop ? y : y + h - 1; fill(door, dy, 2, 1, 'r');
   for (let i = x + 2; i < x + w - 2; i += 3) if (Math.abs(i - door) > 2 && !doorTop) MAP[dy][i] = 'w';
 }
-fill(0, 0, MW, 8, '~'); fill(0, 8, MW, 1, 's'); fill(22, 2, 3, 6, 'P');
-fill(0, 9, MW, 11, ','); for (let y = 9; y < 20; y++) { MAP[y][0] = 'T'; MAP[y][MW - 1] = 'T'; }
+fill(0, 0, OW, 8, '~'); fill(0, 8, OW, 1, 's'); fill(22, 2, 3, 6, 'P');
+fill(0, 9, OW, 11, ','); for (let y = 9; y < 20; y++) { MAP[y][0] = 'T'; MAP[y][OW - 1] = 'T'; }
 fill(13, 11, 8, 3, '"'); fill(13, 16, 7, 3, '"'); fill(25, 11, 9, 3, '"'); fill(26, 16, 7, 3, '"');
 for (const [x, y] of [[12, 10], [28, 17], [35, 17], [21, 11]]) MAP[y][x] = 'T';
 for (const [x, y] of [[17, 12], [24, 12]]) MAP[y][x] = 'B';
@@ -119,7 +120,7 @@ fill(1, 10, 11, 9, 'n'); fill(2, 11, 9, 7, 'm'); fill(6, 18, 1, 1, 'g');
 building(37, 9, 10, 10, 41);
 for (const [x, y] of [[38, 11], [38, 13], [45, 13], [45, 16], [39, 16]]) MAP[y][x] = 'K';
 MAP[10][41] = 'W';
-fill(0, 20, MW, 2, '=');
+fill(0, 20, OW, 2, '=');
 // ICA Maxi
 building(1, 22, 31, 25, 15);
 fill(2, 27, 29, 1, '#'); MAP[27][16] = 'x';
@@ -137,25 +138,50 @@ fill(35, 23, 11, 6, ':'); for (const x of [36, 39, 42]) fill(x, 24, 1, 4, 'H'); 
 fill(44, 33, 2, 1, 'M'); MAP[34][44] = 'M';
 // Apotek Hjärtat
 building(34, 35, 13, 10, 39); fill(36, 38, 8, 1, 'c'); fill(35, 36, 2, 1, 'H'); fill(44, 36, 2, 1, 'H');
-fill(0, 47, MW, 1, 'o'); fill(32, 22, 2, 25, 'o'); fill(0, 48, MW, 2, '=');
-fill(0, 50, MW, 14, '.');
+fill(0, 47, OW, 1, 'o'); fill(32, 22, 2, 25, 'o'); fill(0, 48, OW, 2, '=');
+fill(0, 50, OW, 14, '.');
 for (const y of [51, 56, 61]) for (let x = 13; x < 33; x += 2) MAP[y][x] = 'l';
 fill(13, 53, 20, 2, '"'); fill(13, 58, 20, 2, '"'); fill(1, 52, 9, 2, '"');
 for (const [x, y] of [[14, 51], [20, 51], [26, 56], [16, 61], [30, 61], [22, 56]]) MAP[y][x] = 'k';
 fill(36, 51, 11, 1, 'h'); for (const x of [38, 41, 44]) MAP[52][x] = 'e'; fill(36, 56, 11, 3, '"');
 fill(3, 60, 3, 2, 'v');
-fill(0, 64, MW, 1, 'o');
+fill(0, 64, OW, 1, 'o');
 building(1, 65, 11, 9, 5, true); fill(2, 70, 9, 1, 'c'); fill(2, 66, 4, 3, ':'); MAP[67][8] = 'B';
 building(12, 65, 11, 9, 16, true); fill(13, 70, 9, 1, 'c'); MAP[67][14] = 'B'; MAP[67][20] = 'B';
 building(23, 65, 11, 9, 27, true); fill(24, 70, 9, 1, 'c'); MAP[67][25] = 'B'; MAP[67][31] = 'B';
 building(34, 65, 13, 9, 39, true); for (const x of [36, 40, 44]) MAP[70][x] = 'B';
 
-const SOLID = new Set(['~', 'T', '#', 'w', 'H', 'F', 'c', 'x', 'e', 'v', 'k', 'B', 'h', 'n', 'K', 'W', 'M']);
-const ENC_TILES = new Set(['"', ':', 'f']);
+/* ===== the bigger world: rectangles from data/m3-data.js → world. Before world.release the east is a wall of trees, so Monday's map is the old one ===== */
+const WORLD = D.raw.world;
+(function applyWorld() {
+  const ops = (WORLD.always || []).concat(rel(WORLD) ? WORLD.ops : WORLD.closed);
+  for (const op of ops) {
+    const [k, ...a] = op;
+    if (k === 'fill') fill(...a);
+    else if (k === 'set') { if (MAP[a[1]]) MAP[a[1]][a[0]] = a[2]; }
+    else if (k === 'room') { const [x, y, w, h, wall, floor, dx, dy, dw] = a; fill(x, y, w, h, wall); fill(x + 1, y + 1, w - 2, h - 2, floor); fill(dx, dy, dw, 1, 'r'); }
+    else if (k === 'scatter') { const [x, y, w, h, ch, dens, seed] = a; for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) if (MAP[j] && hash(i + seed * 131, j + seed * 17) < dens) MAP[j][i] = ch; }
+  }
+})();
+const SOLID = new Set(['~', 'T', '#', 'w', 'H', 'F', 'c', 'x', 'e', 'v', 'k', 'B', 'h', 'n', 'K', 'W', 'M', 'N', 'X', 'Q', 'J', 'D']); // V (big lake) is solid unless you have a boat or a ferry
+const ENC_TILES = new Set(['"', ':', 'f', 'u']);
 const cemeteryOpen = () => rel(ZONE_DEFS.cemetery);
+/* ---- the houses: you only get in with a strong enough creature (your own hero's house is your home) ---- */
+const HOUSES = D.raw.houses || {}, doorAt = {};
+for (const id in HOUSES) for (let i = 0; i < (HOUSES[id].doorW || 2); i++) doorAt[(HOUSES[id].door[0] + i) + ',' + HOUSES[id].door[1]] = id;
+const bestLevel = () => Math.max(0, ...[...G.party, ...G.box].filter(c => isCreature(c.sp)).map(c => c.lv));
+const houseOpen = id => { const h = HOUSES[id]; return !!h && rel(h) && (heroId() === h.hero || bestLevel() >= h.level); };
+const housesToSee = () => HERO_IDS.filter(h => h !== heroId() && HOUSES[h] && rel(HOUSES[h]));         // every released house except your own
+const housesDone = () => housesToSee().every(h => G.flags['house:' + h]);
+const stockOpen = () => G.beat.length >= 4 && housesDone();                                              // Dev Ljunky: all heroes beaten and all the houses seen
+/* ---- the big lake: a boat (traded from Boat-Bengt) or a creature that knows Ferry carries you over water ---- */
+const ferryCreature = () => G.party.find(c => SP[c.sp] && SP[c.sp].moves.some(m => m[0] === 'ferry' && m[1] <= c.lv));
+const sailOK = () => !!(G && G.flags && (G.flags.boat || (G.know && G.know.ferry && ferryCreature())));
 function solidAt(px, py) {
   const tx = Math.floor(px / T), ty = Math.floor(py / T), ch = tile(tx, ty);
-  if (ch === 'x') return !(G && G.beat && G.beat.length >= 4);
+  if (ch === 'V') return !sailOK();
+  if (ch === 'r' && G) { const hid = doorAt[tx + ',' + ty]; if (hid) return !houseOpen(hid); }
+  if (ch === 'x') return !(G && G.beat && stockOpen());
   if (ch === 'g') return !cemeteryOpen();
   if (ch === 'r' && S.blocked(tx, ty)) return true;
   return SOLID.has(ch);
@@ -174,7 +200,7 @@ const SIGNS = [
   [16.5, 46, 'ICA MAXI', '#e3000f', '#fff'], [40, 32, 'SYSTEMBOLAGET', '#0a6e3a', '#ffd23a'], [40, 44, 'APOTEK HJÄRTAT', '#2fa36b', '#fff'],
   [6, 65, 'IRON BURGER', '#222', '#f39c34'], [17, 65, 'PIZZERIA BERGA', '#b02a1e', '#fff'], [28, 65, 'J&K99 SUSHI', '#1c2a36', '#ff6b6b'],
   [40, 65, "TAILOR'S BARBER", '#3a2a4a', '#f4e08a'], [41.5, 50.5, 'E.ON', '#e3000f', '#fff'], [16.5, 27, 'STOCK ROOM', '#333', '#ff5a5a'],
-  [42, 18.6, 'THE BOX', '#111', '#f7931a'], [6.5, 18.6, 'CEMETERY', '#3a3a44', '#d8d8e0'], [44.5, 32.7, 'PANT', '#2e7d32', '#fff']
+  [6.5, 18.6, 'CEMETERY', '#3a3a44', '#d8d8e0'], [44.5, 32.7, 'PANT', '#2e7d32', '#fff']
 ];
 let mapCv = null;
 function hash(x, y) { let h = x * 374761393 + y * 668265263; h = (h ^ (h >> 13)) * 1274126177; return ((h ^ (h >> 16)) >>> 0) / 4294967296; }
@@ -216,6 +242,21 @@ function renderMap() {
       case 'g': R(x, y, T, T, '#58903f'); R(x, y + 2, 2, 12, '#3a3a44'); R(x + 14, y + 2, 2, 12, '#3a3a44'); break;
       case 'K': gymFloor(); { const k = (tx + ty) % 3; if (k === 0) { R(x + 2, y + 6, 5, 6, '#111'); R(x + 3, y + 3, 3, 3, '#444'); R(x + 9, y + 6, 5, 6, '#111'); R(x + 10, y + 3, 3, 3, '#444'); } else if (k === 1) { c.fillStyle = '#111'; c.beginPath(); c.arc(x + 8, y + 8, 7, 0, 7); c.fill(); c.fillStyle = '#2a2a30'; c.beginPath(); c.arc(x + 8, y + 8, 3, 0, 7); c.fill(); } else { R(x + 1, y + 9, 14, 3, '#3a3a44'); R(x + 3, y + 5, 4, 4, '#555'); R(x + 11, y + 7, 3, 2, '#f7931a'); } } break;
       case 'W': R(x, y, T, T, '#1d1d24'); R(x + 1, y + 1, T - 2, T - 4, '#f4f4f4'); for (let i = 0; i < 4; i++) R(x + 3, y + 3 + i * 2, 6 + (i % 2) * 3, 1, i ? '#2f6fd0' : '#e3000f'); break;
+      case 'a': R(x, y, T, T, (tx + ty) % 2 ? '#7fd35a' : '#74c84f'); break;
+      case 'Z': R(x, y, T, T, '#9af274'); R(x + 2, y + 2, 1, 1, '#b8ff94'); break;
+      case 'G': R(x, y, T, T, '#9af274'); R(x + 7, y + 2, 1, 11, '#e8eef3'); R(x + 8, y + 2, 5, 3, '#e3000f'); R(x + 5, y + 13, 5, 2, '#222'); break;
+      case 'b': R(x, y, T, T, '#74c84f'); R(x + 1, y + 2, T - 2, T - 4, '#ecd89a'); R(x + 4, y + 5, 2, 1, '#c9b070'); R(x + 9, y + 9, 3, 1, '#c9b070'); break;
+      case 'N': R(x, y, T, T, '#6b7686'); R(x, y, T, 2, '#8995a6'); R(x + 2, y + 4, 4, 4, '#bfe1f0'); R(x + 9, y + 4, 4, 4, '#bfe1f0'); R(x + 2, y + 10, 4, 3, '#4a5666'); R(x + 9, y + 10, 4, 3, '#4a5666'); break;
+      case 'y': R(x, y, T, T, '#b59a6a'); R(x + (n * 10 | 0), y + (n * 9 | 0) + 2, 2, 1, '#8a7348'); R(x + 9, y + 11, 2, 1, '#d6bd8a'); break;
+      case 'X': R(x, y, T, T, '#6b6f7a'); R(x, y, T, 3, '#868b97'); R(x + 3, y + 5, 6, 4, '#5a5e69'); R(x + 9, y + 9, 5, 5, '#7b808c'); if (ty < 40 && n > .4) R(x + 1, y, 5, 2, '#e8eef3'); break;
+      case 'u': R(x, y, T, T, '#2f7a3a'); for (let i = 0; i < 3; i++) { const fx = x + 2 + i * 5, fy = y + 4 + (i % 2) * 5; R(fx, fy, 1, 7, '#1d5a2a'); R(fx - 1, fy - 1, 3, 2, '#5fc26a'); R(fx + 1, fy + 2, 3, 1, '#5fc26a'); } break;
+      case 'Q': R(x, y, T, T, '#1f5a2c'); c.fillStyle = '#143f20'; c.beginPath(); c.arc(x + 8, y + 7, 8, 0, 7); c.fill(); c.fillStyle = '#2a7a3a'; c.beginPath(); c.arc(x + 5, y + 4, 4, 0, 7); c.fill(); break;
+      case 'V': R(x, y, T, T, '#245c9e'); R(x + (n * 10 | 0), y + 4 + (n * 8 | 0), 5, 1, '#4a8ad0'); R(x + 3, y + 12, 3, 1, '#4a8ad0'); break;
+      case 'i': R(x, y, T, T, (tx + ty) % 2 ? '#4a4036' : '#42382f'); if (n > .8) R(x + 4, y + 8, 3, 2, '#5a5046'); break;
+      case 'J': R(x, y, T, T, '#8a8f9a'); R(x, y, T, 4, '#a5aab5'); for (let i = 0; i < T; i += 6) R(x + i, y, 3, 2, '#6b707b'); R(x, y + 8, T, 1, '#6b707b'); break;
+      case 'j': R(x, y, T, T, (tx + ty) % 2 ? '#c4b898' : '#b5a98a'); if ((tx + ty) % 5 === 0) R(x + 5, y + 5, 6, 6, '#a63a3a'); break;
+      case 'D': R(x, y, T, T, '#1d1030'); R(x, y, T, 3, '#3a2060'); if ((tx + ty) % 3 === 0) R(x + 3, y + 6, 10, 2, ['#ff3df0', '#3dd6ff', '#3dff8a'][(tx + ty) % 3 | 0] || '#ff3df0'); break;
+      case 'd': R(x, y, T, T, ['#2a1a4a', '#4a1a5a', '#1a2a5a', '#5a1a3a'][(tx * 3 + ty * 5) % 4]); R(x + 1, y + 1, T - 2, T - 2, ['#3a2a6a', '#6a2a7a', '#2a3a7a', '#7a2a5a'][(tx * 3 + ty * 5) % 4]); break;
       case 'M': R(x, y, T, T, '#5b6069'); R(x + 1, y, T - 2, T - 1, '#2e7d32'); R(x + 3, y + 3, T - 6, 5, '#1c2a36'); R(x + 5, y + 10, 6, 3, '#111'); R(x + 3, y + 1, T - 6, 1, '#7ed35a'); break;
     }
   }
@@ -1012,8 +1053,12 @@ function interactables() {
   for (const n of npcList) if (npcVisible(n)) L.push({ kind: 'npc', x: n.x, y: n.y + (n.d.area ? 0 : 6), ref: n, range: n.d.role === 'merchant' && !n.d.area ? 38 : 30 });
   for (const id of HERO_IDS) if (heroVisible(id)) { const [x, y] = tc(...HERO[id].at); L.push({ kind: 'boss', id, x, y }); }
   for (const id in PARTNERS) if (partnerVisible(id)) { const [x, y] = tc(...PARTNERS[id].at); L.push({ kind: 'partner', id, x, y }); }
-  if (G.beat.length >= 4 && !G.dev) { const [x, y] = tc(16, 24); L.push({ kind: 'dev', x, y }); }
-  if (G.beat.length < 4) { const [x, y] = tc(16, 27); L.push({ kind: 'door', x, y: y + 12, range: 26 }); }
+  if (stockOpen() && !G.dev) { const [x, y] = tc(16, 24); L.push({ kind: 'dev', x, y }); }
+  if (!stockOpen()) { const [x, y] = tc(16, 27); L.push({ kind: 'door', x, y: y + 12, range: 26 }); }
+  for (const id in HOUSES) { const h = HOUSES[id]; if (!rel(h)) continue;
+    if (!houseOpen(id)) { const [x, y] = tc(h.door[0] + 1, h.door[1]); L.push({ kind: 'housedoor', id, x, y: y + 12, range: 28 }); }
+    if (h.trophy && !G.flags['trophy:' + id]) { const [x, y] = tc(...h.trophy.at); L.push({ kind: 'trophy', id, x, y, range: 22 }); }
+    if (h.home && heroId() === h.hero) { const [x, y] = tc(...h.home.at); L.push({ kind: 'home', id, x, y, range: 24 }); } }
   { const [x, y] = tc(4, 61); L.push({ kind: 'van', x, y: y + 10, range: 34 }); }
   { const [x, y] = tc(23, 2); L.push({ kind: 'pier', x, y, range: 26 }); }
   { const [x, y] = tc(...D.raw.gyms.box.board); L.push({ kind: 'board', x, y: y + 14, range: 26 }); }
@@ -1044,7 +1089,9 @@ function updMap(dt) {
   if (m.len > .2) G.dir = Math.abs(mx) > Math.abs(my) ? (mx < 0 ? 2 : 3) : (my < 0 ? 1 : 0);
   G.walk = moved > .2 ? G.walk + moved : 0;
   G.steps = (G.steps || 0) + moved / 9;
-  if (z.id !== G.zoneId) { G.zoneId = z.id; G.zoneT = 2.2; }
+  if (z.id !== G.zoneId) { G.zoneId = z.id; G.zoneT = 2.2; if (z.house) { G.flags['house:' + z.house] = 1; if (stockOpen() && !G.flags.stockOpen) { G.flags.stockOpen = 1; LOD.toast('Somewhere in ICA, a door unlocks with a click…', 3); } } }
+  { const under = tile(Math.floor(G.p.x / T), Math.floor((G.p.y - 2) / T)); // on the big lake: only with a boat or a ferry creature; lose it and you drift ashore
+    if (under === 'V') { if (!sailOK()) { if (G.lastLand) [G.p.x, G.p.y] = G.lastLand; LOD.toast('You drift ashore.', 1.6); } } else G.lastLand = [G.p.x, G.p.y]; }
   if (hero === 'loken' && moved > .2) { G.coinT -= dt; if (G.coinT <= 0) { G.coinT = rand(6, 10); if (G.kr > 0) { G.kr--; G.coins.push({ x: G.p.x, y: G.p.y, t: 6 }); LOD.pop(G.p.x, G.p.y - 24, '−1 kr 🪙', '#f5c242'); } } }
   for (const c of G.coins) c.t -= dt; G.coins = G.coins.filter(c => c.t > 0);
   // lures: a wife or a hero comes to you
@@ -1058,7 +1105,7 @@ function updMap(dt) {
   }
   // encounters
   const ch = tile(Math.floor(G.p.x / T), Math.floor((G.p.y - 2) / T));
-  if (ENC_TILES.has(ch) && z.enc && moved > 0 && G.party.length) {
+  if ((ENC_TILES.has(ch) || ch === 'V') && z.enc && moved > 0 && G.party.length) {
     G.stepD += moved;
     while (G.stepD >= T) {
       G.stepD -= T; G.encCool--;
@@ -1120,6 +1167,9 @@ async function interact() {
     else if (o.kind === 'van') await vanMenu();
     else if (o.kind === 'pier') await fish();
     else if (o.kind === 'board') await S.board();
+    else if (o.kind === 'housedoor') await say(HOUSES[o.id].locked || 'It does not budge.', { auto: false });
+    else if (o.kind === 'trophy') await trophy(o.id);
+    else if (o.kind === 'home') await home(o.id);
     else if (S.interact) await S.interact(o);
   } finally { if (G && G.scene === 'talk') { hideBox(); G.scene = 'map'; } }
 }
@@ -1135,6 +1185,7 @@ async function npcTalk(n) {
   const d = n.d, id = n.id, who = d.name;
   n.tx = n.x; n.ty = n.y; n.dir = G.p.y < n.y ? 1 : 0;
   if (d.role === 'dealer') return S.dealer(n);
+  if (d.role === 'boatman') return boatman(n);
   if (d.role === 'fence') return fence(n);
   const tk = await PPL.talk(id, { name: who, fallback: npcLine(d) });
   if (tk.fight) { hideBox(); startNpcFight(id); return; }
@@ -1203,6 +1254,28 @@ async function upgradeTranq(who) {
   if (!a) return;
   G.kr -= it.upgradeCost; take(w); give(nx); SFX.buy(); await say2(who, 'Done. Don\'t point it at me.');
 }
+async function trophy(id) {
+  const h = HOUSES[id], t = h.trophy; G.flags['trophy:' + id] = 1;
+  await say(t.text, { auto: false });
+  for (const k in (t.give || {})) give(k, t.give[k]);
+  if (t.kr) G.kr += t.kr;
+  SFX.buy(); LOD.toast('🎁 ' + Object.keys(t.give || {}).map(k => (ITEMS[k] ? ITEMS[k].em : '') + '×' + t.give[k]).join(' ') + (t.kr ? ' +' + t.kr + ' kr' : ''), 2.4);
+}
+async function home(id) { // your own hero's house: heal and storage
+  await say('Home. The couch has your shape.', { auto: false });
+  for (const c of G.party.concat(G.box)) c.hp = maxHp(c);
+  [659, 784, 988].forEach((f, i) => LOD.tone(f, .12, 'triangle', .05, 0, i * .12));
+  await vanMenu();
+}
+async function boatman(n) {
+  const d = n.d, who = d.name;
+  await PPL.talk(n.id, { name: who, fallback: 'Boats.' });
+  if (G.flags.boat) return;
+  const a = await ask(who, [{ label: '🚤 Trade the van for the boat', value: 1, cls: 'hot' }, BACK('Not now')], { who });
+  if (!a) return;
+  G.flags.boat = 1; SFX.buy(); LOD.haptic('success');
+  await say2(who, 'Keys. …Done! She is yours. Everything you kept in the van is on the back seat, the new back seat. I keep the cassettes.');
+}
 async function bossTalk(id) {
   const h = HERO[id];
   if (G.beat.includes(id)) return say2(h.name, h.after);
@@ -1216,7 +1289,7 @@ async function bossWon(id, how) {
   LOD.callout(h.name.toUpperCase() + ' BEATEN!', '+' + fmt(CFG.PTS.hero) + ' · ' + G.beat.length + '/4 heroes', 'good');
   await say('You beat ' + h.name + '! +' + CFG.BOSS_KR + ' kr.');
   if (how === 'left') await say(h.name + ': "' + h.after + '"');
-  if (G.beat.length >= 4 && !G.flags.stockOpen) { G.flags.stockOpen = 1; await say('Somewhere in ICA, a door unlocks with a click…'); }
+  if (stockOpen() && !G.flags.stockOpen) { G.flags.stockOpen = 1; await say('Somewhere in ICA, a door unlocks with a click…'); }
 }
 async function trainerWon(id, how) {
   const d = npcDef(id); if (id === D.raw.debtCollector.npc) { await say(d.name + ': "' + d.win + '"'); return; }
@@ -1250,7 +1323,7 @@ async function devWon() {
   LOD.finish(true, 'done');
 }
 async function vanMenu() {
-  const a = await ask('The LAN van. ' + G.box.length + ' in the back.', [{ label: '🔄 Swap with the van', value: 'swap', dis: !G.box.length }, { label: '😴 Sleep', value: 'sleep' }, BACK('‹ Leave')], { who: 'LAN VAN' });
+  const a = await ask((G.flags.boat ? 'The boat. ' : 'The LAN van. ') + G.box.length + ' in the back.', [{ label: '🔄 Swap with the van', value: 'swap', dis: !G.box.length }, { label: '😴 Sleep', value: 'sleep' }, BACK('‹ Leave')], { who: G.flags.boat ? 'THE BOAT' : 'LAN VAN' });
   if (a === 'sleep') return say("It smells like Löken's gym bag. You decide not to.", { auto: false });
   if (a !== 'swap') return;
   const bi = await ask('Take who from the van?', G.box.map((c, i) => ({ label: cname(c) + ' Lv ' + c.lv, img: creatureIcon(c.sp), ty: typeOf(c), value: i })).concat([BACK()]), { one: true });
@@ -1329,7 +1402,7 @@ function drawWorld(ctx, G, t) {
   const y0 = Math.max(0, Math.floor((cam.y - vh / 2) / T) - 1), y1 = Math.min(MH, Math.ceil((cam.y + vh / 2) / T) + 1);
   ctx.fillStyle = 'rgba(255,255,255,.35)';
   for (let y = y0; y < Math.min(y1, 8); y++) for (let x = x0; x < x1; x++) if (MAP[y][x] === '~' && hash(x, y + ((t * 2) | 0)) > .8) ctx.fillRect(x * T + 4 + ((t * 6 + x) % 8), y * T + 9, 3, 1);
-  if (G.beat.length >= 4) { ctx.fillStyle = '#1a1210'; ctx.fillRect(16 * T + 2, 27 * T + 1, T - 4, T - 1); }
+  if (stockOpen()) { ctx.fillStyle = '#1a1210'; ctx.fillRect(16 * T + 2, 27 * T + 1, T - 4, T - 1); }
   if (!cemeteryOpen()) { ctx.fillStyle = '#5a5a66'; ctx.fillRect(6 * T + 2, 18 * T + 6, T - 4, 3); ctx.fillRect(6 * T + 6, 18 * T + 3, 4, 9); }
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '400 7px Bungee, Impact, sans-serif';
   for (const [sx, sy, txt, bg, fg] of SIGNS) {
@@ -1348,7 +1421,7 @@ function drawWorld(ctx, G, t) {
   // people, sorted by y
   const me = heroId(), list = [];
   const step = G.walk ? 1 : 0;
-  list.push({ y: G.p.y, f: () => drawPerson(ctx, Object.assign({}, HERO[me].look, G.stache ? { stache: 1 } : null), G.p.x, G.p.y, G.dir, step, t) });
+  list.push({ y: G.p.y, f: () => { if (tile(Math.floor(G.p.x / T), Math.floor((G.p.y - 2) / T)) === 'V') { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(G.p.x, G.p.y + 1, 10, 3, 0, 0, 7); ctx.fill(); LOD.em(G.flags.boat ? '⛵' : '🌊', G.p.x, G.p.y - 1 + Math.sin(t * 3) * 1.5, 16); } drawPerson(ctx, Object.assign({}, HERO[me].look, G.stache ? { stache: 1 } : null), G.p.x, G.p.y - (tile(Math.floor(G.p.x / T), Math.floor((G.p.y - 2) / T)) === 'V' ? 4 : 0), G.dir, step, t); } });
   for (const n of npcList) if (npcVisible(n)) {
     const L = n.d.look || {}, ny = n.d.area ? n.y : n.y + 6;
     if (n.d.hidden) { const near = Math.hypot(n.x - G.p.x, n.y - G.p.y) < 40; list.push({ y: ny - 20, f: () => drawPerson(ctx, L, n.x, ny, 2, 0, t, { alpha: near ? 1 : .5 }) }); continue; }
@@ -1357,7 +1430,7 @@ function drawWorld(ctx, G, t) {
   for (const id of HERO_IDS) if (heroVisible(id)) { const [x, y] = tc(...HERO[id].at); list.push({ y: y + 6, f: () => { drawPerson(ctx, HERO[id].look, x, y + 6, 0, 0, t, { seed: id.length }); if (!G.beat.includes(id)) bubble(ctx, x, y - 18, '!', '#e3000f', t); else LOD.em('✅', x + 7, y - 14, 7); } }); }
   for (const id in PARTNERS) if (partnerVisible(id)) { const [x, y] = tc(...PARTNERS[id].at); list.push({ y: y + 6, f: () => { drawPerson(ctx, PARTNERS[id].look, x, y + 6, 0, 0, t); if (!G.solved.includes(id)) bubble(ctx, x, y - 18, '?', '#e05cc4', t); } }); }
   if (stranger) list.push({ y: stranger.y, f: () => drawPerson(ctx, OP.stranger.look, stranger.x, stranger.y, stranger.dir, stranger.step ? 1 : 0, t, { alpha: stranger.a }) });
-  if (G.beat.length >= 4 && !G.dev) { const [x, y] = tc(16, 24); list.push({ y: y + 6, f: () => drawPerson(ctx, DEV_LOOK, x, y + 6, 0, 0, t, { glitch: 1 }) }); }
+  if (stockOpen() && !G.dev) { const [x, y] = tc(16, 24); list.push({ y: y + 6, f: () => drawPerson(ctx, DEV_LOOK, x, y + 6, 0, 0, t, { glitch: 1 }) }); }
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
   if (G.near && G.scene === 'map') { const n = G.near; ctx.fillStyle = '#fbf6e8'; ctx.strokeStyle = '#1F2A44'; ctx.lineWidth = 1; LOD.rrect(n.x - 6, n.y - 38 + Math.sin(t * 6) * 1.5, 12, 9, 3); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#1F2A44'; ctx.font = '700 7px Barlow, sans-serif'; ctx.fillText('TAP', n.x, n.y - 33.5 + Math.sin(t * 6) * 1.5); }
   ctx.restore();
@@ -1460,8 +1533,9 @@ function hud(ctx, G) {
     rows.forEach((s, i) => { const w = ctx.measureText(s).width + 12; ctx.fillStyle = 'rgba(10,16,22,.62)'; LOD.rrect(8, y0 - 10 + i * 23, w, 20, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(s, 14, y0 + i * 23); });
     if (G.zoneT > 0) {
       const z = ZONES.find(q => q.id === G.zoneId); ctx.globalAlpha = Math.min(1, G.zoneT * 2);
-      ctx.font = '400 13px Bungee, Impact, sans-serif'; ctx.textAlign = 'center'; const w = ctx.measureText(z.name).width + 22;
-      ctx.fillStyle = '#fbf6e8'; LOD.rrect(W / 2 - w / 2, 40, w, 24, 6); ctx.fill(); ctx.strokeStyle = '#1F2A44'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = '#1F2A44'; ctx.fillText(z.name, W / 2, 52.5); ctx.globalAlpha = 1;
+      const zn = z.house && heroId() !== HOUSES[z.house].hero && !PPL.know('house:' + z.house) ? '???' : z.name; // a hero's house has no name until someone tells you
+      ctx.font = '400 13px Bungee, Impact, sans-serif'; ctx.textAlign = 'center'; const w = ctx.measureText(zn).width + 22;
+      ctx.fillStyle = '#fbf6e8'; LOD.rrect(W / 2 - w / 2, 40, w, 24, 6); ctx.fill(); ctx.strokeStyle = '#1F2A44'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = '#1F2A44'; ctx.fillText(zn, W / 2, 52.5); ctx.globalAlpha = 1;
     }
   }
   if (LOD.dev && devTile) { ctx.font = '700 12px Barlow, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(10,16,22,.8)'; LOD.rrect(W / 2 - 80, 70, 160, 22, 6); ctx.fill(); ctx.fillStyle = '#3ddc84'; ctx.fillText('tile [' + devTile.join(', ') + '] copied', W / 2, 81); }
@@ -1735,6 +1809,6 @@ const DEF = {
   }
 };
 LOD.mission(DEF);
-window.__m3 = { PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
+window.__m3 = { HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
   CFG, SP, MAP, ZONES, D, S, tile, zoneAt, tc, mk, goals, startWild, startBoss, startPartner, startDev, startTrainer, startNpcFight, interact, bagMenu, walkable, useItem, give, saveState, loadState, MIGRATE, EF, FX, layer, spots, npcList: () => npcList, gameSpeed, encTable, knockout, catchChance, completion: () => S.completion() };
 })();

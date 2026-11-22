@@ -18,9 +18,16 @@ Latest state is always: this file + `CHARACTERS.md` (every person and line, gene
 - Format and all conditions: `DATA.md` → "Dialogue". Every person with their text: `CHARACTERS.md` (regenerate with `node tools/dump-characters.js`).
 - Starter text only: about 4–8 unique lines per named person, replies on about 8 of them. The owner's planning chat can rewrite any of it in the same format.
 
-## NOT built yet (points 4 and 7). Decisions made by the owner: heroes stay where they are for now (moving them into houses is a later update); Dev Ljunky stays Lv 46
-4. **Bigger world**: map extended east (old coordinates kept): golf course, city, forest + deep forest, mountain, big lake; houses with level gates (Ljunky/The Box 10, Wizcudi/electronics store 20, Jrohn/shaman cave 30, Löken/castle 40, BigWman/rave 40) – heroes stay in place for now; castle via boat (Boat-Bengt must be told about by a fisherman) or a "Ferry" creature; Dev Ljunky after all 4 houses; fishing net + lake net trap.
-7. **Things to do**: quest chains per important NPC (rewards = knowledge/items/keys/relationships, no points), choices with consequences, mini-games (fishing timing bar + golf power meter first), real-clock day/night (the clock is already a dialogue condition), rumours that change Mon/Tue/Wed, house puzzles before each boss.
+## Built since (point 4: the bigger world), tested
+- Map extended east to 160 × 74 tiles; every old coordinate unchanged (the old map is in code, the new part is rectangles in `data/m3-data.js` → `world`). Before Tuesday the east is a wall of trees, so Monday's map is the old one (plus a strip of tall grass in front of The Box).
+- New areas: golf course, city, mountain with a trail, forest and deep forest, a big lake with a castle island. Roads cross bands of tall grass / undergrowth whose levels rise towards each house (Box 8–11, store 17–22, cave 28–32, rave 39–42, lake 34–40).
+- Five houses with level gates on your BEST creature (Box 10, store 20, cave 30, castle 40, rave 40). No signs; the name shows as ??? until someone told you; the door tells you in words. Each house has a one-time trophy; your own hero's house is your home (heal + storage). Heroes stay where they are. Dev Ljunky needs all four heroes AND all released houses (not your own).
+- The lake: a boat (Boat-Bengt, only after a fisherman told you; he trades it for the van, storage keeps working) or a Pikezilla that knows Ferry (Lv 30) once taught. Water encounters at 34–40. Fishing net (holds a creature 2 turns) and a lake net trap (shore only).
+- Seven new people with their own dialogue: Caddy Calle, Kiosk-Klas, Hermit Hilding, Mountain guide Greta, Doorman Dragan, Fisherman Folke, Boat-Bengt. Knowledge chain: Pelle/Hasse/Jonas/Kenny tell the houses (Tue), Pirate the castle (Wed), Folke the boat and the ferry (Wed).
+- Release: world, houses (except the castle), net: Tue. Castle, boat, ferry, Bengt: Wed. The Box and its level gate: Mon.
+
+## NOT built yet (point 7). Heroes stay in place for now; moving them into houses is a later update
+7. **Things to do**: quest chains per important NPC (rewards = knowledge/items/keys/relationships, no points), choices with consequences, mini-games (fishing timing bar + golf power meter first), real-clock day/night (the clock is already a dialogue condition; the rave louder at night), rumours that change Mon/Tue/Wed, short puzzles/quests inside each house (the houses are empty rooms with a trophy today).
 
 ## Decisions taken
 1. Heroes stay where they are for now; houses (and moving heroes into them) are a later update.

@@ -138,6 +138,30 @@ apps.tinder:      { name: 'Tinder', icon: '🔥', lines: ['It\'s a match! With {
 ```
 App line variables: `{steps}`, `{price}`, `{name}`, `{kr}`, `{debt}`.
 
+## The bigger world: map, houses, zones, lake
+
+**The map** is rectangles in `data/m3-data.js` → `world`. The old map (x 0–47) is in code and never changes, so saves keep working; everything east of it is data. Edit the rectangles, reload, look.
+```js
+world: { width: 160, release: 'tue',                     // before this day the east is a wall of trees (closed ops), so Monday's map is the old one
+  always: [['fill', 37, 19, 10, 1, '"']],                // applied every day (grass strip in front of The Box)
+  closed: [['fill', 48, 0, 112, 74, 'Q']],
+  ops: [ ['fill', x, y, w, h, tile], ['set', x, y, tile], ['scatter', x, y, w, h, tile, density, seed], ['room', x, y, w, h, wallTile, floorTile, doorX, doorY, doorWidth] ] }
+```
+Tiles: `~` old lake, `V` big lake (solid unless you have a boat or a ferry creature), `s` sand, `,` grass, `"` tall grass (encounters), `u` undergrowth (encounters), `T` tree, `Q` dense forest (solid), `=` road, `o` sidewalk, `a` fairway, `Z` green, `G` flag, `b` bunker, `N` city wall (solid), `X` rock (solid), `y` dirt path, `i` cave floor, `J` castle wall (solid), `j` castle floor, `D` rave wall (solid), `d` rave floor, `r` door mat. Tall grass or undergrowth tiles are where encounters happen, so a **path crosses an encounter area by having a band of `"`/`u` across it** (the roads have such bands). The zone under the band decides what appears.
+
+**Zones** (`zones`) say what you meet and at which level: `r: [x, y, w, h]`, `enc: [['elk', 3], …]` (creature ids and weights), `lv: [min, max]`, `release`. The first matching zone wins, so small band zones come before the big areas. `house: 'wizcudi'` makes a zone a house interior (its name shows as ??? until someone told you).
+
+**Houses** (`houses`):
+```js
+wizcudi: { name: 'The electronics store', hero: 'wizcudi', level: 20, door: [104, 37], doorW: 2, release: 'tue',
+  home: { at: [108, 34] },                                         // your own hero's house is your home: always open, heal + storage
+  trophy: { at: [100, 34], give: { techMk1: 1 }, kr: 0, text: '…' }, // one-time reward inside
+  locked: 'The store is dark. Every single light is off, on purpose.' }   // what the door says (no number, no sign)
+```
+You can only get in if your **best** creature (party or storage) has the level. Stepping inside a house sets the flag `house:<hero>`. Dev Ljunky's stock room needs all four heroes beaten **and** every released house except your own seen. Heroes stay where they are for now.
+
+**The lake:** a boat (Boat-Bengt, `role: 'boatman'`, only after `know:boat`) trades the van for a boat; the storage keeps working. Or a creature that knows the move `ferry` (Pikezilla at Lv 30, see `moves.ferry` and the creature's move list) once you know `ferry`. On the water you meet the `biglake` zone. `net` (throwable, holds a creature for 2 turns) and `netTrap` (`shore: true`, `catch: [[creature, weight]]`) are ordinary items.
+
 ## Dialogue: people with personality, memory and relationships
 
 Everything a person says is in `data/m3-data.js` → `dialogue`, one entry per person id (an NPC id, a hero id or a wife id). Personalities and knowledge are separate sections. No code needed.

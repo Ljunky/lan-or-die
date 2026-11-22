@@ -155,7 +155,9 @@ async function pickStarter(p, name) {
     await drive(p, ['Pull up', 'Let it go', 'Fight', 'Burp|Dill|Peas|Hug|Patty|Can|Pickle|Body']);
     ok(await E(p, id => window.__m3.G.beat.includes(id), id), 'beat ' + id);
   }
-  ok(await E(p, () => window.__m3.walkable(...window.__m3.tc(16, 27))), 'stock room opens after 4 heroes');
+  ok(await E(p, () => !window.__m3.walkable(...window.__m3.tc(16, 27))), 'beating the 4 heroes is not enough: the stock room stays shut until you have seen the heroes\' houses');
+  await E(p, () => { for (const h of ['bigwman', 'wizcudi', 'jrohn', 'loken']) window.__m3.G.flags['house:' + h] = 1; });
+  ok(await E(p, () => window.__m3.walkable(...window.__m3.tc(16, 27))), 'stock room opens after 4 heroes AND their houses');
   g = await E(p, () => window.__m3.goals());
   ok(g.heroes === 4 && g.rows.find(r => /Heroes/.test(r[0]))[1] === 120000, 'heroes count 4 × 30 000');
   ok(await E(p, () => window.__m3.G.score === window.__m3.goals().total), 'G.score always equals the goals total');

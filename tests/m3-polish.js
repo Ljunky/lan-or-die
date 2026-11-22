@@ -277,6 +277,111 @@ async function pickStarter(p, name) {
   ok(p.errs.length === 0, 'no page errors (knowledge)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
   await p.close();
 
+  // ---------- point 4: the bigger world ----------
+  p = await open(b, '?dev=all&date=2026-11-25'); await play(p);
+  ok(await E(p, () => { const m = window.__m3, t = m.tile; return t(14, 12) === '"' && t(16, 27) === 'x' && t(41, 18) === 'r' && t(5, 3) === '~' && t(23, 4) === 'P' && t(1, 10) === 'n' && t(38, 11) === 'K' && t(3, 60) === 'v' && t(16, 30) === 'F' && t(15, 46) === 'r' && m.MAP.length === 74 && m.MAP[0].length === 160; }), 'the map grew to 160 × 74 tiles and every old coordinate is unchanged');
+  ok(await E(p, () => { const D = window.M3_DATA, d = day => PX.data.load(D, {}, { today: () => day, devAll: false }); return !d('2026-11-23').released(D.world) && d('2026-11-24').released(D.world) && !d('2026-11-24').released(D.houses.loken) && d('2026-11-25').released(D.houses.loken) && d('2026-11-23').released(D.houses.ljunky); }), 'release: the east opens on Tuesday, the castle on Wednesday, The Box was there on Monday');
+  const route = ([a, b], to) => E(p, ([a, b, to]) => { const m = window.__m3, key = (x, y) => x + ',' + y, par = { [key(a, b)]: null }, q = [[a, b]]; while (q.length) { const [x, y] = q.shift(); if (x === to[0] && y === to[1]) { const out = []; let k = key(x, y); while (k) { out.push(k); k = par[k]; } return out.map(s => s.split(',').map(Number)); } for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, k = key(nx, ny); if (nx < 0 || ny < 0 || nx >= 160 || ny >= 74 || k in par || m.solidAt(nx * 16 + 8, ny * 16 + 8)) continue; par[k] = key(x, y); q.push([nx, ny]); } } return null; }, [a, b, to]);
+  const grassOn = path => E(p, path => path.filter(([x, y]) => ['"', 'u'].includes(window.__m3.tile(x, y))).length, path);
+  const start = [8, 62];
+  const goals = { 'The Box': [41, 19], 'the electronics store': [104, 38], 'the shaman cave': [140, 30], 'the rave': [144, 61] };
+  for (const name in goals) { const r = await route(start, goals[name]); ok(!!r, 'you can walk to ' + name + ' (' + (r ? r.length : 0) + ' tiles)'); ok(r && await grassOn(r) >= (name === 'The Box' ? 1 : 3), 'the path to ' + name + ' crosses tall grass / undergrowth (' + (r ? await grassOn(r) : 0) + ' encounter tiles)'); }
+  ok(!(await route(start, [140, 13])), 'the castle is NOT reachable on foot');
+  await E(p, () => { window.__m3.G.flags.boat = 1; }); ok(!!(await route(start, [140, 13])), 'with a boat the castle is reachable over the lake');
+  await E(p, () => { window.__m3.G.flags.boat = 0; });
+  ok(await E(p, () => { const D = window.M3_DATA.zones, mx = id => Math.max(...D[id].lv), H = window.M3_DATA.houses; return D.boxpath.lv[1] >= H.ljunky.level - 2 && mx('band_s4') >= H.wizcudi.level - 2 && mx('band_s4') <= H.wizcudi.level + 3 && mx('mtrail') >= H.jrohn.level - 2 && mx('deep3') >= H.bigwman.level - 1 && mx('biglake') >= H.loken.level - 6 && D.band_s1.lv[0] < D.band_s2.lv[0] && D.band_s2.lv[0] < D.band_s3.lv[0] && D.forest1.lv[0] < D.deep1.lv[0]; }), 'encounter levels along each path match the house level and rise towards it');
+  // a real walk into the first grass band
+  await at(p, 51, 48); await E(p, () => { window.__m3.CFG.ENC_RATE = 1; window.__m3.G.encCool = 0; });
+  await p.keyboard.down('ArrowRight'); await p.waitForTimeout(900); await p.keyboard.up('ArrowRight');
+  g = await E(p, () => { const m = window.__m3; return m.B && { zone: m.B.zone, lv: m.B.foes[0].lv, kind: m.B.kind }; });
+  ok(g && g.zone === 'band_s1' && g.lv >= 11 && g.lv <= 14, 'walking into the roadside grass: a wild fight at about level 11–14 (' + JSON.stringify(g) + ')');
+  await E(p, () => { window.__m3.CFG.ENC_RATE = 0; }); await drive(p, ['Walk away', '^⚔️ Fight', 'Foam|Body|Can|Burp']);
+  // the houses: gates by your best creature
+  const gate = lv => E(p, lv => { const m = window.__m3; m.G.party = [m.mk('frog', lv)]; m.G.box = []; const H = m.HOUSES, r = {}; for (const id in H) r[id] = !m.solidAt((H[id].door[0]) * 16 + 8, H[id].door[1] * 16 + 8); return r; }, lv);
+  let gt = await gate(9); ok(!gt.ljunky && !gt.wizcudi && !gt.jrohn && !gt.loken && gt.bigwman, 'level 9: every door is shut, except your own house (BigWman: the rave is your home)');
+  gt = await gate(10); ok(gt.ljunky && !gt.wizcudi, 'level 10 opens The Box');
+  gt = await gate(20); ok(gt.wizcudi && !gt.jrohn, 'level 20 opens the electronics store');
+  gt = await gate(30); ok(gt.jrohn && !gt.loken, 'level 30 opens the shaman cave');
+  gt = await gate(40); ok(gt.loken && gt.bigwman, 'level 40 opens the castle');
+  await E(p, () => { const m = window.__m3; m.G.party = [m.mk('frog', 5)]; m.G.box = [m.mk('golem', 21)]; });
+  ok(await E(p, () => window.__m3.houseOpen('wizcudi')), 'your BEST creature counts, also one waiting in the van');
+  await E(p, () => { const m = window.__m3; m.G.box = []; });
+  await at(p, 105, 38); await p.waitForTimeout(250);
+  ok(await E(p, () => window.__m3.G.near && window.__m3.G.near.kind === 'housedoor'), 'a shut door can be tapped');
+  await E(p, () => { window.__m3.interact(); }); await p.waitForTimeout(150);
+  ok(/dark|light/.test(await E(p, () => document.querySelector('#m3ui .m3txt').textContent)), 'the door tells you in words why it is shut (no number)');
+  await drive(p, []);
+  await E(p, () => { const m = window.__m3; m.G.party = [m.mk('frog', 25)]; });
+  await at(p, 104, 35); await p.waitForTimeout(500);
+  ok(await E(p, () => !!window.__m3.G.flags['house:wizcudi']), 'stepping inside a house is remembered (flag house:wizcudi)');
+  await at(p, 100, 35); await p.waitForTimeout(250);
+  ok(await E(p, () => window.__m3.G.near && window.__m3.G.near.kind === 'trophy'), 'inside there is something to take');
+  await E(p, () => { window.__m3.interact(); }); await drive(p, []);
+  g = await E(p, () => ({ t: window.__m3.G.items.techMk1, f: window.__m3.G.items.fizztab || 0 }));
+  ok(g.t === 1 && g.f >= 2 && await E(p, () => !window.__m3.G.near || window.__m3.G.near.kind !== 'trophy'), 'the reward is given once (' + JSON.stringify(g) + ')');
+  await at(p, 148, 66); await p.waitForTimeout(250); await E(p, () => { const m = window.__m3; for (const c of m.G.party) c.hp = 1; });
+  ok(await E(p, () => window.__m3.G.near && window.__m3.G.near.kind === 'home'), 'in your own hero\'s house you are at home (BigWman: the rave)');
+  await E(p, () => { window.__m3.interact(); }); await until(p, 'Leave'); await drive(p, []);
+  ok(await E(p, () => window.__m3.G.party.every(c => c.hp === window.__m3.xpNeed ? true : c.hp > 1)), 'home heals the party and opens the storage');
+  // Dev Ljunky: all four heroes AND all houses
+  await E(p, () => { const m = window.__m3; m.G.beat = ['wizcudi', 'jrohn', 'loken', 'ljunky']; m.G.flags = {}; });
+  ok(await E(p, () => !window.__m3.stockOpen() && !window.__m3.walkable(...window.__m3.tc(16, 27))), 'four heroes beaten but no houses seen: the stock room stays shut');
+  await E(p, () => { for (const h of ['wizcudi', 'jrohn', 'loken', 'ljunky']) window.__m3.G.flags['house:' + h] = 1; });
+  ok(await E(p, () => window.__m3.stockOpen() && window.__m3.walkable(...window.__m3.tc(16, 27))), 'with all the houses seen (not your own) it opens');
+  // the lake: boat or ferry
+  await E(p, () => { const m = window.__m3; m.G.flags = {}; m.G.know = {}; m.G.party = [m.mk('frog', 40)]; });
+  const sail = () => E(p, () => window.__m3.sailOK());
+  ok(!(await sail()), 'no boat, no ferry: the lake is a wall');
+  await E(p, () => { window.__m3.G.flags.boat = 1; }); ok(await sail(), 'with the boat you can sail');
+  await E(p, () => { const m = window.__m3; m.G.flags = {}; m.G.party = [m.mk('pike', 30)]; });
+  ok(!(await sail()), 'a Pikezilla that knows Ferry is not enough until someone has taught you');
+  await E(p, () => { window.__m3.G.know.ferry = 1; }); ok(await sail(), 'taught + a Lv 30 Pikezilla (it learns Ferry at 30): it carries you');
+  await E(p, () => { const m = window.__m3; m.G.party = [m.mk('pike', 29)]; }); ok(!(await sail()), 'at Lv 29 it does not know Ferry yet');
+  await E(p, () => { const m = window.__m3; m.G.party = [m.mk('pike', 30)]; });
+  await at(p, 90, 10); await p.waitForTimeout(150);
+  ok(await E(p, () => window.__m3.tile(90, 10) === 'V' && window.__m3.walkable(90 * 16 + 8, 10 * 16 + 8)), 'out on the water you can move');
+  await E(p, () => { const m = window.__m3; m.G.party = [m.mk('frog', 30)]; }); await p.waitForTimeout(500);
+  g = await E(p, () => { const m = window.__m3; return { y: Math.floor(m.G.p.y / 16), water: m.tile(Math.floor(m.G.p.x / 16), Math.floor((m.G.p.y - 2) / 16)) === 'V' }; });
+  ok(!g.water, 'lose the ferry creature out on the lake and you drift ashore (y ' + g.y + ')');
+  await E(p, () => { const m = window.__m3; m.G.flags.boat = 1; m.CFG.ENC_RATE = 1; m.G.encCool = 0; });
+  await at(p, 90, 10); await p.keyboard.down('ArrowRight'); await p.waitForTimeout(900); await p.keyboard.up('ArrowRight');
+  g = await E(p, () => { const m = window.__m3; return m.B && { zone: m.B.zone, lv: m.B.foes[0].lv, sp: m.B.foes[0].sp }; });
+  ok(g && g.zone === 'biglake' && g.lv >= 34, 'sailing the big lake meets lake creatures at about level 34–40 (' + JSON.stringify(g) + ')');
+  await E(p, () => { window.__m3.CFG.ENC_RATE = 0; }); await drive(p, ['Walk away', '^⚔️ Fight', 'Foam|Body|Can|Burp'], 600);
+  // Boat-Bengt trades the van for a boat
+  await E(p, () => { const m = window.__m3; m.G.flags = {}; m.G.party = ['frog', 'cuke'].map(s => m.mk(s, 20)); m.G.box = [m.mk('golem', 7)]; });
+  await at(p, 58, 19); await p.waitForTimeout(300); await E(p, () => { window.__m3.skipReplies = true; });
+  ok(await E(p, () => window.__m3.G.near && window.__m3.G.near.ref && window.__m3.G.near.ref.id === 'bengt'), 'Boat-Bengt stands on the western shore');
+  await E(p, () => { window.__m3.interact(); }); await until(p, 'Trade the van'); await drive(p, []);
+  ok(await E(p, () => window.__m3.G.flags.boat === 1 && window.__m3.G.box.length === 1), 'the van is traded for a boat; what was in the van is still yours');
+  // the fishing net and the lake net trap
+  await at(p, 20, 59); await E(p, () => { window.__m3.give('netTrap'); window.__m3.S.placeTrap('netTrap'); }); await p.waitForTimeout(100);
+  ok(await E(p, () => window.__m3.G.traps.length === 0 && /no water/i.test(document.querySelector('#m3ui .m3txt').textContent)), 'the lake net trap refuses to be set inland');
+  await drive(p, []);
+  await at(p, 60, 18); await E(p, () => { window.__m3.trapSpeed = 1e6; window.__m3.S.placeTrap('netTrap'); }); await p.waitForTimeout(100);
+  ok(await E(p, () => window.__m3.G.traps.length === 1), 'on a shore it is set');
+  let caughtFish = null; for (let i = 0; i < 8 && !caughtFish; i++) { await E(p, () => { if (!window.__m3.G.traps.length) { window.__m3.give('netTrap'); window.__m3.S.placeTrap('netTrap'); } }); await p.waitForTimeout(60); await E(p, () => { window.__m3.interact(); }); await p.waitForTimeout(250); caughtFish = await E(p, () => window.__m3.B && window.__m3.B.kind === 'trap' && window.__m3.B.foes[0].sp); if (!caughtFish) await drive(p, []); }
+  ok(['pike', 'salmon', 'frog', 'genie', 'owl'].includes(caughtFish), 'the net trap holds a lake creature (' + caughtFish + ')');
+  await drive(p, ['Walk away', '^⚔️ Fight', 'Foam|Body|Can|Burp']);
+  await E(p, () => { const m = window.__m3; m.give('net', 2); m.G.party = [m.mk('frog', 30)]; m.G.party[0].hp = 9999; m.startWild(m.ZONES.find(z => z.id === 'parking')); }); await p.waitForTimeout(300);
+  await E(p, () => { const x = window.__m3.B.foes[0]; x.hp = 9999; });
+  await until(p, '^🎯 Throw'); await until(p, 'Fishing net'); await p.waitForTimeout(1500);
+  ok(await E(p, () => !!window.__m3.B && window.__m3.EF.has(window.__m3.B.foes[0], 'stun')), 'the fishing net holds a wild creature for two turns');
+  await drive(p, ['Walk away', 'Run', '^⚔️ Fight', 'Foam|Body|Can|Burp']);
+  // the people tell you about the boat and the ferry
+  await E(p, () => { const m = window.__m3; m.G.flags = {}; m.G.know = {}; m.G.people = {}; m.G.party = [m.mk('frog', 20)]; m.skipReplies = false; });
+  await talkTo(p, 'folke', 'luck'); await talkTo(p, 'folke');
+  ok(await E(p, () => window.__m3.PPL.know('boat') && !window.__m3.PPL.know('ferry')), 'Fisherman Folke tells you about Boat-Bengt (on the second talk)');
+  await E(p, () => { const m = window.__m3; m.G.party.push(m.mk('pike', 30)); });
+  await talkTo(p, 'folke');
+  ok(await E(p, () => window.__m3.PPL.know('ferry')), 'carrying a Pikezilla, he teaches you that it can ferry you');
+  await talkTo(p, 'kenny'); await talkTo(p, 'kenny');
+  ok(await E(p, () => window.__m3.PPL.know('house:bigwman')), 'Kenny tells you where the rave is');
+  ok(await E(p, () => { const D = window.__m3.D; return D.warnings.length === 0 && ['caddy', 'kioskman', 'hermit', 'guide', 'doorman', 'folke', 'bengt'].every(id => D.raw.npcs[id] && D.raw.dialogue[id]); }), 'seven new people, each with their own dialogue, and the data validates');
+  for (const [n, x, y] of [['golf', 66, 28], ['city', 104, 40], ['mountain', 136, 33], ['forest', 70, 62], ['rave', 144, 60], ['lake', 62, 17], ['castle', 140, 14]]) { await E(p, () => { const m = window.__m3; m.G.scene = 'map'; m.G.flags.boat = 1; }); await at(p, x, y); await E(p, () => { document.querySelector('#m3ui .m3box').hidden = true; document.querySelector('#m3ui .m3hint').hidden = true; }); await p.waitForTimeout(450); await p.screenshot({ path: OUT + '/M3P_world_' + n + '.png' }); }
+  ok(p.errs.length === 0, 'no page errors (world)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
+  await p.close();
+
   // ---------- balance (point 1): XP curve, anti-grind, no XP for catching, money, Kenny, Inkasso-Ingvar ----------
   p = await open(b); await play(p);
   ok(await E(p, () => { const m = window.__m3; return m.xpNeed(10) === 138 && m.xpNeed(1) === 9 && m.CFG.LV_MAX === 50 && m.D.raw.items.bag.price === 10; }), 'XP for next level = 8 + 1.3 × lv², LV_MAX 50, bags 10 kr');
@@ -490,10 +595,12 @@ async function pickStarter(p, name) {
   await E(p, () => { window.__m3.EF.clear(window.__m3.G.me); window.__m3.FX.clearTint(); });
 
   // ---------- dealer: trade + wife refusal ----------
-  await E(p, () => { window.__m3.startPartner('cicci'); }); await p.waitForTimeout(200);
-  await E(p, () => { window.__m3.give('ringbox', 5); window.__m3.G.me.fx.push({ type: 'catchBonus', value: 50, t: 60, n: 1, src: 'test' }); });
-  for (let k = 0; k < 12 && await E(p, () => window.__m3.B && window.__m3.B.foes[0].hp > 0 && window.__m3.G.items.ringbox > 0); k++) { await until(p, '^🎯 Throw'); await until(p, 'Ring box'); await p.waitForTimeout(700); } // her stun move can cost a turn: just keep trying
-  await drive(p, ['^🛍️ Catch', 'Talk', 'checkouts']);
+  for (let att = 0; att < 3 && !(await E(p, () => window.__m3.G.party.concat(window.__m3.G.box).some(c => c.sp === 'w_cicci'))); att++) { // her stun move can cost turns, so give it up to three tries
+    await E(p, () => { const m = window.__m3; for (const c of m.G.party) c.hp = m.D ? 9999 : 9999; m.startPartner('cicci'); }); await p.waitForTimeout(200);
+    await E(p, () => { window.__m3.give('ringbox', 5); window.__m3.G.me.fx.push({ type: 'catchBonus', value: 50, t: 60, n: 1, src: 'test' }); });
+    for (let k = 0; k < 12 && await E(p, () => window.__m3.B && window.__m3.B.foes[0].hp > 0 && window.__m3.G.items.ringbox > 0); k++) { await until(p, '^🎯 Throw'); await until(p, 'Ring box'); await p.waitForTimeout(700); }
+    await drive(p, ['^🛍️ Catch', 'Talk', 'checkouts']);
+  }
   ok(await E(p, () => window.__m3.G.party.concat(window.__m3.G.box).some(c => c.sp === 'w_cicci') && window.__m3.G.solved.includes('cicci')), 'ring box calms Cicci -> knocked out -> caught (counts as solved)');
   await at(p, 45, 34); await p.waitForTimeout(200);
   ok(await E(p, () => window.__m3.G.near && window.__m3.G.near.ref && window.__m3.G.near.ref.id === 'dealer'), 'the dealer hides behind the bottle machines');

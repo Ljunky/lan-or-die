@@ -24,11 +24,13 @@ Source of truth: `data/m3-data.js` (`dialogue`, `personalities`, `knowledge`). F
 - `wife:monika` **What Monika wants**: Walter found. And a shirt on the problem. — told by: fia
 - `wife:sofia` **What Sofia wants**: To be looked at during the match. — told by: pelle
 - `wife:maadmads` **What MaadMads wants**: Honesty about the coins. And the cats fed. — told by: barber
-- `house:ljunky` **Ljunky's house** (shows as ??? until told) [release wed]: The gym by the bottle machines. — told by: pelle
-- `house:wizcudi` **Wizcudi's house** (shows as ??? until told) [release wed]: The electronics store in the city. — told by: jonas
-- `house:jrohn` **Jrohn's house** (shows as ??? until told) [release wed]: A shaman cave in the mountain. — told by: hasse
+- `house:ljunky` **Ljunky's house** (shows as ??? until told) [release tue]: The gym by the bottle machines. — told by: pelle
+- `house:wizcudi` **Wizcudi's house** (shows as ??? until told) [release tue]: The electronics store in the city. — told by: jonas
+- `house:jrohn` **Jrohn's house** (shows as ??? until told) [release tue]: A shaman cave in the mountain. — told by: hasse
 - `house:loken` **Löken's house** (shows as ??? until told) [release wed]: A castle, across the big lake. — told by: pirate
-- `house:bigwman` **BigWman's house** (shows as ??? until told) [release wed]: A 24-hour rave, deep in the forest. — told by: nobody yet
+- `house:bigwman` **BigWman's house** (shows as ??? until told) [release tue]: A 24-hour rave, deep in the forest. — told by: kenny
+- `boat` **Boat-Bengt** [release wed]: Trades boats for vans. On the big lake shore. — told by: folke
+- `ferry` **A ferry creature** [release wed]: A big lake creature that knows Ferry can carry you across the water. — told by: folke
 
 ## The five heroes (bosses; you play one of them)
 
@@ -325,7 +327,7 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
       - you: "They are just machines." → "That is exactly what they want you to think." [tone:"rude"]
       - you: "I hear it too." → "…You do? ...No. No, you are lying. Nobody hears it." [tone:"lie"]
   -  _(if metMin=1, hero="ljunky")_ "You. Ljunky. Your gym is right there. They do burpees at night, ten of them, in perfect time. Perfect."
-  -  _(if from="wed", metMin=1)_ "That gym next to the machines. The Box. It belongs to Ljunky. The machines respect it." [tell:"house:ljunky"]
+  -  _(if from="tue", metMin=1)_ "That gym next to the machines. The Box. It belongs to Ljunky. The machines respect it." [tell:"house:ljunky"]
   -  _(if metMin=2)_ "Sofia comes for the bottles Löken throws on the lawn. She says she just wants him to look at her during the match. Not the screen. Her." [tell:"wife:sofia"]
   -  _(if killed="berit")_ "Berit is gone. They got her. They are coming for me next. And YOU know it."
   -  _(if relMax=-1)_ "You. Go away."
@@ -362,7 +364,7 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
       - you: "No." → "Honest. Sad. Honest." [tone:"honest"]
   -  _(if state="high")_ "YOU can see them too! The shapes! Tell no one. Tell everyone."
   -  _(if hero="jrohn")_ "Jrohn! That is you. Wait. That is me? Which one of us is wearing the shirt?"
-  -  _(if from="wed", metMin=1)_ "There is a cave halfway up the mountain. A shaman lives in it. Half plant, half man, no shirt. I do not know who he is." [tell:"house:jrohn"]
+  -  _(if from="tue", metMin=1)_ "There is a cave halfway up the mountain. A shaman lives in it. Half plant, half man, no shirt. I do not know who he is." [tell:"house:jrohn"]
   -  _(if night=true)_ "The stars are loud tonight. Do you hear the receipts? The receipts!"
   -  "The receipt in aisle 4 is fourteen metres long and it LOOKED at me."
   -  "Mushrooms? Ask the guy who hides behind the bottle machines. Did not hear it from me."
@@ -397,7 +399,7 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
       - you: "Your prices are a joke." → "The joke is you are still standing here." [tone:"rude"]
   -  _(if metMin=1)_ "The Barber has a tranquilizer gun under the chair. Do not ask why. He says it is for the moths." [tell:"tranq"]
   -  _(if metMin=2)_ "Anna buys the cheapest bulbs and complains about the bill. Honestly? She wants somebody to talk about the light bill. Out loud. With her." [tell:"wife:anna"]
-  -  _(if from="wed", metMin=1)_ "Wizcudi has the electronics store in the city. Do not go in under-levelled. He turns the lights off on you." [tell:"house:wizcudi"]
+  -  _(if from="tue", metMin=1)_ "Wizcudi has the electronics store in the city. Do not go in under-levelled. He turns the lights off on you." [tell:"house:wizcudi"]
   -  _(if killed="barber")_ "Barber is dead? Then who else buys my blades? Thanks a lot."
   -  _(if night=true)_ "Closing time was six hours ago. I am here because I am too grumpy to go home."
   -  "Put it where the creatures walk. Come back later."
@@ -542,6 +544,105 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
   -  "ERROR: FEELINGS.EXE NOT FOUND. FIGHT? Y/N"
   -  "I HAVE TRAINED ON 10,000 HOURS OF LJUNKY EXPLAINING CRYPTO. YOU CANNOT WIN."
 
+### Caddy Calle (`caddy`), role talker, release tue
+- At [60,24], wanders in [58,23,6,4]
+- Sells: nothing
+- Party: none
+- Can die: true, catchable: true, likes: beer6
+- Epitaph: "Found the water hazard."
+- **Personality:** dry (flat, short, deadpan); friends: hermit
+- **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if met=0)_ "Fore! …That was for me. Nobody is playing. Nobody has played since the lake rose."
+      - you: "Nice course." → "Eight holes, three of them under water. I call it character." [tone:"kind"]
+      - you: "Who needs golf?" → "Exactly. I only carry the bag." [tone:"honest"]
+  -  _(if state="drunk")_ "You are swaying more than my flag. Sit down on the bunker. Nobody minds."
+  -  _(if night=true)_ "Night golf. The ball glows. Very exclusive."
+  -  _(if killed="hermit")_ "Hilding is gone? Then who will complain about the noise now?"
+  -  "Between the rough and the road there is always something with teeth. Mind the tall grass."
+
+### Kiosk-Klas (`kioskman`), role merchant, release tue
+- At [117,35]
+- Sells: folkol, snus, fizztab, net
+- Party: none
+- Can die: true, catchable: true, likes: snus
+- Epitaph: "Closed for good."
+- **Personality:** salesman (friendly, always selling)
+- **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if met=0)_ "Welcome to the city! Everything is available. Some of it legally."
+  -  _(if night=true)_ "Night kiosk: the same prices, but with the lights on."
+  -  _(if metMin=1)_ "Nets for fishing, snus for everything else. What can I do for you?"
+  -  "The electronics store? Dark. They never turn the lights on. I think it is about the bill."
+
+### Hermit Hilding (`hermit`), role talker, release tue
+- At [70,62], wanders in [66,58,8,6]
+- Sells: nothing
+- Party: none
+- Can die: true, catchable: true, likes: shrooms
+- Epitaph: "Finally alone."
+- **Personality:** paranoid (whispers, suspects everyone); friends: caddy
+- **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if met=0)_ "Quiet. The trees are working. Do not talk until it passes."
+      - you: "Sorry. I will whisper." → "…Whisper. Yes. Good." [tone:"kind"]
+      - you: "What are they working on?" → "Roots. Obviously. Everything is roots." [tone:"funny"]
+  -  _(if state="high")_ "You can hear them too. Good. Do not tell the moths."
+  -  _(if night=true)_ "At night the forest gets deeper. Never go east in the dark."
+  -  "There is a party in the deep forest. It never ends. The bass makes my teeth ring."
+
+### Mountain guide Greta (`guide`), role talker, release tue
+- At [121,33], wanders in [119,32,4,3]
+- Sells: nothing
+- Party: none
+- Can die: true, catchable: true, likes: protein
+- Epitaph: "Slipped on the way up."
+- **Personality:** grumpy (complains, hates small talk)
+- **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if met=0)_ "Hiking boots? No? You will regret that. Everyone does."
+  -  _(if carry="peng")_ "A freezer penguin on a mountain. It looks at home, at least."
+  -  _(if night=true)_ "Nobody goes up at night. Except the shaman. And he floats."
+  -  "The trail is long and the rocks are rude. Halfway up there is a cave. Do not touch the boulder."
+
+### Doorman Dragan (`doorman`), role talker, release tue
+- At [143,59], wanders in [141,58,6,2]
+- Sells: nothing
+- Party: none
+- Can die: true, catchable: true, likes: coke
+- Epitaph: "Not tonight. Not ever."
+- **Personality:** hothead (loud, proud, short fuse)
+- **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if met=0)_ "Name? Not on the list. Move along."
+  -  _(if night=true)_ "THE BASS IS UP. It is night. Do you feel it in your teeth?"
+  -  _(if hero="bigwman")_ "Oh, it is you. The owner. I did not recognise you with the shirt on."
+  -  "Not tonight. Come back when you are stronger. Much stronger."
+
+### Fisherman Folke (`folke`), role merchant, release tue
+- At [72,19], wanders in [68,18,8,2]
+- Sells: net, netTrap
+- Party: none
+- Can die: true, catchable: true, likes: FROST
+- Epitaph: "The big one got away. And back."
+- **Personality:** dreamer (drifting, half in another world); friends: bengt
+- **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if met=0)_ "Shh. They bite better in the quiet."
+      - you: "What are you fishing for?" → "The one with the crown. He always gets away." [tone:"kind"]
+      - you: "Any luck?" → "Luck is for lottery winners. I have patience." [tone:"funny"]
+  -  _(if metMin=1, from="wed")_ "You want to reach the castle? Over the big lake? Then you want Boat-Bengt, down on the western shore. He trades boats. For vans, strangely." [tell:"boat"]
+  -  _(if carry="pike", from="wed")_ "THAT is a Pikezilla! Feed it, level it. At the right size it can ferry you across the water on its back. Do not ask how I know." [tell:"ferry"]
+  -  _(if night=true)_ "Night fishing is the best. The lake breathes."
+  -  "Nets, traps, patience. Two of those are for sale."
+
+### Boat-Bengt (`bengt`), role boatman, release wed
+- At [58,19]
+- Sells: nothing
+- Party: none
+- Can die: true, catchable: true, likes: buns
+- Epitaph: "Sank with dignity."
+- **Personality:** salesman (friendly, always selling)
+- **What they say** (best match first, no repeats until the pool is used up):
+  -  _(if met=0)_ "A boat! A boat! You want a boat. Everyone wants a boat. I want a van. We are made for each other."
+  -  _(if flag="boat")_ "How is she? The old van? I mean, the new boat? Both of them, I hope."
+  -  _(if night=true)_ "Night is for sailing. And for not asking where the boat was before."
+  -  "Keys for keys. That is the whole business."
+
 ### Kenny the Fence (`kenny`), role fence, release mon
 - At [46,62]
 - Sells: nothing
@@ -551,6 +652,7 @@ Fixed (old) lines kept as a fallback only: "Have you lost weight?", "Calm down."
 - **Personality:** salesman (friendly, always selling); friends: dealer
 - **What they say** (best match first, no repeats until the pool is used up):
   -  _(if met=0)_ "Psst. I buy animals. No paperwork, no questions, no real money."
+  -  _(if from="tue", metMin=1)_ "Rave in the deep forest. Twenty-four hours. BigWman owns it, believe it or not. Bass you can feel in your fillings. Do not go in weak." [tell:"house:bigwman"]
   -  _(if relMin=2)_ "You are a good customer. I will pay a bit above the going rate. A bit."
   -  "Creatures? I know a guy in Norrtälje. He knows a guy."
 

@@ -37,6 +37,7 @@ async function placeTrap(id) {
   const g = G(), it = ITEMS[id];
   if (g.traps.length >= 3) { await K.say('You only have hands for three traps at a time.', { auto: false }); return; }
   const [tx, ty] = [Math.floor(g.p.x / T), Math.floor((g.p.y - 4) / T)];
+  if (it.shore && ![[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]].some(([a, b]) => ['~', 'V'].includes(K.tile(tx + a, ty + b)))) { await K.say('There is no water here. Find a shore.', { auto: false }); return; }
   if (g.traps.some(t => Math.abs(t.tx - tx) + Math.abs(t.ty - ty) < 2)) { await K.say('There is already a trap right here.', { auto: false }); return; }
   K.take(id);
   g.traps.push({ item: id, tx, ty, x: g.p.x, y: g.p.y - 2, zone: K.zoneAt(g.p.x, g.p.y).id, at: now() });
@@ -51,6 +52,7 @@ function trapCatch(tr) {
     const fresh = ids.filter(id => !g.solved.includes(id)); return ids.length ? { wife: pick(fresh.length ? fresh : ids) } : null;
   }
   if (Math.random() < .12) return null;
+  if (it.catch) { const tab = it.catch.filter(([sp]) => SP[sp] && rel(SP[sp])); if (tab.length) return { sp: PX.data.weighted(tab) }; }
   for (const [sp, w] of it.rare || []) if (SP[sp] && rel(SP[sp]) && Math.random() < w / 100) return { sp };
   const reveal = EF.has(g.me, 'reveal'), ok = sp => SP[sp] && SP[sp].kind === 'creature' && rel(SP[sp]) && SP[sp].type === it.lure && !SP[sp].trapOnly && (!SP[sp].needs || reveal) && SP[sp].rarity !== 'L';
   let tab = (z.enc || []).filter(([sp]) => ok(sp));

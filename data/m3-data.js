@@ -51,6 +51,7 @@ moves: {
   fetch: { name: 'Fetch!', type: 'WILD', p: 55 }, knock: { name: 'Knock It Off The Shelf', type: 'RUSTLE', p: 60, foe: { def: -1 } },
   curse: { name: 'Forgotten Item', type: 'MIND', p: 70, say: 'You forgot the milk. Again.' }, neon: { name: 'Neon Antlers', type: 'WILD', p: 80, stun: .3 },
   receipt: { name: 'Endless Receipt', type: 'RUSTLE', p: 24, hits: 4 }, seed: { name: 'Seed Phrase', type: 'MIND', p: 95, acc: .9, say: 'Twelve words echo. You forgot all of them.' },
+  ferry: { name: 'Ferry', type: 'WILD', p: 0, say: 'It paddles on, steady as a ferry.' },   // a creature that knows this can carry you over the big lake (once someone has taught you)
   // heroes and wives as party members
   yes: { name: 'YES!', type: 'MIND', p: 0, self: { atk: 2 } }, lights: { name: 'Lights Out', type: 'TECH', p: 40, stun: .5 }, love: { name: 'I Love This!', type: 'MIND', p: 0, heal: .4 },
   stick: { name: 'Stick Together', type: 'WILD', p: 30, hits: 3 }, dip: { name: 'Buy the Dip', type: 'MIND', p: 90, acc: .5 }, guilt: { name: 'Guilt Trip', type: 'MIND', p: 55, foe: { def: -1 } },
@@ -82,7 +83,7 @@ creatures: {
   lizard: { no: 17, name: 'Kebab-pizza Lizard', type: 'GRUB', rarity: 'U', stats: [66, 68, 56, 54], moves: [['garlic', 1], ['slam', 1], ['dill', 10]], desc: 'Extra sauce. Extra spines.', art: 'assets/creatures/lizard.png', likes: 'GRUB', release: 'tue' },
   salmon: { no: 18, name: 'Salmon Roll', type: 'FROST', rarity: 'U', stats: [58, 64, 58, 60], moves: [['wasabi', 1], ['frz', 1], ['peas', 10]], desc: 'Walks on chopsticks. Hates soy sauce.', art: 'assets/creatures/salmon.png', likes: 'FROST', release: 'tue' },
   moth: { no: 19, name: 'Moustache Moth', type: 'WILD', rarity: 'R', stats: [52, 64, 50, 76], moves: [['trim', 1], ['flutter', 1], ['peck', 9]], desc: 'Lives in barber shops. Eats wax.', art: 'assets/creatures/moth.png', likes: 'WILD', release: 'tue' },
-  pike: { no: 20, name: 'Pikezilla', type: 'WILD', rarity: 'R', stats: [80, 82, 64, 56], moves: [['bite', 1], ['slam', 1]], desc: 'The king of the lake. Wears reeds like a crown.', art: 'assets/creatures/pike.png', likes: 'WILD', release: 'tue' },
+  pike: { no: 20, name: 'Pikezilla', type: 'WILD', rarity: 'R', stats: [80, 82, 64, 56], moves: [['bite', 1], ['slam', 1], ['ferry', 30]], desc: 'The king of the lake. Wears reeds like a crown.', art: 'assets/creatures/pike.png', likes: 'WILD', release: 'tue' },
   loyal: { no: 21, name: 'The Loyal Customer', type: 'MIND', rarity: 'L', stats: [86, 80, 76, 70], moves: [['card', 1], ['slam', 1], ['tonic', 1]], desc: 'Has collected stamps since 1972.', art: 'assets/creatures/loyal.png', likes: 'buns', release: 'tue', requires: 'loyalReady' },
   walter: { no: 22, name: 'Walter', type: 'WILD', rarity: 'R', stats: [60, 66, 52, 80], moves: [['fetch', 1], ['peck', 1]], desc: 'Jrohn\'s dog. Ran away again.', art: 'assets/creatures/walter.png', likes: 'buns', release: 'tue' },
   cat: { no: 23, name: 'The Cats', type: 'RUSTLE', rarity: 'R', stats: [56, 70, 50, 78], moves: [['knock', 1], ['peck', 1]], desc: 'Ljunky\'s. They knock things off shelves on purpose.', art: 'assets/creatures/cat.png', likes: 'WILD', release: 'tue' },
@@ -216,6 +217,9 @@ items: {
   weed: { kind: 'drug', name: 'Weed', em: '🌿', price: 0, use: [{ type: 'speed', value: -.4, duration: 60 }, { type: 'catchBonus', value: .4, duration: 60 }, { type: 'attract', value: 'GRUB', duration: 60 }], throw: [{ type: 'sleep', turns: 2 }], learnedNote: 'Slow-mo, easier catches, GRUB gets curious. Thrown: they fall asleep.', release: 'mon' },
   shrooms: { kind: 'drug', name: 'Magic mushrooms', em: '🍄', price: 0, use: [{ type: 'reveal', duration: 90 }, { type: 'tint', value: 'rainbow', duration: 90 }], throw: [{ type: 'confuse', turns: 3 }], learnedNote: 'You see things that were always there.', release: 'tue' },
   protein: { kind: 'drug', name: 'Protein shake', em: '🥤', price: 35, use: [{ type: 'heal', value: .2 }], train: [{ type: 'xpRate', value: 1, duration: 1800 }], learnedNote: 'Gym creatures train twice as fast.', release: 'tue' },
+  // fishing: the net holds a wild creature for 2 turns; the lake net trap only works on a shore
+  net: { kind: 'throwable', name: 'Fishing net', em: '🕸️', price: 25, hit: .85, throw: [{ type: 'stun', turns: 2 }, { type: 'catchBonus', value: .2, turns: 2 }], learnedNote: 'Holds it still for two turns.', release: 'tue' },
+  netTrap: { kind: 'trap', name: 'Lake net trap', em: '🥅', price: 80, shore: true, lure: 'WATER', tier: 2, waitMin: 3, catchBonus: .5, catch: [['pike', 3], ['salmon', 3], ['frog', 2], ['genie', 1]], rare: [['owl', 4]], learnedNote: 'Set it on a shore.', release: 'tue' },
   // key items
   stache: { kind: 'key', name: 'Moustache trim', em: '✂️', price: 20, cosmetic: true, learnedNote: 'Magnificent. Purely cosmetic.', release: 'mon' },
   bitcoin: { kind: 'key', name: 'Bitcoin (physical)', em: '🪙', notSold: true, learnedNote: 'Somebody would love this on a grave.', release: 'wed' },
@@ -290,6 +294,20 @@ npcs: {
     look: { skin: '#b8c4d0', hair: '#3dff8a', style: 'short', top: '#2a0a3a', legs: '#111', glasses: 1, prop: 'bow' }, party: [['wraith', 18], ['snake', 19], ['frog', 19], ['mummy', 20]], partyFallback: ['ghost', 18], release: 'tue', requires: 'ljunkyDone', robot: true,
     lines: { pool: ['HELLO. I AM LJUNKY. VERSION 2.0. NOW WITH 40 % MORE DIP.', 'ERROR: FEELINGS.EXE NOT FOUND. FIGHT? Y/N', 'I HAVE TRAINED ON 10,000 HOURS OF LJUNKY EXPLAINING CRYPTO. YOU CANNOT WIN.'] },
     win: 'REBOOTING… I… LOVE… THIS… GYM.' },
+  caddy: { name: 'Caddy Calle', role: 'talker', at: [60, 24], area: [58, 23, 6, 4], canDie: true, catchable: true, likes: 'beer6', epitaph: 'Found the water hazard.',
+    look: { hair: '#8a6a4a', style: 'cap', cap: '#fbf6e8', cap2: '#3ddc84', top: '#fbf6e8', legs: '#5a7a3a', glasses: 1 }, release: 'tue', lines: { pool: ['Fore!'] } },
+  kioskman: { name: 'Kiosk-Klas', role: 'merchant', at: [117, 35], canDie: true, catchable: true, likes: 'snus', epitaph: 'Closed for good.',
+    look: { hair: '#222', style: 'short', stache: 1, top: '#e3000f', legs: '#34343c', prop: 'bag' }, shop: ['folkol', 'snus', 'fizztab', 'net'], release: 'tue', lines: { pool: ['Open 24 hours. Closed 24 hours. Depends.'] } },
+  hermit: { name: 'Hermit Hilding', role: 'talker', at: [70, 62], area: [66, 58, 8, 6], canDie: true, catchable: true, likes: 'shrooms', epitaph: 'Finally alone.',
+    look: { hair: '#c9c9c9', style: 'messy', beard: '#c9c9c9', top: '#4f6e3a', legs: '#5a4a30' }, release: 'tue', lines: { pool: ['Trees.'] } },
+  guide: { name: 'Mountain guide Greta', role: 'talker', at: [121, 33], area: [119, 32, 4, 3], canDie: true, catchable: true, likes: 'protein', epitaph: 'Slipped on the way up.',
+    look: { skin: '#f0c8a8', hair: '#a0522d', style: 'long', top: '#e3000f', topStyle: 'stripe', top2: '#fbf6e8', legs: '#3d5f92' }, release: 'tue', lines: { pool: ['Rocks.'] } },
+  doorman: { name: 'Doorman Dragan', role: 'talker', at: [143, 59], area: [141, 58, 6, 2], canDie: true, catchable: true, likes: 'coke', epitaph: 'Not tonight. Not ever.',
+    look: { skin: '#d9a07a', hair: '#111', style: 'bald', top: '#111', legs: '#111', glasses: 1, big: 1 }, release: 'tue', lines: { pool: ['Not tonight.'] } },
+  folke: { name: 'Fisherman Folke', role: 'merchant', at: [72, 19], area: [68, 18, 8, 2], canDie: true, catchable: true, likes: 'FROST', epitaph: 'The big one got away. And back.',
+    look: { hair: '#8a6a4a', style: 'hat', beard: '#8a6a4a', top: '#2f6fd0', legs: '#3a2a1a', prop: 'bag' }, shop: ['net', 'netTrap'], release: 'tue', lines: { pool: ['Fish.'] } },
+  bengt: { name: 'Boat-Bengt', role: 'boatman', at: [58, 19], requires: 'know:boat', canDie: true, catchable: true, likes: 'buns', epitaph: 'Sank with dignity.',
+    look: { hair: '#222', style: 'cap', cap: '#fbf6e8', cap2: '#1F2A44', beard: '#222', top: '#1F2A44', legs: '#fbf6e8', glasses: 1 }, release: 'wed', lines: { pool: ['Boats.'] } },
   kenny: { name: 'Kenny the Fence', role: 'fence', at: [46, 62], canDie: true, catchable: true, likes: 'snus', epitaph: 'Fenced in. Finally.',
     look: { skin: '#d8b090', hair: '#222', style: 'cap', cap: '#2a2a33', cap2: '#3ddc84', top: '#3a3a44', legs: '#222', stache: 1 }, release: 'mon',
     lines: { pool: ['Psst. I buy animals. No paperwork, no questions, no real money.', 'Creatures? I know a guy in Norrtälje. He knows a guy.'] },
@@ -346,8 +364,36 @@ zones: {
   sushi: { name: 'J&K99 Sushi', r: [23, 65, 11, 9], enc: [['salmon', 1]], lv: [6, 9] },
   barber: { name: "Tailor's Barber", r: [34, 65, 13, 9], enc: [['moth', 1]], lv: [7, 10] },
   charger: { name: 'E.ON charger', r: [35, 50, 13, 10], enc: [['snake', 5], ['bat', 2]], lv: [6, 9], out: 1 },
-  box: { name: 'The Box', r: [37, 9, 10, 10] },
+  box: { name: 'The Box', r: [37, 9, 10, 10], house: 'ljunky' },
   cemetery: { name: 'Cemetery', r: [1, 9, 11, 10], out: 1, release: 'tue' },
+  // ---- the bigger world: houses first, then the grass that crosses the roads, then the big areas (first match wins) ----
+  estore: { name: 'The electronics store', r: [98, 32, 14, 6], house: 'wizcudi', release: 'tue' },
+  cave: { name: 'The shaman cave', r: [134, 22, 14, 8], house: 'jrohn', release: 'tue' },
+  castle: { name: 'The castle', r: [131, 4, 20, 9], house: 'loken', release: 'wed' },
+  rave: { name: 'The rave', r: [136, 62, 18, 10], house: 'bigwman', release: 'tue' },
+  grounds: { name: 'The castle grounds', r: [126, 2, 30, 15], out: 1, release: 'wed' },
+  boxpath: { name: 'The lawn, east side', r: [24, 9, 23, 11], enc: [['crow', 4], ['fly', 3], ['bat', 2], ['elk', 1]], lv: [8, 11], out: 1 },
+  band_s1: { name: 'Roadside grass', r: [52, 46, 4, 5], enc: [['fly', 3], ['crow', 3], ['cat', 1]], lv: [11, 14], out: 1, release: 'tue' },
+  band_s2: { name: 'Roadside grass', r: [72, 46, 4, 5], enc: [['fly', 3], ['bat', 2], ['cat', 2], ['walter', 1]], lv: [14, 17], out: 1, release: 'tue' },
+  band_s3: { name: 'City outskirts', r: [90, 46, 4, 5], enc: [['ghost', 3], ['golem', 3], ['banshee', 2], ['bat', 2]], lv: [17, 20], out: 1, release: 'tue' },
+  band_s4: { name: 'City outskirts', r: [108, 46, 4, 5], enc: [['ghost', 3], ['snake', 3], ['golem', 2], ['banshee', 2]], lv: [19, 22], out: 1, release: 'tue' },
+  band_n1: { name: 'Lakeside grass', r: [52, 19, 4, 4], enc: [['crow', 3], ['fly', 3], ['frog', 2]], lv: [11, 14], out: 1, release: 'tue' },
+  band_n2: { name: 'Lakeside grass', r: [76, 19, 4, 4], enc: [['crow', 3], ['frog', 3], ['genie', 1]], lv: [14, 17], out: 1, release: 'tue' },
+  band_n3: { name: 'Lakeside grass', r: [100, 19, 4, 4], enc: [['frog', 3], ['owl', 2], ['genie', 1]], lv: [17, 20], out: 1, release: 'tue' },
+  foothills: { name: 'The foothills', r: [124, 29, 4, 4], enc: [['peng', 3], ['golem', 3], ['lizard', 2]], lv: [24, 28], out: 1, release: 'tue' },
+  mtrail: { name: 'The mountain trail', r: [130, 29, 4, 4], enc: [['golem', 3], ['lizard', 3], ['owl', 2], ['peng', 2]], lv: [28, 32], out: 1, release: 'tue' },
+  forest1: { name: 'The forest', r: [56, 56, 6, 10], enc: [['elk', 3], ['walter', 2], ['cat', 2], ['moth', 2], ['fly', 2]], lv: [23, 26], out: 1, release: 'tue' },
+  forest2: { name: 'The forest', r: [76, 56, 6, 10], enc: [['elk', 3], ['moth', 3], ['owl', 2], ['cat', 2]], lv: [26, 30], out: 1, release: 'tue' },
+  deep1: { name: 'The deep forest', r: [112, 56, 6, 10], enc: [['lich', 2], ['serpent', 2], ['owl', 3], ['elk', 3]], lv: [34, 37], out: 1, release: 'tue' },
+  deep2: { name: 'The deep forest', r: [126, 56, 6, 10], enc: [['lich', 2], ['serpent', 2], ['owl', 2], ['snake', 2]], lv: [37, 40], out: 1, release: 'tue' },
+  deep3: { name: 'The deep forest', r: [136, 56, 18, 6], enc: [['lich', 2], ['serpent', 3], ['owl', 2], ['elk', 2]], lv: [39, 42], out: 1, release: 'tue' },
+  biglake: { name: 'The big lake', r: [56, 0, 104, 20], enc: [['pike', 4], ['salmon', 3], ['genie', 2], ['frog', 2]], lv: [34, 40], out: 1, release: 'wed' },
+  golf: { name: 'The golf course', r: [48, 22, 39, 25], enc: [['crow', 3], ['fly', 4], ['bat', 2], ['cat', 1], ['walter', 1]], lv: [10, 14], out: 1, release: 'tue' },
+  city: { name: 'The city', r: [88, 22, 35, 25], out: 1, release: 'tue' },
+  mountain: { name: 'The mountain', r: [123, 22, 37, 29], enc: [['peng', 3], ['golem', 3], ['lizard', 2], ['owl', 1]], lv: [26, 31], out: 1, release: 'tue' },
+  forest: { name: 'The forest', r: [48, 50, 52, 24], enc: [['elk', 3], ['walter', 2], ['cat', 2], ['moth', 2], ['fly', 2], ['owl', 1]], lv: [23, 28], out: 1, release: 'tue' },
+  deepforest: { name: 'The deep forest', r: [100, 50, 60, 24], enc: [['lich', 2], ['serpent', 2], ['owl', 2], ['elk', 2], ['snake', 1]], lv: [35, 41], out: 1, release: 'tue' },
+  countryside: { name: 'The countryside', r: [48, 0, 112, 74], out: 1, release: 'tue' },
   lake: { name: 'The lake', r: [0, 0, 48, 9], out: 1 },
   lawn: { name: 'The lawn by the lake', r: [0, 9, 48, 13], enc: [['crow', 5], ['bat', 2], ['fly', 2], ['elk', 2]], lv: [3, 6], out: 1 },
   parking: { name: 'Parking lot', r: [0, 46, 48, 19], enc: [['bat', 5], ['golem', 2], ['walter', 1], ['elk', 1]], lv: [2, 5], out: 1 }
@@ -434,11 +480,13 @@ knowledge: {
   'wife:monika':   { name: 'What Monika wants', text: 'Walter found. And a shirt on the problem.' },
   'wife:sofia':    { name: 'What Sofia wants', text: 'To be looked at during the match.' },
   'wife:maadmads': { name: 'What MaadMads wants', text: 'Honesty about the coins. And the cats fed.' },
-  'house:ljunky':  { name: "Ljunky's house", text: 'The gym by the bottle machines.', listed: true, release: 'wed' },
-  'house:wizcudi': { name: "Wizcudi's house", text: 'The electronics store in the city.', listed: true, release: 'wed' },
-  'house:jrohn':   { name: "Jrohn's house", text: 'A shaman cave in the mountain.', listed: true, release: 'wed' },
+  'house:ljunky':  { name: "Ljunky's house", text: 'The gym by the bottle machines.', listed: true, release: 'tue' },
+  'house:wizcudi': { name: "Wizcudi's house", text: 'The electronics store in the city.', listed: true, release: 'tue' },
+  'house:jrohn':   { name: "Jrohn's house", text: 'A shaman cave in the mountain.', listed: true, release: 'tue' },
   'house:loken':   { name: "Löken's house", text: 'A castle, across the big lake.', listed: true, release: 'wed' },
-  'house:bigwman': { name: "BigWman's house", text: 'A 24-hour rave, deep in the forest.', listed: true, release: 'wed' }
+  'house:bigwman': { name: "BigWman's house", text: 'A 24-hour rave, deep in the forest.', listed: true, release: 'tue' },
+  boat:  { name: 'Boat-Bengt', text: 'Trades boats for vans. On the big lake shore.', release: 'wed' },
+  ferry: { name: 'A ferry creature', text: 'A big lake creature that knows Ferry can carry you across the water.', release: 'wed' }
 },
 
 dialogue: {
@@ -477,7 +525,7 @@ dialogue: {
         { label: 'They are just machines.', tone: 'rude', text: 'That is exactly what they want you to think.' },
         { label: 'I hear it too.', tone: 'lie', text: '…You do? ...No. No, you are lying. Nobody hears it.' }] },
       { if: { metMin: 1, hero: 'ljunky' }, text: "You. Ljunky. Your gym is right there. They do burpees at night, ten of them, in perfect time. Perfect." },
-      { if: { from: 'wed', metMin: 1 }, tell: 'house:ljunky', release: 'wed', text: 'That gym next to the machines. The Box. It belongs to Ljunky. The machines respect it.' },
+      { if: { from: 'tue', metMin: 1 }, tell: 'house:ljunky', release: 'tue', text: 'That gym next to the machines. The Box. It belongs to Ljunky. The machines respect it.' },
       { if: { metMin: 2 }, tell: 'wife:sofia', text: "Sofia comes for the bottles Löken throws on the lawn. She says she just wants him to look at her during the match. Not the screen. Her." },
       { if: { killed: 'berit' }, text: 'Berit is gone. They got her. They are coming for me next. And YOU know it.' },
       { if: { relMax: -1 }, text: 'You. Go away.' },
@@ -500,7 +548,7 @@ dialogue: {
         { label: 'No.', tone: 'honest', text: 'Honest. Sad. Honest.' }] },
       { if: { state: 'high' }, text: 'YOU can see them too! The shapes! Tell no one. Tell everyone.' },
       { if: { hero: 'jrohn' }, text: 'Jrohn! That is you. Wait. That is me? Which one of us is wearing the shirt?' },
-      { if: { from: 'wed', metMin: 1 }, tell: 'house:jrohn', release: 'wed', text: 'There is a cave halfway up the mountain. A shaman lives in it. Half plant, half man, no shirt. I do not know who he is.' },
+      { if: { from: 'tue', metMin: 1 }, tell: 'house:jrohn', release: 'tue', text: 'There is a cave halfway up the mountain. A shaman lives in it. Half plant, half man, no shirt. I do not know who he is.' },
       { if: { night: true }, text: 'The stars are loud tonight. Do you hear the receipts? The receipts!' },
       { text: 'The receipt in aisle 4 is fourteen metres long and it LOOKED at me.' },
       { text: 'Mushrooms? Ask the guy who hides behind the bottle machines. Did not hear it from me.' }] },
@@ -521,7 +569,7 @@ dialogue: {
         { label: 'Your prices are a joke.', tone: 'rude', text: 'The joke is you are still standing here.' }] },
       { if: { metMin: 1 }, tell: 'tranq', text: 'The Barber has a tranquilizer gun under the chair. Do not ask why. He says it is for the moths.' },
       { if: { metMin: 2 }, tell: 'wife:anna', text: 'Anna buys the cheapest bulbs and complains about the bill. Honestly? She wants somebody to talk about the light bill. Out loud. With her.' },
-      { if: { from: 'wed', metMin: 1 }, tell: 'house:wizcudi', release: 'wed', text: 'Wizcudi has the electronics store in the city. Do not go in under-levelled. He turns the lights off on you.' },
+      { if: { from: 'tue', metMin: 1 }, tell: 'house:wizcudi', release: 'tue', text: 'Wizcudi has the electronics store in the city. Do not go in under-levelled. He turns the lights off on you.' },
       { if: { killed: 'barber' }, text: 'Barber is dead? Then who else buys my blades? Thanks a lot.' },
       { if: { night: true }, text: 'Closing time was six hours ago. I am here because I am too grumpy to go home.' },
       { text: 'Put it where the creatures walk. Come back later.' }] },
@@ -564,6 +612,7 @@ dialogue: {
       { text: 'Cash is for tourists. I take creatures.' }] },
   kenny: { personality: 'salesman', friends: ['dealer'], talk: [
       { if: { met: 0 }, text: 'Psst. I buy animals. No paperwork, no questions, no real money.' },
+      { if: { from: 'tue', metMin: 1 }, tell: 'house:bigwman', release: 'tue', text: 'Rave in the deep forest. Twenty-four hours. BigWman owns it, believe it or not. Bass you can feel in your fillings. Do not go in weak.' },
       { if: { relMin: 2 }, text: 'You are a good customer. I will pay a bit above the going rate. A bit.' },
       { text: 'Creatures? I know a guy in Norrtälje. He knows a guy.' }] },
   kenta: { personality: 'hothead', friends: ['trainer1', 'trainer2'], talk: [
@@ -584,6 +633,50 @@ dialogue: {
       { text: 'I HAVE TRAINED ON 10,000 HOURS OF LJUNKY EXPLAINING CRYPTO. YOU CANNOT WIN.' }] },
   ingvar: { personality: 'dry', talk: [{ text: 'Inkasso-Ingvar. You promised. Klarna remembers.' }] },
 
+  /* ---- the bigger world ---- */
+  caddy: { personality: 'dry', friends: ['hermit'], talk: [
+      { if: { met: 0 }, text: 'Fore! …That was for me. Nobody is playing. Nobody has played since the lake rose.', replies: [
+        { label: 'Nice course.', tone: 'kind', text: 'Eight holes, three of them under water. I call it character.' },
+        { label: 'Who needs golf?', tone: 'honest', text: 'Exactly. I only carry the bag.' }] },
+      { if: { state: 'drunk' }, text: 'You are swaying more than my flag. Sit down on the bunker. Nobody minds.' },
+      { if: { night: true }, text: 'Night golf. The ball glows. Very exclusive.' },
+      { if: { killed: 'hermit' }, text: 'Hilding is gone? Then who will complain about the noise now?' },
+      { text: 'Between the rough and the road there is always something with teeth. Mind the tall grass.' }] },
+  kioskman: { personality: 'salesman', talk: [
+      { if: { met: 0 }, text: 'Welcome to the city! Everything is available. Some of it legally.' },
+      { if: { night: true }, text: 'Night kiosk: the same prices, but with the lights on.' },
+      { if: { metMin: 1 }, text: 'Nets for fishing, snus for everything else. What can I do for you?' },
+      { text: 'The electronics store? Dark. They never turn the lights on. I think it is about the bill.' }] },
+  hermit: { personality: 'paranoid', friends: ['caddy'], talk: [
+      { if: { met: 0 }, text: 'Quiet. The trees are working. Do not talk until it passes.', replies: [
+        { label: 'Sorry. I will whisper.', tone: 'kind', text: '…Whisper. Yes. Good.' },
+        { label: 'What are they working on?', tone: 'funny', text: 'Roots. Obviously. Everything is roots.' }] },
+      { if: { state: 'high' }, text: 'You can hear them too. Good. Do not tell the moths.' },
+      { if: { night: true }, text: 'At night the forest gets deeper. Never go east in the dark.' },
+      { text: 'There is a party in the deep forest. It never ends. The bass makes my teeth ring.' }] },
+  guide: { personality: 'grumpy', talk: [
+      { if: { met: 0 }, text: 'Hiking boots? No? You will regret that. Everyone does.' },
+      { if: { carry: 'peng' }, text: 'A freezer penguin on a mountain. It looks at home, at least.' },
+      { if: { night: true }, text: 'Nobody goes up at night. Except the shaman. And he floats.' },
+      { text: 'The trail is long and the rocks are rude. Halfway up there is a cave. Do not touch the boulder.' }] },
+  doorman: { personality: 'hothead', talk: [
+      { if: { met: 0 }, text: 'Name? Not on the list. Move along.' },
+      { if: { night: true }, text: 'THE BASS IS UP. It is night. Do you feel it in your teeth?' },
+      { if: { hero: 'bigwman' }, text: 'Oh, it is you. The owner. I did not recognise you with the shirt on.' },
+      { text: 'Not tonight. Come back when you are stronger. Much stronger.' }] },
+  folke: { personality: 'dreamer', friends: ['bengt'], talk: [
+      { if: { met: 0 }, text: 'Shh. They bite better in the quiet.', replies: [
+        { label: 'What are you fishing for?', tone: 'kind', text: 'The one with the crown. He always gets away.' },
+        { label: 'Any luck?', tone: 'funny', text: 'Luck is for lottery winners. I have patience.' }] },
+      { if: { metMin: 1, from: 'wed' }, tell: 'boat', release: 'wed', text: 'You want to reach the castle? Over the big lake? Then you want Boat-Bengt, down on the western shore. He trades boats. For vans, strangely.' },
+      { if: { carry: 'pike', from: 'wed' }, tell: 'ferry', release: 'wed', text: 'THAT is a Pikezilla! Feed it, level it. At the right size it can ferry you across the water on its back. Do not ask how I know.' },
+      { if: { night: true }, text: 'Night fishing is the best. The lake breathes.' },
+      { text: 'Nets, traps, patience. Two of those are for sale.' }] },
+  bengt: { personality: 'salesman', talk: [
+      { if: { met: 0 }, text: 'A boat! A boat! You want a boat. Everyone wants a boat. I want a van. We are made for each other.' },
+      { if: { flag: 'boat' }, text: 'How is she? The old van? I mean, the new boat? Both of them, I hope.' },
+      { if: { night: true }, text: 'Night is for sailing. And for not asking where the boat was before.' },
+      { text: 'Keys for keys. That is the whole business.' }] },
   /* ---- the heroes (before the fight). Their first meeting uses the bossLines from above, written once ---- */
   bigwman: { personality: 'dry', friends: ['cicci'], talk: [
       { if: { metMin: 1 }, text: 'Back again. I updated the spreadsheet: you appear in row 14.' },
@@ -728,6 +821,64 @@ dialogue: {
       { if: { met: 0, hero: 'loken' }, text: 'Löken, the lawn man. Everyone tells me about you. Everyone.' },
       { if: { killed: 'barber' }, text: 'The Barber is dead? I... I just saw him yesterday. I always see everyone yesterday.' },
       { text: 'Did you buy the dip again?' }] }
+},
+
+/* ===================================================== THE BIGGER WORLD (east of the old map; every old coordinate is unchanged) =====================================================
+   The map is built from rectangles. Tiles: ~ old lake  V big lake (boat or ferry needed)  s sand  , grass  " tall grass (encounters)  u undergrowth (encounters)  T tree  Q dense forest (solid)
+   = road  o sidewalk  a golf fairway  Z golf green  G golf flag  b bunker  N city wall  X rock (solid)  y dirt path  i cave floor  J castle wall  j castle floor  D rave wall  d rave floor
+   Ops: ['fill', x, y, w, h, tile]   ['set', x, y, tile]   ['scatter', x, y, w, h, tile, density 0-1, seed]   ['room', x, y, w, h, wallTile, floorTile, doorX, doorY, doorWidth]
+   Before world.release the east is closed (closed ops = a wall of trees) so Monday's map is exactly the old one. */
+world: {
+  width: 160, release: 'tue',
+  always: [['fill', 37, 19, 10, 1, '"']],   // applied from Monday too: the strip of tall grass in front of The Box (the path there crosses level 8–11 creatures)
+  closed: [['fill', 48, 0, 112, 74, 'Q']],
+  ops: [
+    ['fill', 48, 0, 112, 74, ','],
+    // the old lake and lawn continue east; the lawn is open at the old edge
+    ['fill', 47, 9, 1, 11, ','], ['fill', 48, 0, 8, 8, '~'], ['fill', 48, 8, 8, 1, 's'],
+    // the big lake (north-east), its beaches, and the castle island: only a boat or a ferry gets you there
+    ['fill', 56, 0, 104, 20, 'V'], ['fill', 55, 8, 1, 12, 's'], ['fill', 56, 18, 70, 2, 's'],
+    ['fill', 126, 2, 30, 15, 's'], ['fill', 127, 3, 28, 13, ','], ['room', 131, 4, 20, 9, 'J', 'j', 140, 12, 2],
+    // the roads, the golf course in between
+    ['fill', 48, 20, 65, 2, '='], ['fill', 48, 47, 75, 1, 'o'], ['fill', 48, 48, 75, 2, '='],
+    ['fill', 48, 22, 39, 25, 'a'], ['scatter', 48, 22, 39, 25, '"', .07, 9], ['scatter', 48, 22, 39, 25, 'b', .02, 7], ['scatter', 48, 22, 39, 25, 'T', .03, 3],
+    ['fill', 66, 30, 6, 4, '~'], ['fill', 52, 38, 5, 3, '~'], ['fill', 80, 24, 5, 4, 'Z'], ['set', 82, 25, 'G'], ['fill', 54, 31, 4, 3, 'Z'], ['set', 56, 32, 'G'],
+    ['room', 50, 23, 9, 6, '#', '_', 54, 28, 2],
+    // the city (electronics store = Wizcudi's house, a kiosk)
+    ['fill', 88, 22, 35, 25, 'o'], ['fill', 88, 30, 35, 2, '='], ['fill', 88, 38, 35, 2, '='], ['fill', 96, 22, 2, 25, '='], ['fill', 112, 22, 2, 25, '='],
+    ['fill', 88, 22, 8, 8, 'N'], ['fill', 98, 22, 14, 8, 'N'], ['fill', 114, 22, 9, 8, 'N'], ['fill', 88, 32, 8, 6, 'N'],
+    ['room', 98, 32, 14, 6, 'N', '_', 104, 37, 2], ['room', 114, 32, 9, 6, 'N', '_', 117, 37, 2],
+    ['fill', 88, 40, 8, 7, 'N'], ['fill', 98, 40, 14, 7, 'N'], ['fill', 114, 40, 9, 7, 'N'],
+    // the mountain: rock, a trail up, the shaman cave halfway
+    ['fill', 126, 22, 34, 29, 'X'], ['fill', 123, 30, 19, 2, 'y'], ['room', 134, 22, 14, 8, 'X', 'i', 140, 29, 2],
+    ['fill', 124, 29, 4, 4, 'u'], ['fill', 130, 29, 4, 4, 'u'],
+    // the forest and the deep forest, the rave
+    ['fill', 48, 50, 112, 24, 'Q'], ['fill', 48, 50, 52, 24, ','], ['scatter', 48, 50, 52, 24, 'T', .18, 5], ['fill', 48, 60, 52, 2, 'y'], ['fill', 56, 56, 6, 10, 'u'], ['fill', 76, 56, 6, 10, 'u'],
+    ['fill', 100, 60, 45, 2, 'y'], ['fill', 112, 56, 6, 10, 'u'], ['fill', 126, 56, 6, 10, 'u'], ['fill', 136, 56, 18, 6, 'u'], ['room', 136, 62, 18, 10, 'D', 'd', 144, 62, 2],
+    // tall grass that crosses the roads: you cannot get past without meeting something (level goes up eastwards)
+    ['fill', 52, 46, 4, 5, '"'], ['fill', 72, 46, 4, 5, '"'], ['fill', 90, 46, 4, 5, '"'], ['fill', 108, 46, 4, 5, '"'],
+    ['fill', 52, 19, 4, 4, '"'], ['fill', 76, 19, 4, 4, '"'], ['fill', 100, 19, 4, 4, '"']
+  ]
+},
+
+/* ---------- the five houses. level = what your BEST creature must be to get in. Your own hero's house is your home (always open; heal + storage).
+   No sign: the name only shows once someone has told you (knowledge house:<hero>). locked = what you read at the door.
+   trophy = a one-time reward inside. home.at = the spot you tap at home. zone = the zone id of the interior (see zones). ---------- */
+houses: {
+  ljunky:  { name: 'The Box', hero: 'ljunky', level: 10, door: [41, 18], doorW: 2, release: 'mon', home: { at: [44, 11] },
+    locked: "The Box is locked. Through the window: someone screaming 'ONE MORE ROUND'. You are not ready for that." },
+  wizcudi: { name: 'The electronics store', hero: 'wizcudi', level: 20, door: [104, 37], doorW: 2, release: 'tue', home: { at: [108, 34] },
+    trophy: { at: [100, 34], give: { techMk1: 1, fizztab: 2 }, text: 'A glass case: a perfect, never-used extension cord. You take it. Nobody is looking.' },
+    locked: 'The store is dark. Every single light is off, on purpose.' },
+  jrohn:   { name: 'The shaman cave', hero: 'jrohn', level: 30, door: [140, 29], doorW: 2, release: 'tue', home: { at: [144, 26] },
+    trophy: { at: [136, 26], give: { weed: 1, shrooms: 1 }, text: 'Dried herbs on a stone shelf. A note: "For Walter".' },
+    locked: 'A boulder sits in the cave mouth. It hums. You are not strong enough to move it.' },
+  loken:   { name: 'The castle', hero: 'loken', level: 40, door: [140, 12], doorW: 2, release: 'wed', home: { at: [146, 8] },
+    trophy: { at: [135, 8], kr: 400, give: { ringbox: 1 }, text: 'A trophy cabinet: 400 kr in small coins. Dropped, collected, dropped again.' },
+    locked: 'The castle gate is shut. Gently. Loyally. Shut.' },
+  bigwman: { name: 'The rave', hero: 'bigwman', level: 40, door: [144, 62], doorW: 2, release: 'tue', home: { at: [148, 66] },
+    trophy: { at: [140, 66], give: { protein: 2, coke: 1 }, text: 'A rack of glow sticks and a spreadsheet of beats. You take the protein bars.' },
+    locked: "A bouncer made of bass. 'Not tonight.' You are not on the list." }
 },
 
 /* ---------- small pixel sprites (char grids, see PX.palette: o navy, c cream, g/G/d greys, k black, w white …) ---------- */
