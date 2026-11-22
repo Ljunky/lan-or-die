@@ -9,7 +9,7 @@ const E = (p, f, a) => p.evaluate(f, a);
 const PORT = { width: 390, height: 780 };
 
 async function open(b, q = '?dev=all&date=2026-11-25', o = {}) {
-  const p = await b.newPage({ viewport: PORT, deviceScaleFactor: 2 });
+  const p = await b.newPage(Object.assign({ viewport: PORT, deviceScaleFactor: 2 }, o.page || {}));
   p.errs = [];
   p.on('pageerror', e => p.errs.push(e.message));
   p.on('console', m => m.type() === 'error' && !/Failed to load resource/.test(m.text()) && p.errs.push(m.text()));
@@ -204,22 +204,24 @@ async function pickStarter(p, name) {
   }
 
   // ---------- dialogs fit on a short phone: menus are a centered card, long lists scroll with a ▼ hint ----------
-  p = await open(b, '?dev=all&date=2026-11-25&claims=reset'); await p.setViewportSize({ width: 360, height: 560 });
+  p = await open(b, '?dev=all&date=2026-11-25&claims=reset', { page: { viewport: { width: 360, height: 560 }, hasTouch: true, isMobile: true } });
   await E(p, () => localStorage.removeItem('lod.save.m3.Ljunky'));
   await toBrief(p); await p.click('#brief-go'); await p.waitForTimeout(300); await E(p, () => { window.__m3.speed = 25; });
   for (let i = 0; i < 300; i++) { const n = await E(p, () => { const m = window.__m3, pd = m.pending; if (pd && pd.say) { pd.res(); return 0; } if (m.G.scene === 'map' && !m.stranger) m.summon(); return document.querySelectorAll('#m3ui .m3grid button').length; }); if (n) break; await p.waitForTimeout(40); }
   await p.waitForTimeout(250);
   const fits = () => E(p, () => { const box = document.querySelector('#m3ui .m3box').getBoundingClientRect(), H = window.innerHeight, W = window.innerWidth, bs = [...document.querySelectorAll('#m3ui .m3grid button')].map(x => x.getBoundingClientRect());
-    return { inside: box.top >= 0 && box.bottom <= H && box.left >= 0 && box.right <= W, wide: bs.every(r => r.right <= box.right + 1), center: document.getElementById('m3ui').classList.contains('center'), scroll: document.querySelector('#m3ui .m3box').classList.contains('scroll'), allVisible: bs.every(r => r.bottom <= box.bottom) }; });
+    return { inside: box.top >= 0 && box.bottom <= H && box.left >= 0 && box.right <= W, wide: bs.every(r => r.right <= box.right + 1 && r.height >= 40), center: document.getElementById('m3ui').classList.contains('center'), scroll: !document.querySelector('#m3ui .m3hint').hidden, allVisible: bs.every(r => r.top >= 0 && r.bottom <= H) }; });
   let f = await fits();
   ok(f.center && f.inside && f.wide && f.allVisible, 'short screen: the 5 starters fit in a centered card (' + JSON.stringify(f) + ')');
   await p.screenshot({ path: OUT + '/M3P_choose.png' });
   await pickStarter(p, 'Freezer');
   await at(p, 10, 58); await p.waitForTimeout(200); await E(p, () => { window.__m3.G.kr = 999; window.__m3.interact(); }); await until(p, 'Shop'); await p.waitForTimeout(250);
   f = await fits();
-  ok(f.center && f.inside && f.wide && f.scroll, 'short screen: a 13-item shop is a centered card that scrolls, with the ▼ hint (' + JSON.stringify(f) + ')');
-  await E(p, () => { document.querySelector('#m3ui .m3grid').scrollTop = 99999; }); await p.waitForTimeout(150);
-  ok(!(await fits()).scroll, 'scrolled to the end: the ▼ hint goes away');
+  ok(f.center && f.wide && f.scroll, 'short screen: a 13-item shop scrolls like a page, with the ▼ more hint (' + JSON.stringify(f) + ')');
+  const cdp = await p.context().newCDPSession(p), touch = (type, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: 180, y }] });
+  for (let k = 0; k < 4; k++) { await touch('touchStart', 470); for (let y = 460; y > 160; y -= 15) { await touch('touchMove', y); await p.waitForTimeout(16); } await touch('touchEnd'); await p.waitForTimeout(350); } // a real finger swipe
+  ok(await E(p, () => { const b = [...document.querySelectorAll('#m3ui .m3grid button')].pop().getBoundingClientRect(); return b.bottom <= innerHeight && b.top >= 0; }), 'a finger swipe scrolls the long menu down to its last button');
+  ok(!(await fits()).scroll, 'scrolled to the end: the ▼ more hint goes away');
   ok(p.errs.length === 0, 'no page errors (dialogs)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
   await p.close();
 
