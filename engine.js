@@ -25,7 +25,7 @@
 /* ---------------- storage ---------------- */
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
 };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -1277,8 +1277,12 @@ const savedGame = () => (M && M.save && playerName ? store.get(saveKey(), null) 
 let freshStart = false, lastSub = 0, newArm = 0;
 function saveNow() {
   if (!M || !M.save || !G || !playerName || !(G.mode === 'play' || G.mode === 'pause')) return;
-  try { store.set(saveKey(), { t: G.t, ts: Date.now(), data: M.saveState ? M.saveState(G) : null }); } catch (e) { console.error(e); }
+  let ok = false;
+  try { ok = store.set(saveKey(), { t: G.t, ts: Date.now(), data: M.saveState ? M.saveState(G) : null }); } catch (e) { console.error(e); }
+  if (!ok && !saveWarned) { saveWarned = true; toast('⚠️ This phone is not keeping your save! Pause → Save code → copy it somewhere safe.', 9); }   // storage blocked, full or private
+  else if (ok) saveWarned = false;
 }
+let saveWarned = false;
 function liveTotal() {
   let r = {}; try { r = M.result(G) || {}; } catch (e) {}
   return clamp(Math.round(G.score + (r.bonus || []).reduce((a, b) => a + b[1], 0)), 0, M.cap);
@@ -1422,6 +1426,7 @@ function beginPlay() {
   if (M && M.landscape) enterFullscreen(); // phone browsers: hide the address bar (Android; iPhone Safari has no fullscreen for pages)
   newGame(); G.mode = 'play'; hideAll(); inGameUI(true);
   const sv = M.save && !freshStart ? savedGame() : null; freshStart = false; lastSub = 0;
+  if (M.save) { try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {} }   // asks the browser not to clear the save when it is short of space
   if (sv) { G.t = sv.t || 0; if (M.loadState) M.loadState(G, sv.data); }
   camUpdate(0, true); last = performance.now();
   music.duck(false); music.play('game'); music.intensity(0);

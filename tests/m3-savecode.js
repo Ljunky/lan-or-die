@@ -172,6 +172,14 @@ const setName = (p, n, hero = 'bigwman') => E(p, ([n, h]) => { window.__lod.setN
   for (let i = 0; i < 40 && await E(M1, () => document.getElementById('scr-brief').hidden); i++) { await E(M1, () => { const c = [...document.querySelectorAll('button')].filter(b => b.offsetParent && !b.disabled); const x = c.find(x => x.matches('[data-a="select"]')) || c.find(x => x.matches('.cut [data-a="skip"]')); x && x.click(); }); await M1.waitForTimeout(250); }
   ok(await E(M1, () => !document.getElementById('scr-brief').hidden && !document.getElementById('brief-code')), 'Mission 1 (no save) shows no save code button');
   await M1.close();
+  // ===== a phone that cannot keep a save says so (storage blocked or full) =====
+  const W = await open(b, '?dev=day&date=2026-11-23'); await setName(W, 'Wiz', 'wizcudi'); await W.evaluate(() => localStorage.removeItem('lod.save.m3.Wiz'));
+  await toBrief(W, 'wizcudi'); await W.click('#brief-go'); await W.waitForTimeout(700);
+  await E(W, () => { window.__real = Storage.prototype.setItem; Storage.prototype.setItem = function () { throw new Error('QuotaExceededError'); }; });
+  await E(W, () => document.getElementById('btn-pause').click()); await W.waitForTimeout(300);
+  ok(await E(W, () => !!window.__lod.LOD.G.toast && /not keeping your save/.test(window.__lod.LOD.G.toast.text)), 'storage blocked or full: a warning tells the player to copy the Save code instead of silently losing it');
+  await E(W, () => { Storage.prototype.setItem = window.__real; });
+  await W.close();
   ok(A.errs.length === 0, 'no page errors (save code)' + (A.errs.length ? ': ' + A.errs.join(' | ') : ''));
   await b.close();
 })();
