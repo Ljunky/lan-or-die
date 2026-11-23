@@ -172,6 +172,22 @@ const setName = (p, n, hero = 'bigwman') => E(p, ([n, h]) => { window.__lod.setN
   for (let i = 0; i < 40 && await E(M1, () => document.getElementById('scr-brief').hidden); i++) { await E(M1, () => { const c = [...document.querySelectorAll('button')].filter(b => b.offsetParent && !b.disabled); const x = c.find(x => x.matches('[data-a="select"]')) || c.find(x => x.matches('.cut [data-a="skip"]')); x && x.click(); }); await M1.waitForTimeout(250); }
   ok(await E(M1, () => !document.getElementById('scr-brief').hidden && !document.getElementById('brief-code')), 'Mission 1 (no save) shows no save code button');
   await M1.close();
+  // ===== a long code cut in two chat messages (4096 characters) that lost one character at the cut still imports =====
+  const L1 = await open(b, '?dev=day&date=2026-11-23'); await setName(L1, 'Lang', 'jrohn'); await L1.evaluate(() => localStorage.removeItem('lod.save.m3.Lang'));
+  await toBrief(L1, 'jrohn'); await L1.click('#brief-go'); await L1.waitForTimeout(600);
+  await E(L1, () => { const f = window.__m3.G.flags; for (let i = 0; i < 500; i++) f['pad' + i] = Math.random().toString(36).slice(2, 14); });
+  await E(L1, () => document.getElementById('btn-pause').click()); await L1.waitForTimeout(300);
+  await L1.evaluate(() => document.getElementById('sv-code') ? 0 : 0);
+  await E(L1, () => window.__lod.LOD.openSaveCode('scr-pause')); await L1.waitForTimeout(800);
+  const long = await E(L1, () => document.getElementById('sc-text').value);
+  ok(long.length > 4300, 'a long save makes a long code (' + long.length + ' characters)');
+  const cut = long.slice(0, 4095) + long.slice(4096);
+  const L2 = await open(b, '?dev=day&date=2026-11-23'); await setName(L2, 'Lang', 'jrohn'); await L2.evaluate(() => localStorage.removeItem('lod.save.m3.Lang'));
+  await toBrief(L2, 'jrohn'); await L2.click('#brief-code'); await L2.waitForTimeout(300);
+  await L2.fill('#sc-text', cut); await L2.click('#sc-import'); await L2.waitForLoadState('load'); await L2.waitForTimeout(1200);
+  ok(await E(L2, () => !!JSON.parse(localStorage.getItem('lod.save.m3.Lang')).data), 'one lost character at the 4096 cut is put back and the save imports');
+  await L2.close(); await L1.close();
+
   // ===== a phone that cannot keep a save says so (storage blocked or full) =====
   const W = await open(b, '?dev=day&date=2026-11-23'); await setName(W, 'Wiz', 'wizcudi'); await W.evaluate(() => localStorage.removeItem('lod.save.m3.Wiz'));
   await toBrief(W, 'wizcudi'); await W.click('#brief-go'); await W.waitForTimeout(700);

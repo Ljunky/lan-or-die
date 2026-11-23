@@ -1316,7 +1316,13 @@ async function readSaveCode(code) { // -> { err } or { obj }
   const parts = String(code || '').replace(/\s+/g, '').split('.');
   if (!/^LOD1z?$/.test(parts[0])) return { err: 'That is not a save code.' };
   if (parts.length !== 3) return { err: 'The code is damaged or cut off. Copy it again, all of it.' };
-  if (hash32(parts[1]) !== parts[2]) return { err: 'The code is damaged or cut off. Copy it again, all of it.' };
+  if (hash32(parts[1]) !== parts[2]) {
+    // chat apps cut long texts at 4096 characters and can lose one character at the cut: try putting one back at every cut
+    let fixed = null; const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_', pre = parts[0].length + 1;
+    for (let k = 1; k <= 6 && !fixed; k++) for (const d of [0, -1, 1]) { const at = 4096 * k - pre + d; if (at <= 0 || at > parts[1].length) continue; for (const c of A) { const t = parts[1].slice(0, at) + c + parts[1].slice(at); if (hash32(t) === parts[2]) { fixed = t; break; } } if (fixed) break; }
+    if (!fixed) return { err: 'The code is damaged or cut off. Copy it again, all of it. (Long codes are safer as a file: Save as file.)' };
+    parts[1] = fixed;
+  }
   let obj; try { let bytes = unb64u(parts[1]); if (parts[0] === 'LOD1z') bytes = await streamed(bytes, DecompressionStream); obj = JSON.parse(new TextDecoder().decode(bytes)); } catch (e) { return { err: 'The code could not be read.' }; }
   if (!obj || !obj.s || !obj.s.data) return { err: 'There is no saved game in that code.' };
   if (obj.m !== M.id) return { err: 'That code belongs to another mission.' };
