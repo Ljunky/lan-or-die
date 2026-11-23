@@ -230,6 +230,7 @@ const clickBtn = (p, re) => E(p, re => { const b = [...document.querySelectorAll
     let seen = new Set();
     for (let i = 0; i < 300; i++) {
       const r = await E(p, () => { const m = window.__m3; if (m.pending && m.pending.say) m.pending.res(); return { d: window.__d, bag: !!(m.B && m.B.bag), foeK: m.B && m.B.bag ? Math.round(m.B.bag.foeK * 10) / 10 : null, tied: !!(m.B && m.B.bag && m.B.bag.tied), rip: !!(m.B && m.B.bag && m.B.bag.rip) }; });
+      await E(p, () => { const b = [...document.querySelectorAll('#m3ui .m3grid button')].find(x => /No thanks/.test(x.textContent)); if (b) b.click(); });
       if (r.bag) seen.add('bag'); if (r.tied) seen.add('tied'); if (r.rip) seen.add('rip'); if (r.foeK === 0) seen.add('sucked');
       if (r.d !== null) { await E(p, () => { Math.random = window.__real; }); return { res: r.d, seen: [...seen] }; }
       await p.waitForTimeout(40);

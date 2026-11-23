@@ -151,24 +151,27 @@ async function pickStarter(p, name) {
 
   // ---------- phone apps + BankID door + dev tile tool ----------
   const kr0 = await E(p, () => window.__m3.G.kr);
-  await E(p, () => { window.__m3.bagMenu(); }); await until(p, 'Phone'); await until(p, 'Swish'); await p.waitForTimeout(80);
-  t = await E(p, () => document.querySelector('#m3ui .m3txt').textContent);
+  const phoneApp = async name => { await E(p, n => { [...document.querySelectorAll('.ph-app')].find(x => x.textContent.includes(n)).click(); }, name); await p.waitForTimeout(80); return E(p, () => document.querySelector('.ph-card').textContent); };
+  const phoneHome = () => E(p, () => document.querySelector('.ph-nav button').click());
+  await E(p, () => { window.__m3.bagMenu(); }); await until(p, 'Phone'); await p.waitForTimeout(150);
+  t = await phoneApp('Swish');
   ok(/swish|Payment|received/i.test(t) && await E(p, k => window.__m3.G.kr === k - 10, kr0), 'Swish sends 10 kr to the wrong person: "' + t.replace(/\s+/g, ' ').slice(0, 50) + '"');
-  await until(p, 'Klarna'); await p.waitForTimeout(60);
+  await phoneHome(); await phoneApp('Klarna');
   ok(await E(p, () => window.__m3.G.debt === 1), 'Klarna once');
-  await until(p, 'Klarna'); await p.waitForTimeout(60);
-  ok(/Breathe|min/.test(await E(p, () => document.querySelector('#m3ui .m3txt').textContent)) && await E(p, () => window.__m3.G.debt === 1), 'Klarna again at once: wait 10 minutes');
+  await phoneHome(); t = await phoneApp('Klarna');
+  ok(/Breathe|min/.test(t) && await E(p, () => window.__m3.G.debt === 1), 'Klarna again at once: wait 10 minutes');
   await E(p, () => { window.__m3.trapSpeed = 1e6; }); // real minutes pass
-  for (let i = 0; i < 3; i++) { await until(p, 'Klarna'); await p.waitForTimeout(60); }
+  for (let i = 0; i < 3; i++) { await phoneHome(); await phoneApp('Klarna'); }
   await E(p, () => { window.__m3.trapSpeed = 1; });
   let g = await E(p, () => ({ kr: window.__m3.G.kr, debt: window.__m3.G.debt }));
   ok(g.kr === kr0 - 10 + 600 && g.debt === 3, 'Klarna: +200 kr and promise debt, three times max (' + JSON.stringify(g) + ')');
   ok(await E(p, () => window.__m3.S.blocked(41, 18) || true) && await E(p, () => { const m = window.__m3; m.G.p.y = 20 * 16; return m.S.blocked(41, 18); }), 'BankID blocks The Box door before approval');
-  await until(p, 'BankID'); await until(p, 'BankID'); await p.waitForTimeout(60);
+  await phoneHome(); await phoneApp('BankID'); await phoneHome(); await phoneApp('BankID');
   ok(await E(p, () => { const m = window.__m3; return !!m.G.flags.bankid && !m.S.blocked(41, 18); }), 'second BankID open approves it, the door opens');
-  await until(p, 'Tibber'); await p.waitForTimeout(60);
-  ok(/kr\/kWh|kr while/.test(await E(p, () => document.querySelector('#m3ui .m3txt').textContent)), 'Tibber shows an absurd electricity price');
+  await phoneHome(); t = await phoneApp('Tibber');
+  ok(/kr\/kWh|kr while/.test(t), 'Tibber shows an absurd electricity price');
   await p.screenshot({ path: OUT + '/M3P_phone.png' });
+  await phoneHome(); await phoneHome(); await p.waitForTimeout(150);
   await drive(p, ['Pocket', 'Close']);
   await at(p, 12, 60); await p.waitForTimeout(100);
   const box = await p.locator('#cv').boundingBox();
