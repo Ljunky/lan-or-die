@@ -628,6 +628,23 @@ legacy: { frog: 'toadlet', cuke: 'fawn', peng: 'hoglet', golem: 'hoglet', ghost:
   snake: 'adderling', bear: 'bearCub', lizard: 'adderling', salmon: 'perchFry', moth: 'caterpillar', pike: 'pikeFry', loyal: 'badgerCub', walter: 'foxKit', cat: 'lynxKitten', lich: 'badgerCub', elk: 'fawn', serpent: 'adderling' },
 
 /* ---------- Fältboken (the field book, replaces the creature list). margin = the previous owner's notes, one per line. A drug form shows as a black silhouette until you have seen its line; the recipe shows once you know it. ---------- */
+/* ---------- shop and house signs (missions/m3-signs.js). at = [tile x, tile y] (x may be .5), text, bg / fg colours, optional icon, awning: [colour, colour] (default: sign colour + cream; false = none),
+   glowCol / flicker / glow:false for the night look, release for gating. Hero houses get their name plank automatically from `houses` (name, or `sign` to override). ---------- */
+signStyle: { glow: .95 },
+signs: [
+  { at: [16.5, 46], text: 'ICA MAXI', icon: '🛒', bg: '#e3000f', fg: '#fff', awning: ['#e3000f', '#fbf6e8'] },
+  { at: [40, 32], text: 'SYSTEMBOLAGET', bg: '#0a6e3a', fg: '#ffd23a', awning: ['#0a6e3a', '#ffd23a'] },
+  { at: [40, 44], text: 'APOTEK HJÄRTAT', icon: '💊', bg: '#2fa36b', fg: '#fff', awning: ['#2fa36b', '#fff'] },
+  { at: [6, 65], text: 'IRON BURGER', icon: '🍔', bg: '#222', fg: '#f39c34', awning: ['#f39c34', '#222'], flicker: true },
+  { at: [17, 65], text: 'PIZZERIA BERGA', icon: '🍕', bg: '#b02a1e', fg: '#fff', awning: ['#b02a1e', '#fff', '#2f8f3a', '#fff'] },
+  { at: [28, 65], text: 'J&K99 SUSHI', icon: '🍣', bg: '#1c2a36', fg: '#ff6b6b', awning: ['#1c2a36', '#ff6b6b'], flicker: true },
+  { at: [40, 65], text: "TAILOR'S BARBER", icon: '💈', bg: '#3a2a4a', fg: '#f4e08a', awning: ['#3a2a4a', '#f4e08a'] },
+  { at: [41.5, 50.5], text: 'E.ON', bg: '#e3000f', fg: '#fff', awning: false },
+  { at: [16.5, 27], text: 'STOCK ROOM', bg: '#333', fg: '#ff5a5a', awning: false },
+  { at: [6.5, 18.6], text: 'CEMETERY', icon: '🪦', bg: '#3a3a44', fg: '#d8d8e0', awning: false },
+  { at: [44.5, 32.7], text: 'PANT', icon: '♻️', bg: '#2e7d32', fg: '#fff', awning: false },
+  { at: [23, 3.6], text: 'FISKEBRYGGAN', icon: '🎣', bg: '#2b5d8a', fg: '#ffffff', awning: false }
+],
 /* ---------- Faunalens: the AI scan offered after your first catch; after that the Faunadex can be downloaded in the Appbutiken ---------- */
 lens: {
   offer: '📱 Faunalens AI: "New animal detected! Scan {name} for free? We will only use your data for… things."',
