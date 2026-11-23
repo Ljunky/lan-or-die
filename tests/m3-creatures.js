@@ -177,10 +177,14 @@ const mkParty = (p, list) => E(p, list => { const m = window.__m3; m.G.party = l
   g = await E(p, () => ({ sp: window.__m3.G.party[0].sp, know: !!window.__m3.G.know['recipe:xanadger'], items: window.__m3.G.items.xanax | 0 }));
   ok(!r.err && g.sp === 'xanadger' && g.know && g.items === 0 && r.texts.some(t => /Benzo Calm/.test(t) && /DEF ×1.4/.test(t) && /doze/.test(t)), 'Bag → Use → Xanax → a Badger at Lv 24 becomes Xanadger, the recipe is learned, the trip trait is explained (' + g.sp + ')');
   await mkParty(p, [['badger', 20], ['lynx', 30]]);
+  await E(p, () => { window.__realRandom = Math.random; Math.random = () => .999; });
   r = await flow(p, 'feedFlow', ['molly'], ['Badger Lv 20']);
+  await E(p, () => { Math.random = window.__realRandom; });
   g = await E(p, () => ({ sp: window.__m3.G.party[0].sp, molly: window.__m3.G.items.molly }));
   ok(g.sp === 'badger' && g.molly === 1 && r.texts.some(t => /Nothing else happens\. Yet\./.test(t)), 'too young: "very relaxed. Nothing else happens. Yet." and the drug is used up');
+  await E(p, () => { window.__realRandom = Math.random; Math.random = () => .999; });   // no bad trip by chance here
   r = await flow(p, 'feedFlow', ['coke'], ['Badger Lv 20']);
+  await E(p, () => { Math.random = window.__realRandom; });
   ok(!r.texts.some(t => /Yet/.test(t)) && r.texts.some(t => /Nothing else happens/.test(t)), 'a drug that has no recipe for it: nothing happens, no "Yet"');
   await E(p, () => { window.__m3.G.items.molly = 1; window.__realRandom = Math.random; Math.random = () => 0; });
   await flow(p, 'feedFlow', ['molly'], ['Lynx Lv 30']);
