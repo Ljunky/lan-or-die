@@ -53,6 +53,14 @@ Latest state is always: this file + `CHARACTERS.md` (every person and line, gene
 - **Creature art by file name:** `assets/creatures/<id>.png` is picked up automatically (no `art:` line). `node tools/import-art.js <image> <id>` (or `tools/import-art.html`, no install) turns any picture into a 96 × 96 PNG (`--size 48` for the old format): background removed, cropped, thick navy outline; original colours are kept unless the picture already looks like pixel art. Creatures with 96 px art are drawn at the same on-screen size as 48 px art, smoothed (48 and 96 can be mixed).
 - **Apps Script, the only thing to do:** re-paste `backend/claims.gs` (starter ids changed) and deploy a NEW version. Details at the top of that file.
 
+## Batch A (gameplay updates, Mon 23 Nov)
+- **Auto-fight** (Fight → ⏩ Auto-fight): best move every turn for grinding, a Stop button between turns, stops by itself under 30 % HP or against an Epic; stays on for the next wild fights.
+- **The carrier bag** is drawn now (plastic bag with a print, handles, shine): the foe is sucked in, the bag drops and wiggles (three dots show the wiggles, eyes peek out), then it ties shut with a gold flash and GOTCHA! (caught) or rips with shards and the foe pops back out (escaped).
+- **Speech bubble** (three dots) instead of the TAP box over anything you can talk to or search.
+- **Kinder start:** 8 bags, 3 Folköl, 2 fizz tablets, a **shoebox trap** (falls apart after 3 catches) and some bait.
+- **Hidden stashes** (9): a stone, tyres, a bin, a cooler, a log, a golf bag, a stump. 6 in the parking lot (weed Mon, speed/molly/keta Tue, coins), shrooms (lawn), LSD (golf), DMT (forest, Wed). Max one of each drug, each only on the day its drug is released.
+- **"Party" is now "Team"** in everything you read.
+
 ## Balance pass (simulated, see BALANCE.md; `node tools/balance.js` re-runs it from the data)
 The simulator copies the game's battle, XP and encounter maths and was checked against real in-game fights (same win rate, turns and HP loss within noise). It assumes a party of four types, best move, swapping to the best matchup, no items and no trip traits. Times are an ideal grind in the best safe zone; real play is probably 2–3× slower. Re-run after the new roster: two multipliers were added so the numbers land where the old balance was: `tuning.WILD_STAT: 1.2` (wild creatures, also from traps and fishing) and `tuning.BOSS_STAT: .6` (hero teams, which are drug forms ×1.3 and rarer than a youngling party).
 - **Monday (old map only):** Lv 10 in ~9 min, Lv 20 in ~1.2 h, Lv 25 in 3.8 h, then it stalls on purpose (the old map tops out at Lv 11 foes). The first house (The Box, Lv 10) opens after minutes.

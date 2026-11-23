@@ -26,6 +26,7 @@ tuning: {
   BOSS_STAT: .6,                      // stat multiplier for hero teams and trainer drug forms: they are drug forms (×1.3, rarer) fighting your youngling-stage party, plus their trip traits
   TRIP_MIN: 30,                       // a bad trip: the creature is 'sketchy' (cannot fight) for this many REAL minutes, also while the game is closed
   BOSS_AT_GATE: false,                // false: hero teams follow the old ladder (BOSS_LV + steps). true: levels = the house gate −2 / ±0 / +2 (use once the heroes live in their houses)
+  AUTO_STOP_HP: .3, AUTO_GAP: .5,   // auto-fight: stops below this share of max HP; seconds the Stop button shows between turns
   TRAP: { nothing: .25, lower: .25, own: .4, higher: .1, bait: .1, step: .05, ownCap: .6, drug: .3, drugNothing: .1 },   // what a ready trap rolls (see M3_CREATURES.md §7)
   PTS: { item: 2500, species: 2000, speciesMax: 20, hero: 30000, partner: 4000, dev: 50000, egg: 50000 }  // goals only, max 300 000. Levels give no points
 },
@@ -106,10 +107,10 @@ moves: {
 /* ---------- trip traits: what a drug does to a creature that was grown on it (creature field  trip: 'xanax').
    Numbers: defMul/spdMul/atkMul = stat multipliers · skipP = chance to lose the turn (skipText = what is said; halfDmg = takes half damage that turn) · healSelf / healParty = share of max HP per turn · drainSelf = loses this share per turn
    first = always moves first · crit = extra crit chance · immune = [drops, status, confuse] · extraHits / accPenalty = multi-hit moves · atkStep/defStep = stat steps per turn · confuseOnHit · foeAtkEvery2 · lsd = type changes each turn
-   catchBonus = wild foes are easier to catch while it is in the party · reveal = shows hidden creatures while in the party · badTrip = chance per feeding (5–12 %) that the creature goes sketchy for TRIP_MIN minutes ---------- */
+   catchBonus = wild foes are easier to catch while it is on your team · reveal = shows hidden creatures while on your team · badTrip = chance per feeding (5–12 %) that the creature goes sketchy for TRIP_MIN minutes ---------- */
 trips: {
   xanax: { name: 'Benzo Calm', up: 'DEF ×1.4, immune to confusion and guilt', down: '15 % to doze off for a turn', defMul: 1.4, immune: ['confuse'], skipP: .15, skipText: 'dozes off. Zzz.', badTrip: .06 },
-  molly: { name: 'Love Everyone', up: 'heals the party 5 % every turn; wild foes are easier to catch', down: '20 % to refuse to attack ("too much love")', healParty: .05, catchBonus: .15, skipP: .2, skipText: 'is too full of love to attack.', badTrip: .09 },
+  molly: { name: 'Love Everyone', up: 'heals the team 5 % every turn; wild foes are easier to catch', down: '20 % to refuse to attack ("too much love")', healParty: .05, catchBonus: .15, skipP: .2, skipText: 'is too full of love to attack.', badTrip: .09 },
   keta: { name: 'Dissociate', up: 'immune to stat drops and status', down: 'sometimes K-hole: skips a turn and takes half damage', immune: ['drops', 'status', 'confuse'], skipP: .2, halfDmg: true, skipText: 'drifts into a K-hole.', badTrip: .1 },
   lsd: { name: 'Kaleidoscope', up: 'its type changes every turn (often super-effective); reveals Epic creatures', down: 'its own type is random too, so it can turn weak', lsd: true, reveal: true, badTrip: .12 },
   shrooms: { name: 'Spore Mind', up: 'moves can confuse; heals 5 % a turn; reveals Epic creatures', down: 'SPD ×0.85', confuseOnHit: .3, healSelf: .05, spdMul: .85, reveal: true, badTrip: .08 },
@@ -229,16 +230,16 @@ creatures: {
 
 /* ---------- people as fighters (bosses you can catch, wives, NPCs). look = paper-doll spec, see dollParts ---------- */
 heroes: {
-  bigwman: { name: 'BigWman', col: '#3ddc84', team: ['trancequirrel', 'blowboar', 'psilocybear'], at: [9, 44], ult: 'YES!', ultTxt: '+50 % ATK for the whole party for 3 turns', after: 'I need to update the spreadsheet. YES… no.',
+  bigwman: { name: 'BigWman', col: '#3ddc84', team: ['trancequirrel', 'blowboar', 'psilocybear'], at: [9, 44], ult: 'YES!', ultTxt: '+50 % ATK for the whole team for 3 turns', after: 'I need to update the spreadsheet. YES… no.',
     stats: [80, 72, 74, 46], moves: [['yes', 1], ['slam', 1], ['hug', 8]], likes: 'beer6', epitaph: 'Balanced the budget. Not the life.',
     look: { skin: '#e9b48c', hair: null, style: 'bald', top: '#1d1d24', topStyle: 'tee', legs: '#3d5f92', shoes: '#6b4a2b', prop: 'clip', big: 1 } },
   wizcudi: { name: 'Wizcudi', col: '#8c6cff', team: ['methmoth', 'speedbeetle', 'mantisShroom'], at: [41, 54], ult: 'Lights Out', ultTxt: 'the enemy misses 2 turns', after: 'Fine. But turn the light off on your way out.',
     stats: [64, 70, 60, 74], moves: [['lights', 1], ['zap', 1], ['beep', 8]], likes: 'beer6', epitaph: 'Finally, the lights are off.',
     look: { skin: '#e9b48c', hair: '#5a3a22', style: 'short', beard: '#5a3a22', glasses: 1, top: '#1d1d24', top2: '#f5c518', topStyle: 'stripe', legs: '#3d5f92', shoes: '#333' } },
-  jrohn: { name: 'Jrohn', col: '#ff4fa3', team: ['acidadder', 'shroomboar', 'shroomoose'], at: [29, 32], ult: 'I Love This!', ultTxt: 'heals the party 50 % and charms the enemy', after: 'I LOVE THIS! Losing, I mean. Hug?',
+  jrohn: { name: 'Jrohn', col: '#ff4fa3', team: ['acidadder', 'shroomboar', 'shroomoose'], at: [29, 32], ult: 'I Love This!', ultTxt: 'heals the team 50 % and charms the enemy', after: 'I LOVE THIS! Losing, I mean. Hug?',
     stats: [70, 64, 58, 70], moves: [['love', 1], ['hug', 1], ['dill', 8]], likes: 'beer6', epitaph: 'Here lies Jrohn. Shirt not included.',
     look: { skin: '#e9b48c', hair: '#6b4226', style: 'short', top: '#4f6e3a', top2: '#2e4424', topStyle: 'plaid', legs: '#6b6247', shoes: '#4a3220', prop: 'plant' } },
-  loken: { name: 'Löken', col: '#f5c242', team: ['snortoise', 'mollipike', 'ketamoose'], at: [24, 14], ult: 'Stick Together, Boys!', ultTxt: 'every creature in the party attacks at once', after: 'Good fight. Now get off the lawn. Gently.',
+  loken: { name: 'Löken', col: '#f5c242', team: ['snortoise', 'mollipike', 'ketamoose'], at: [24, 14], ult: 'Stick Together, Boys!', ultTxt: 'every creature on your team attacks at once', after: 'Good fight. Now get off the lawn. Gently.',
     stats: [76, 70, 78, 48], moves: [['stick', 1], ['slam', 1], ['rattle', 8]], likes: 'beer6', epitaph: 'Stuck together. Alone, for once.',
     look: { skin: '#e9b48c', hair: '#8a5a2b', style: 'cap', cap: '#f5c518', cap2: '#1d1d24', beard: '#8a5a2b', top: '#b9c1cc', topStyle: 'armor', legs: '#5a4a30', shoes: '#4a3220', prop: 'shield' } },
   ljunky: { name: 'Ljunky', col: '#f7931a', team: ['cokeroach', 'laddybug', 'ketacrow'], at: [41, 12], ult: 'Buy the Dip', ultTxt: '50 %: double damage. 50 %: zero.', after: 'Unrealised loss. It does not count.',
@@ -310,6 +311,7 @@ items: {
   chores: { kind: 'throwable', name: 'Chore chart', em: '📋', price: 8, hit: 1, wife: true, throw: [{ type: 'anger', value: 30 }], learnedNote: 'Backfires. She gets angrier.', release: 'mon' },
   // ---- traps: three ladders (ground / water / air), tier 1-5. cap = biggest creature size it holds (S M L XL), waitMin = real minutes, place = ground | shore | deep (pier end or boat) | boat | night.
   //      You never buy tier 2+: Trapper Tore upgrades a lower trap (upgradesTo + upgradeCost { kr, fur, feather, scale, chitin, shell, antler }). value = what it cost to build (repairs cost half) ----
+  shoebox: { kind: 'trap', name: 'Shoebox trap', em: '👞', price: 0, notSold: true, value: 5, ladder: 'ground', tier: 1, cap: 'S', waitMin: 3, place: 'ground', uses: 3, learnedNote: 'Ground trap, tier 1. A homemade starter: falls apart after 3 catches. Small things only.', release: 'mon' },
   mouseTrap: { kind: 'trap', name: 'Mouse trap', em: '🪤', price: 30, value: 30, ladder: 'ground', tier: 1, cap: 'S', waitMin: 4, place: 'ground', upgradesTo: 'liveBox', upgradeCost: { kr: 60, fur: 3 }, learnedNote: 'Ground trap, tier 1. Small things: mice, roaches, beetles.', release: 'mon' },
   liveBox: { kind: 'trap', name: 'Live box', em: '📦', price: 0, notSold: true, value: 60, ladder: 'ground', tier: 2, cap: 'M', waitMin: 3.5, place: 'ground', upgradesTo: 'snare', upgradeCost: { kr: 100, fur: 4, chitin: 2 }, learnedNote: 'Ground trap, tier 2. Up to medium: squirrels, fox kits, crowlings.', release: 'mon' },
   snare: { kind: 'trap', name: 'Snare', em: '➰', price: 0, notSold: true, value: 100, ladder: 'ground', tier: 3, cap: 'M', waitMin: 3, place: 'ground', upgradesTo: 'pitTrap', upgradeCost: { kr: 160, fur: 6, shell: 2 }, learnedNote: 'Ground trap, tier 3. Foxes, adders, boarlets.', release: 'mon' },
@@ -636,10 +638,10 @@ opening: {
   stranger: { name: '???', look: { skin: '#d8d0c8', hair: '#2a0a3a', style: 'hat', top: '#2a0a3a', top2: '#3dff8a', topStyle: 'blazer', legs: '#111', shoes: '#111', glasses: 1, big: 1 } },
   lines: ['You have been chosen.', 'Now it is your time to choose.'],
   starters: ['badgerCub', 'lynxKitten', 'toadlet', 'hoglet', 'fawn'],
-  joined: '{name} joined your party!',
+  joined: '{name} joined your team!',
   tooSlow: '…',                                 // said when someone else grabbed the same one a second earlier
   noFight: 'You have nothing to fight with.',
-  startItems: { folkol: 2, fizztab: 1, bag: 5 }
+  startItems: { folkol: 3, fizztab: 2, bag: 8, shoebox: 1, worms: 2, nuts: 1, jam: 1 }   // a kinder start: 8 bags, 2 fizz tabs, a 3-use shoebox trap and some bait
 },
 /* ---------- when everything faints (lose) or your heart gives up (heart) ---------- */
 respawn: {
@@ -1014,6 +1016,16 @@ dialogue: {
       { if: { flag: 'got:meth' }, text: 'The camper is empty. The smell stays. Do not touch the thermos.' },
       { if: { carry: 'faltboken', notFlag: 'got:meth', relMin: 0 }, text: 'Under the bunk, in a sock: a small bag of bright crystals and a note: "for the Methmoth guy. Do NOT." You take it. It glows a little.', give: { meth: 1 }, set: { 'got:meth': true }, tell: ['recipe:methmoth'] },
       { text: 'A dented camper van, curtains drawn. On the dashboard: a thermos, a lamp (lit) and a coffee- and weed-stained book. FÄLTBOKEN – Nordens Djur, med anteckningar. Nobody is coming back for it.', give: { faltboken: 1 }, set: { 'got:book': true } }] },
+  /* hidden stashes (see props) */
+  stash_weed: { repeat: true, talk: [{ if: { flag: 'got:stash_weed' }, text: 'Nothing else here. Just a bit of dust and a bad feeling.' }, { text: "Under the flat stone: a baggie of weed, taped shut. The dealer's handwriting says \"for later\". It is later.", give: { weed: 1 }, set: { 'got:stash_weed': true } }] },
+  stash_coins1: { repeat: true, talk: [{ if: { flag: 'got:stash_coins1' }, text: 'Nothing else here. Just a bit of dust and a bad feeling.' }, { text: 'Behind the flat tyre: a sock with 30 kr in coins. Nobody is looking for it.', kr: 30, set: { 'got:stash_coins1': true } }] },
+  stash_coins2: { repeat: true, talk: [{ if: { flag: 'got:stash_coins2' }, text: 'Nothing else here. Just a bit of dust and a bad feeling.' }, { text: "Under the trolley's seat: a fold of 50 kr. The trolley judges you. You keep the money.", kr: 50, set: { 'got:stash_coins2': true } }] },
+  stash_speed: { repeat: true, talk: [{ if: { flag: 'got:stash_speed' }, text: 'Nothing else here. Just a bit of dust and a bad feeling.' }, { text: "Inside the tyre: a film canister marked \"SPEED, DO NOT EAT\". Somebody's been eating.", give: { speed: 1 }, set: { 'got:stash_speed': true } }] },
+  stash_molly: { repeat: true, talk: [{ if: { flag: 'got:stash_molly' }, text: 'Nothing else here. Just a bit of dust and a bad feeling.' }, { text: 'Behind the bin, taped to the wall: one pink capsule in a sandwich bag. It smells of strawberry.', give: { molly: 1 }, set: { 'got:stash_molly': true } }] },
+  stash_keta: { repeat: true, talk: [{ if: { flag: 'got:stash_keta' }, text: 'Nothing else here. Just a bit of dust and a bad feeling.' }, { text: 'In the cooler, between two Folköl: a small vial. The label says "HORSE?". You choose not to ask.', give: { keta: 1 }, set: { 'got:stash_keta': true } }] },
+  stash_shrooms: { repeat: true, talk: [{ if: { flag: 'got:stash_shrooms' }, text: 'Nothing else here. Just a bit of dust and a bad feeling.' }, { text: 'Under the log, in a paper bag: dried mushrooms. A smiley is drawn on it. The smiley is not reassuring.', give: { shrooms: 1 }, set: { 'got:stash_shrooms': true } }] },
+  stash_lsd: { repeat: true, talk: [{ if: { flag: 'got:stash_lsd' }, text: 'Nothing else here. Just a bit of dust and a bad feeling.' }, { text: "In the golf bag's side pocket: a tiny sheet of paper, ten little squares. Do not lick the scorecard.", give: { lsd: 1 }, set: { 'got:stash_lsd': true } }] },
+  stash_dmt: { repeat: true, talk: [{ if: { flag: 'got:stash_dmt' }, text: 'Nothing else here. Just a bit of dust and a bad feeling.' }, { text: 'In the stump, wrapped in a leaf: a vial of yellow-green crystals. The forest hums while you hold it.', give: { dmt: 1 }, set: { 'got:stash_dmt': true } }] },
   alley: { repeat: true, talk: [
       { if: { flag: 'got:alley' }, text: 'A bin. A smell. Nothing else tonight.' },
       { text: 'Behind a bin, a very small, very cold bag. You are not sure what it is. You are sure what it is.', give: { coke: 1 }, set: { 'got:alley': true } }] },
@@ -1316,7 +1328,18 @@ props: {
   camper: { name: 'A camper van', at: [121, 58], em: '🚐', release: 'tue' },
   alley: { name: 'A city alley', at: [92, 43], em: '🗑️', show: { night: true }, release: 'tue' },
   balloons: { name: 'Balloon stand', at: [27, 47], em: '🎈', show: { day: 'mon' }, release: 'mon' },
-  wallet: { name: 'A lost wallet', at: [30, 18], em: '👛', show: { day: 'wed' }, release: 'wed' }
+  wallet: { name: 'A lost wallet', at: [30, 18], em: '👛', show: { day: 'wed' }, release: 'wed' },
+  /* hidden stashes: search the cover objects (stone, tyre, bin …). Each gives one thing once, then the cover object disappears. Max 1 of each drug on the whole map. */
+  stash_weed: { name: 'A flat stone', at: [11, 53], em: '🪨', show: { notFlag: 'got:stash_weed' }, stash: true, release: 'mon' },
+  stash_coins1: { name: 'A flat tyre', at: [22, 62], em: '🛞', show: { notFlag: 'got:stash_coins1' }, stash: true, release: 'mon' },
+  stash_coins2: { name: 'A shopping trolley', at: [28, 50], em: '🛒', show: { notFlag: 'got:stash_coins2' }, stash: true, release: 'mon' },
+  stash_speed: { name: 'A rusty tyre', at: [34, 59], em: '🛞', show: { notFlag: 'got:stash_speed' }, stash: true, release: 'tue' },
+  stash_molly: { name: 'A bin behind the cars', at: [5, 57], em: '🗑️', show: { notFlag: 'got:stash_molly' }, stash: true, release: 'tue' },
+  stash_keta: { name: 'A cooler box', at: [41, 59], em: '🧊', show: { notFlag: 'got:stash_keta' }, stash: true, release: 'tue' },
+  stash_shrooms: { name: 'A fallen log', at: [30, 12], em: '🪵', show: { notFlag: 'got:stash_shrooms' }, stash: true, release: 'tue' },
+  stash_lsd: { name: 'A golf bag', at: [60, 30], em: '⛳', show: { notFlag: 'got:stash_lsd' }, stash: true, release: 'tue' },
+  stash_dmt: { name: 'A hollow stump', at: [66, 60], em: '🌳', show: { notFlag: 'got:stash_dmt' }, stash: true, release: 'wed' }
+
 },
 
 /* minigames: numbers only. fishing: rounds you need to win out of rounds, zone = size of the green part (0-1), speed = how fast the marker swings. golf: maxCarry metres at full power, window = how forgiving the green zone is, cup = how close is "in" */

@@ -480,7 +480,7 @@ function bestMove(c, target) {
 }
 function addToParty(c, quiet) {
   if (G.party.length < 4) { G.party.push(c); return 'party'; }
-  G.box.push(c); if (!quiet) LOD.toast('Party full: ' + cname(c) + ' went to the van', 2.2); return 'van';
+  G.box.push(c); if (!quiet) LOD.toast('Team full: ' + cname(c) + ' went to the van', 2.2); return 'van';
 }
 
 /* ===================== EFFECTS: what each effect type does in this game ===================== */
@@ -544,6 +544,7 @@ async function startBattle(o) {
   if (B.dazed) { for (const f of B.foes) { EF.apply(f, { type: 'stun', turns: 1 }); EF.apply(f, { type: 'catchBonus', value: B.dazed, turns: 99 }); } }
   const who = B.kind === 'boss' ? B.boss : B.kind === 'partner' ? B.partner : B.kind === 'trainer' || B.kind === 'npc' ? B.npc : B.kind === 'dev' ? 'dev' : null;
   if (who) { B.introT = 1.6; B.introId = who; }
+  if (autoPref && (B.kind === 'wild' || B.kind === 'trap') && (SP[B.foes[0].sp] || {}).rarity !== 'E') B.auto = true;
   SFX.start(); await sleep(B.introT ? 1.6 : .75);
   const foe = curFoe();
   if (B.kind === 'wild' || B.kind === 'trap') { G.seen[foe.sp] = 1; await say((B.kind === 'trap' ? 'A dazed ' : 'A wild ') + cname(foe) + ' appeared! (Lv ' + foe.lv + ')'); }
@@ -607,16 +608,29 @@ const partnerNeed = () => CFG.PARTNER_TURNS + PPL.reacts(B.partner).turns;
 const effHint = (mt, ft) => { const e = eff(mt, ft); return e === 1 || !PPL.know('types') ? '' : e > 1 ? ' · strong!' : ' · weak'; }; // only once someone has told you how the types work
 const throwables = () => Object.keys(ITEMS).filter(id => has(id) && (ITEMS[id].kind === 'throwable' || (ITEMS[id].kind === 'drug' && (ITEMS[id].throw || ITEMS[id].lureMul))) && rel(ITEMS[id]));
 const usables = () => Object.keys(ITEMS).filter(id => has(id) && ITEMS[id].kind === 'drug' && ITEMS[id].use && rel(ITEMS[id]));
+/* auto-fight (grinding): the best move each turn; a Stop button shows between turns, it ends when the creature gets low on HP or the foe is an Epic */
+let autoPref = false;
+async function autoAct(me, foe) {
+  if (me.hp < maxHp(me) * CFG.AUTO_STOP_HP) { B.auto = autoPref = false; LOD.toast('⏹ Auto-fight stopped: ' + cname(me) + ' is hurt', 2.4); return null; }
+  const pr = ask('⏩ Auto-fight: ' + cname(me) + ' vs ' + cname(foe), [{ label: '⏹ Stop auto', value: 'stop', cls: 'hot' }]), cur = pending;
+  sleep(CFG.AUTO_GAP).then(() => { if (cur && pending === cur) cur.res('go'); });
+  const v = await pr;
+  if (!B) return { k: 'none' };
+  if (v === 'stop') { B.auto = autoPref = false; return null; }
+  B.autoTurns = (B.autoTurns || 0) + 1;
+  return { k: 'move', mv: bestMove(me, foe) };
+}
 async function chooseAction() {
   for (;;) {
     const me = active(), foe = curFoe(), K = B.kind, hero = HERO[heroId()];
+    if (B.auto) { if ((SP[foe.sp] || {}).rarity === 'E' || !(K === 'wild' || K === 'trap')) B.auto = false; else { const a = await autoAct(me, foe); if (a) return a; if (!B) return { k: 'none' }; } }
     const nUse = usables().reduce((a, id) => a + G.items[id], 0), nThrow = throwables().length + (weaponOwned() ? 1 : 0) + (G.kr >= CFG.BAG_COST ? 1 : 0);
     const main = [
       K === 'partner' ? { label: '💬 Talk', value: 'talk', cls: 'hot' } : { label: '⚔️ Fight', value: 'fight', cls: 'hot' },
       { label: '🍺 Use', value: 'use', sub: nUse ? nUse + ' in the bag' : 'Bag is empty', dis: !nUse },
       { label: '🎯 Throw', value: 'throw', dis: !nThrow },
       { label: '⭐ ' + hero.ult, value: 'ult', sub: B.ult ? 'Used' : 'Once per battle', dis: B.ult },
-      { label: '🔄 Party', value: 'party', sub: G.party.filter(fit).length + ' can fight' },
+      { label: '🔄 Team', value: 'party', sub: G.party.filter(fit).length + ' can fight' },
       { label: '🏃 Run', value: 'run', dis: !(K === 'wild' || K === 'trap') }
     ];
     if (K === 'partner') main.splice(2, 0, { label: '🛡️ Endure', value: 'endure' });
@@ -625,7 +639,9 @@ async function chooseAction() {
     const v = await ask(q, main);
     if (!B) return { k: 'none' };
     if (v === 'fight') {
-      const mv = await ask('Choose a move.', learned(me).map(id => { const m = MOVES[id]; return { label: m.name, value: id, ty: m.type || 'NONE', sub: m.p ? 'Power ' + m.p + (m.hits ? ' ×' + (Array.isArray(m.hits) ? m.hits.join('–') : m.hits) : '') + effHint(m.type, typeOf(foe)) : 'Status' }; }).concat([BACK()]));
+      const autoOk = (K === 'wild' || K === 'trap') && (SP[foe.sp] || {}).rarity !== 'E';
+      const mv = await ask('Choose a move.', learned(me).map(id => { const m = MOVES[id]; return { label: m.name, value: id, ty: m.type || 'NONE', sub: m.p ? 'Power ' + m.p + (m.hits ? ' ×' + (Array.isArray(m.hits) ? m.hits.join('–') : m.hits) : '') + effHint(m.type, typeOf(foe)) : 'Status' }; }).concat(autoOk ? [{ label: '⏩ Auto-fight', value: '__auto', sub: 'Best move every turn, stops when low on HP' }] : [], [BACK()]));
+      if (mv === '__auto') { B.auto = autoPref = true; LOD.toast('⏩ Auto-fight on. Tap Stop to take over.', 2); return { k: 'move', mv: bestMove(me, foe) }; }
       if (mv) return { k: 'move', mv };
     } else if (v === 'use') {
       const d = await ask('Use what?', usables().map(id => itemOpt(id)).concat([BACK()]));
@@ -792,9 +808,9 @@ async function bossUlt() {
 async function heroUlt() {
   const h = heroId(), me = active(), foe = curFoe(); B.ult = true;
   LOD.callout(HERO[h].ult.toUpperCase() + '!', HERO[h].ultTxt, 'good'); B.flashT = .45; FX.addTrauma(.35);
-  if (h === 'bigwman') { B.yes = 3; await say('YES!!! The whole party gets +50 % ATK for 3 turns.'); }
+  if (h === 'bigwman') { B.yes = 3; await say('YES!!! The whole team gets +50 % ATK for 3 turns.'); }
   else if (h === 'wizcudi') { foe.stun = (foe.stun || 0) + 2; await say('Lights Out! ' + cname(foe) + ' will miss 2 turns.'); }
-  else if (h === 'jrohn') { for (const c of G.party) healC(c, .5); foe.stun = (foe.stun || 0) + 1; B.lure *= 1.5; await say('I LOVE THIS! The party heals 50 % and ' + cname(foe) + ' is charmed.'); }
+  else if (h === 'jrohn') { for (const c of G.party) healC(c, .5); foe.stun = (foe.stun || 0) + 1; B.lure *= 1.5; await say('I LOVE THIS! The team heals 50 % and ' + cname(foe) + ' is charmed.'); }
   else if (h === 'loken') {
     await say('Stick together, boys! Everyone attacks!');
     if (B.kind === 'partner') { await say('She is not hurt. She is impressed, a little.'); B.survive++; return; }
@@ -888,19 +904,78 @@ async function throwIt(id) {
   for (const m of msgs) if (m) await say(m);
   if ((it.throw || []).some(e => e.type === 'promiseDebt')) await say('You promised something. Promise debt: ' + G.debt + '.');
 }
+/* ---------- the carrier bag: drawn plastic bag, foe is sucked in, the bag drops and wiggles, then it either ties shut (caught) or rips (it breaks free) ---------- */
+const bagTw = (to, dur, e) => !B || !B.bag ? Promise.resolve() : new Promise(r => FX.tween(B.bag, to, dur / clamp(gameSpeed(), .5, 3), e || 'outQuad', r));
+function drawBag(ctx, x, y, u, o = {}) {   // x,y = bottom centre (middle when o.mid); u = pixel size of one unit; 17 units tall
+  const h = 17 * u, hw = 6 * u;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(o.rot || 0); if (o.mid) ctx.translate(0, h / 2); ctx.scale((o.sx || 1) * (o.s == null ? 1 : o.s), (o.sy || 1) * (o.s == null ? 1 : o.s));
+  const body = () => { ctx.beginPath(); ctx.moveTo(-hw + u, -h + 4 * u); ctx.lineTo(hw - u, -h + 4 * u); ctx.quadraticCurveTo(hw + 2 * u, -h * .45, hw + u, -2 * u); ctx.quadraticCurveTo(hw + u, 0, hw - 2 * u, 0); ctx.lineTo(-hw + 2 * u, 0); ctx.quadraticCurveTo(-hw - u, 0, -hw - u, -2 * u); ctx.quadraticCurveTo(-hw - 2 * u, -h * .45, -hw + u, -h + 4 * u); ctx.closePath(); };
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.5, u * .55); ctx.strokeStyle = '#1F2A44';
+  // handles (or the knot when tied)
+  if (o.tied) { ctx.fillStyle = '#e8f3ff'; ctx.beginPath(); ctx.arc(0, -h + 2 * u, 2.2 * u, 0, 7); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-1.5 * u, -h + 4 * u); ctx.lineTo(-4 * u, -h - 1.5 * u); ctx.moveTo(1.5 * u, -h + 4 * u); ctx.lineTo(4 * u, -h - 1.5 * u); ctx.stroke(); }
+  else for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sx * 3 * u, -h + 2.2 * u, 2.4 * u, 3.6 * u, sx * .25, Math.PI, 0); ctx.stroke(); }
+  body(); ctx.fillStyle = o.eyes ? 'rgba(150,175,205,.92)' : 'rgba(236,246,255,.86)'; ctx.fill(); ctx.stroke();
+  ctx.save(); body(); ctx.clip();
+  ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(-hw + 1.5 * u, -h + 5 * u, 1.6 * u, h * .55);            // plastic shine
+  ctx.fillStyle = '#ffd23a'; ctx.fillRect(-hw - 2 * u, -h * .5, 2 * hw + 4 * u, 3.4 * u);                            // the print
+  ctx.fillStyle = '#c4301c'; ctx.font = '700 ' + (2.6 * u) + 'px Barlow, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TACK!', 0, -h * .5 + 1.8 * u);
+  if (o.eyes) { const ex = Math.sin((o.t || 0) * 9) * .8 * u; ctx.fillStyle = '#fff'; for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sx * 2.4 * u + ex, -h * .25, 1.5 * u, 2 * u, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#1F2A44'; ctx.beginPath(); ctx.arc(sx * 2.4 * u + ex * 1.4, -h * .25 + .4 * u, .7 * u, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; } }
+  ctx.restore();
+  if (o.rip) { ctx.strokeStyle = '#1F2A44'; ctx.lineWidth = Math.max(2, u * .8); ctx.beginPath(); ctx.moveTo(-hw, -h * .7); for (let i = 1; i <= 6; i++) ctx.lineTo(-hw + i * (2 * hw / 6), -h * .7 + (i % 2 ? -2.4 : 1.6) * u + i * u * .5); ctx.stroke(); ctx.fillStyle = 'rgba(31,42,68,.8)'; ctx.fillRect(-1.5 * u, -h * .72, 4 * u, 2.4 * u); }
+  ctx.restore();
+}
+function drawBagScene(ctx, fx, fy, sc, t) {
+  const b = B.bag; if (!b) return; const u = sc * 1.55, h = 17 * u;
+  ctx.save(); ctx.globalAlpha = Math.max(0, b.alpha);
+  if (b.glow > 0) { const g = ctx.createRadialGradient(fx, fy + b.y - h / 2, 4, fx, fy + b.y - h / 2, h * (.7 + b.glow * .7)); g.addColorStop(0, 'rgba(255,214,70,' + (.75 * b.glow) + ')'); g.addColorStop(1, 'rgba(255,214,70,0)'); ctx.fillStyle = g; ctx.fillRect(fx - h * 2, fy + b.y - h * 2, h * 4, h * 3); }
+  drawBag(ctx, fx, fy + b.y, u, { rot: b.rot, sx: b.sx, sy: b.sy, s: b.s, eyes: b.eyes, tied: b.tied, rip: b.rip, t });
+  if (b.dots >= 0) for (let i = 0; i < 3; i++) { const on = i < b.dots; ctx.fillStyle = on ? '#ffd23a' : 'rgba(31,42,68,.45)'; ctx.strokeStyle = '#1F2A44'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(fx + (i - 1) * 4 * u, fy + b.y - h - 6 * u, (on ? 1.5 : 1.1) * u, 0, 7); ctx.fill(); if (on) ctx.stroke(); }
+  ctx.restore();
+}
 async function throwBag(ko) {
   const foe = curFoe();
   await say(ko ? 'You pull out a carrier bag…' : 'You threw a carrier bag!');
   const p = catchChance(foe), ok = Math.random() < p;
-  if (p === 0) { B.bagT = 0; await say(bagSize(SP[foe.sp], B.kind) ? 'The bag goes straight through it. Something else is needed.' : 'Far too big for a carrier bag. Only a trap holds something like this.'); return false; }
-  const shakes = ok ? 3 : Math.random() < p * 1.6 ? 2 : Math.random() < .5 ? 1 : 0;
-  await layer.arc(spots.mx, spots.my - 30 * spots.sc, spots.fx, spots.fy - 20 * spots.sc, { h: 60, dur: .45, draw: (c, x, y, k, r) => { c.save(); c.translate(x, y); c.rotate(r); c.font = '26px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('🛍️', 0, 0); c.restore(); } });
-  B.bagT = 1; B.bagShake = 0; learnItem('bag');
-  for (let i = 0; i < shakes; i++) { await sleep(.5); B.bagShake = 1; SFX.shake(); FX.addTrauma(.08); }
-  await sleep(.45);
-  if (!ok) { B.bagT = 0; await say(pick(['Oh no! It broke free!', 'Argh! Almost had it!', 'It ripped the bag.'])); return false; }
-  SFX.catch(); LOD.haptic('success'); layer.burst(spots.fx, spots.fy - 20, { n: 24, color: ['#ffd23a', '#fff', '#3ddc84'], speed: 180, size: 4 });
-  await caught(foe);
+  if (p === 0) { await say(bagSize(SP[foe.sp], B.kind) ? 'The bag goes straight through it. Something else is needed.' : 'Far too big for a carrier bag. Only a trap holds something like this.'); return false; }
+  const shakes = ok ? 3 : Math.random() < p * 1.6 ? 2 : Math.random() < .5 ? 1 : 0, sc = spots.sc, u = sc * 1.55;
+  SFX.whoosh();
+  await layer.arc(spots.mx, spots.my - 30 * sc, spots.fx, spots.fy - 20 * sc, { h: 70 * sc / 3, dur: .5, spin: 5, draw: (c, x, y, k, r) => { drawBag(c, x, y, u * (.55 + .45 * k), { mid: true, rot: r }); } });
+  learnItem('bag');
+  // impact: the bag opens over it, the foe is sucked in
+  B.bag = { foeK: 1, s: .6, y: -20 * sc, rot: 0, sx: 1, sy: 1, dots: -1, alpha: 1, glow: 0, eyes: 0, tied: 0, rip: 0 };
+  SFX.whoosh(); FX.addTrauma(.1); layer.burst(spots.fx, spots.fy - 20 * sc, { n: 10, color: ['#fff', '#cfe6ff'], speed: 90, size: 3, gravity: 0, life: .35 });
+  await Promise.all([bagTw({ foeK: 0 }, .35, 'inQuad'), bagTw({ s: 1 }, .35, 'outBack')]);
+  // it drops and bounces
+  await bagTw({ y: 0 }, .5, 'outBounce'); LOD.tone(140, .1, 'square', .06, -60); FX.addTrauma(.12); layer.burst(spots.fx, spots.fy, { n: 8, color: ['#cbbba0', '#a89878'], speed: 70, size: 3, up: 30, life: .4 });
+  B.bag.dots = 0; B.bag.eyes = 1;
+  for (let i = 0; i < shakes; i++) {
+    await sleep(.4);
+    SFX.shake(); LOD.haptic('light'); B.bag.dots = i + 1;
+    await bagTw({ rot: -.32, sx: 1.08 }, .1); await bagTw({ rot: .32, sx: .94 }, .18, 'inOutQuad'); await bagTw({ rot: 0, sx: 1 }, .12);
+    layer.burst(spots.fx, spots.fy - 6 * sc, { n: 3, color: '#ffd23a', speed: 50, size: 3, up: 50, life: .35 });
+  }
+  await sleep(.55);
+  if (!ok) {
+    // the plastic gives: rip, shards, the foe pops back out
+    B.bag.rip = 1; SFX.faint(); LOD.haptic('error'); FX.addTrauma(.35); FX.hitStop(60);
+    layer.burst(spots.fx, spots.fy - 10 * sc, { n: 22, color: ['#eaf4ff', '#cfe6ff', '#fff', '#ffd23a'], speed: 200, size: 5, up: 90, life: .7 });
+    layer.number(spots.fx, spots.fy - 44 * sc, 'ESCAPED!', { color: '#ff5a5f', size: 22 });
+    await Promise.all([bagTw({ alpha: 0, sy: .7 }, .35), bagTw({ foeK: 1 }, .35, 'outBack')]);
+    B.bag = null;
+    await say(pick(['Oh no! It broke free!', 'Argh! Almost had it!', 'It ripped the bag.', 'It chewed through the handle. Rude.']));
+    return false;
+  }
+  // caught: the bag ties shut, gold glow, stars, a little victory hop
+  B.bag.tied = 1; B.bag.eyes = 0; B.bag.rot = 0; SFX.catch(); LOD.haptic('success'); FX.hitStop(80);
+  layer.burst(spots.fx, spots.fy - 20 * sc, { n: 14, color: ['#ffd23a', '#fff', '#3ddc84'], speed: 190, size: 5, up: 60, life: .8 });
+  layer.burst(spots.fx, spots.fy - 20 * sc, { n: 8, text: '★', color: '#ffd23a', speed: 140, size: 5, up: 90, life: .9 });
+  layer.number(spots.fx, spots.fy - 56 * sc, 'GOTCHA!', { color: '#ffd23a', size: 26, crit: true, life: 1.2 });
+  await Promise.all([bagTw({ glow: 1 }, .4), bagTw({ sy: 1.12, sx: .92 }, .12)]);
+  await bagTw({ sy: 1, sx: 1, y: -10 * sc }, .18, 'outQuad'); await bagTw({ y: 0 }, .3, 'outBounce');
+  await sleep(.25);
+  await bagTw({ alpha: 0, glow: 0 }, .3);
+  const f = foe; B.bag = null;
+  await caught(f);
   B.over = true; B.result = 'caught';
   return true;
 }
@@ -916,7 +991,7 @@ async function caught(foe) {
     await say('Gotcha! ' + cname(foe) + ' is in the bag. They look… okay with it?');
     personGone(foe.sp, 'caught');
   }
-  if (addToParty(c, true) === 'van') await say('Your party is full. ' + cname(c) + ' went to the van.');
+  if (addToParty(c, true) === 'van') await say('Your team is full. ' + cname(c) + ' went to the van.');
 }
 
 /* ---------- knockout: Catch or Finish off ---------- */
@@ -1270,7 +1345,7 @@ function updMap(dt) {
     else { const s = 22 * dt / d; n.x += (n.tx - n.x) * Math.min(1, s); n.y += (n.ty - n.y) * Math.min(1, s); n.dir = Math.abs(n.tx - n.x) > Math.abs(n.ty - n.y) ? (n.tx < n.x ? 2 : 3) : (n.ty < n.y ? 1 : 0); n.step += dt; }
   }
   if (rel(NPCS[D.raw.debtCollector.npc]) && (G.debt || 0) >= (G.flags.debtSeen || 0) + D.raw.debtCollector.every && G.party.some(c => c.hp > 0)) { debtCollector(); return; }
-  G.near = nearest();
+  { const nn = nearest(); if (!nn !== !G.near || (nn && (nn.x !== G.near.x || nn.y !== G.near.y))) G.nearT = performance.now() / 1000; G.near = nn; }
 }
 const EGG_AT = [[9, 8], [18, 34], [46, 57]];
 let ambT = 0, strobe = 0;
@@ -1352,7 +1427,7 @@ async function npcTalk(n) {
   if (tk.fight) { hideBox(); startNpcFight(id); return; }
   for (;;) {
     const opts = [];
-    if (d.heal) opts.push({ label: '❤️ Heal the party', value: 'heal', cls: 'hot' });
+    if (d.heal) opts.push({ label: '❤️ Heal the team', value: 'heal', cls: 'hot' });
     if (d.shop && d.shop.some(i => ITEMS[i] && rel(ITEMS[i]) && !ITEMS[i].notSold)) opts.push({ label: '🛒 Shop', value: 'shop', cls: d.heal ? '' : 'hot', dis: PPL.refuses(id), sub: PPL.refuses(id) ? 'Refuses to trade with you' : '' });
     if (d.shop && d.shop.includes('tranq') && weaponOwned() && ITEMS[weaponOwned()].upgradesTo) opts.push({ label: '🔧 Upgrade the tranq gun', value: 'upgrade' });
     const challenge = !G.npcBeat[id] && (d.role === 'trainer' || (d.role === 'gym' && isGymBoss(id)));
@@ -1379,7 +1454,7 @@ async function fence(n) {
   for (;;) {
     const list = G.party.map(c => ({ c, arr: G.party })).concat(G.box.map(c => ({ c, arr: G.box }))).filter(o => isCreature(o.c.sp));
     const a = await ask(who + ' · "' + pick(d.offer) + '"', list.map((o, k) => ({ label: cname(o.c) + ' Lv ' + o.c.lv + ' · ' + fencePrice(o.c, n.id) + ' kr', img: creatureIcon(o.c.sp), ty: typeOf(o.c),
-      sub: o.arr === G.box ? 'In the van' : 'In your party', value: k + 1, dis: o.arr === G.party && G.party.length <= 1 })).concat([BACK('‹ Leave')]), { one: true, who });
+      sub: o.arr === G.box ? 'In the van' : 'On your team', value: k + 1, dis: o.arr === G.party && G.party.length <= 1 })).concat([BACK('‹ Leave')]), { one: true, who });
     if (!a) return;
     const o = list[a - 1], kr = fencePrice(o.c, n.id);
     o.arr.splice(o.arr.indexOf(o.c), 1); G.kr += kr; SFX.buy();
@@ -1489,11 +1564,11 @@ async function vanMenu() {
   if (a !== 'swap') return;
   const bi = await ask('Take who from the van?', G.box.map((c, i) => ({ label: cname(c) + ' Lv ' + c.lv, img: creatureIcon(c.sp), ty: typeOf(c), value: i })).concat([BACK()]), { one: true });
   if (bi == null) return;
-  if (G.party.length < 4) { G.party.push(G.box.splice(bi, 1)[0]); return say('Added to the party.', { auto: false }); }
+  if (G.party.length < 4) { G.party.push(G.box.splice(bi, 1)[0]); return say('Added to your team.', { auto: false }); }
   const pi = await ask('Put who in the van?', G.party.map((c, i) => ({ label: cname(c) + ' Lv ' + c.lv, img: creatureIcon(c.sp), ty: typeOf(c), value: i })).concat([BACK()]), { one: true });
   if (pi == null) return;
   const out = G.party[pi]; G.party[pi] = G.box[bi]; G.box[bi] = out;
-  if (!G.party.some(c => c.hp > 0)) { G.box[bi] = G.party[pi]; G.party[pi] = out; return say('Someone in the party has to be awake.', { auto: false }); }
+  if (!G.party.some(c => c.hp > 0)) { G.box[bi] = G.party[pi]; G.party[pi] = out; return say('Someone on your team has to be awake.', { auto: false }); }
   await say('Swapped.', { auto: false });
 }
 /* ---------- feeding: Bag → Use → a drug → a creature. The right drug at the right level turns a teen into its drug form. Every feeding may be a bad trip. ---------- */
@@ -1564,7 +1639,7 @@ async function bagMenu() {
       const nItems = G.list.filter(q => q.got).length, spc = Object.keys(G.lines).length;
       const traps = Object.keys(ITEMS).filter(id => has(id) && ITEMS[id].kind === 'trap'), lures = Object.keys(ITEMS).filter(id => has(id) && ITEMS[id].kind === 'lure');
       const a = await ask('🎒 ' + G.kr + ' kr', [
-        { label: '🐸 Party', value: 'party', sub: G.party.length + '/4' }, { label: '🍺 Use', value: 'use', sub: usables().length ? '' : 'Nothing' },
+        { label: '🐸 Team', value: 'party', sub: G.party.length + '/4' }, { label: '🍺 Use', value: 'use', sub: usables().length ? '' : 'Nothing' },
         { label: '🪤 Traps & lures', value: 'traps', sub: (traps.length + lures.length) + ' kinds', dis: !traps.length && !lures.length },
         { label: '🛒 Shopping list', value: 'list', sub: nItems + '/8' }, { label: '📕 ' + (has('faltboken') ? 'Fältboken' : 'Your creatures'), value: 'dex', sub: has('faltboken') ? spc + '/' + WILD_LINES().length + ' lines' : '' },
         { label: '📓 Notes', value: 'notes' }, { label: '📱 Phone', value: 'phone' }, { label: '🏆 Goals', value: 'goals', sub: fmt(goals().total) + ' pts' }, BACK('‹ Close')]);
@@ -1645,7 +1720,16 @@ function drawWorld(ctx, G, t) {
   if (stranger) list.push({ y: stranger.y, f: () => drawPerson(ctx, OP.stranger.look, stranger.x, stranger.y, stranger.dir, stranger.step ? 1 : 0, t, { alpha: stranger.a }) });
   if (stockOpen() && !G.dev) { const [x, y] = tc(16, 24); list.push({ y: y + 6, f: () => drawPerson(ctx, DEV_LOOK, x, y + 6, 0, 0, t, { glitch: 1 }) }); }
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
-  if (G.near && G.scene === 'map') { const n = G.near; ctx.fillStyle = '#fbf6e8'; ctx.strokeStyle = '#1F2A44'; ctx.lineWidth = 1; LOD.rrect(n.x - 6, n.y - 38 + Math.sin(t * 6) * 1.5, 12, 9, 3); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#1F2A44'; ctx.font = '700 7px Barlow, sans-serif'; ctx.fillText('TAP', n.x, n.y - 33.5 + Math.sin(t * 6) * 1.5); }
+  if (G.near && G.scene === 'map') { const n = G.near, by = n.y - 40 + Math.sin(t * 5) * 1.5, pop = Math.min(1, (performance.now() / 1000 - (G.nearT || 0)) * 8 + .4); speechBubble(ctx, n.x, by, t, pop); }
+  ctx.restore();
+}
+// speech bubble over whatever you can talk to / search: rounded cloud with a tail and three bouncing dots
+function speechBubble(ctx, x, y, t, k) {
+  const w = 20, h = 12, r = 5; ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+  ctx.fillStyle = '#fbf6e8'; ctx.strokeStyle = '#1F2A44'; ctx.lineWidth = 1.2;
+  LOD.rrect(-w / 2, -h / 2, w, h, r); ctx.moveTo(-3, h / 2 - .5); ctx.lineTo(-5.5, h / 2 + 5); ctx.lineTo(2, h / 2 - .5); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#fbf6e8'; ctx.fillRect(-3.4, h / 2 - 1.6, 5.2, 2.2);
+  ctx.fillStyle = '#1F2A44'; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(-5 + i * 5, Math.sin(t * 7 - i * .9) * 1.2, 1.4, 0, 7); ctx.fill(); }
   ctx.restore();
 }
 function bubble(ctx, x, y, s, col, t) { const b = Math.sin(t * 4) * 1; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y + b, 4.5, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '700 7px Barlow, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y + b + .5); }
@@ -1669,14 +1753,15 @@ function drawBattle(ctx, t) {
   const [sx, sy] = FX.shake(t, 12); ctx.save(); ctx.translate(sx, sy);
   ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(fx, fy, 26 * sc, 6 * sc, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(mx, my, 26 * sc, 6 * sc, 0, 0, 7); ctx.fill();
   const foe = curFoe(), me = active();
-  if (foe && !(B.bagT > 0)) {
+  const fk = B.bag ? B.bag.foeK : 1;
+  if (foe && fk > .02) {
     const a = foe.alpha == null ? 1 : foe.alpha;
-    if (a > .01) drawCreature(ctx, foe.sp, fx - (foe.off || 0) * 18, fy + (foe.yoff || 0) * 30 * sc, sc, { t, flash: foe.flash, squash: foe.sq, alpha: foe.hp <= 0 ? a * .8 : a, rot: foe.hp <= 0 && !B.personKO ? .35 : 0, idle: foe.hp > 0, flipX: false, seed: 1.3 });
+    if (a > .01) drawCreature(ctx, foe.sp, fx - (foe.off || 0) * 18, fy + (foe.yoff || 0) * 30 * sc - (1 - fk) * 18 * sc, sc * fk, { t, flash: foe.flash, squash: foe.sq, alpha: foe.hp <= 0 ? a * .8 : a, rot: foe.hp <= 0 && !B.personKO ? .35 : 0, idle: foe.hp > 0, flipX: false, seed: 1.3 });
     if (foe.sp === 'dev' && (B.glitchT > 0 || Math.random() < .05)) glitch(ctx, fx - 24 * sc, fy - 48 * sc, 48 * sc, 48 * sc);
     if (EF.has(foe, 'sleep')) LOD.em('💤', fx + 18 * sc, fy - 44 * sc + Math.sin(t * 3) * 4, 18);
     if (EF.has(foe, 'stun')) for (let i = 0; i < 3; i++) LOD.em('⭐', fx + Math.cos(t * 4 + i * 2.1) * 14 * sc, fy - 46 * sc + Math.sin(t * 4 + i * 2.1) * 4, 12);
   }
-  if (B.bagT > 0) { const w = B.bagShake ? Math.sin(t * 30) * .25 : 0; B.bagShake = Math.max(0, B.bagShake - .05); ctx.save(); ctx.translate(fx, fy - 12 * sc); ctx.rotate(w); LOD.em('🛍️', 0, 0, 16 * sc); ctx.restore(); }
+  drawBagScene(ctx, fx, fy, sc, t);
   if (B.bug && B.bug.t > 0) drawCreature(ctx, B.bug.sp, fx - 30 * sc, fy, Math.max(1, sc - 1), { t, alpha: Math.min(1, B.bug.t) });
   if (me) drawCreature(ctx, me.sp, mx + (me.off || 0) * 18, my + (me.yoff || 0) * 30 * sc, sc, { t, flash: me.flash, squash: me.sq, alpha: me.hp > 0 ? 1 : .25, flipX: false, seed: .4 });
   layer.draw(ctx);
@@ -1791,8 +1876,8 @@ function newList() {
 }
 const strip = c => { const o = { sp: c.sp, lv: c.lv, xp: c.xp, hp: c.hp }; if (c.sk && c.sk > Date.now()) o.sk = c.sk; if (c.nick) o.nick = c.nick; if (c.fx && c.fx.length) o.fx = EF.save(c); return o; };
 const SAVE_KEYS = ['dir', 'seen', 'caught', 'list', 'kr', 'items', 'beat', 'solved', 'dev', 'eggs', 'egg', 'debt', 'lvlPts', 'flags', 'stache', 'blurred', 'starter',
-  'known', 'people', 'know', 'quests', 'heard', 'traps', 'graves', 'dead', 'caughtP', 'npcBeat', 'gym', 'dealer', 'apps', 'steps', 'fillers', 'trapsUsed', 'lines', 'wrecks'];
-const FRESH = () => ({ items: {}, known: {}, people: {}, know: {}, quests: {}, heard: {}, lines: {}, wrecks: {}, traps: [], graves: [], dead: {}, caughtP: {}, npcBeat: {}, gym: { slots: [] }, dealer: { pts: 0, pen: [], rot: -1, bought: {} }, apps: {}, steps: 0, trapsUsed: {}, flags: {} });
+  'known', 'people', 'know', 'quests', 'heard', 'traps', 'graves', 'dead', 'caughtP', 'npcBeat', 'gym', 'dealer', 'apps', 'steps', 'fillers', 'trapsUsed', 'lines', 'wrecks', 'wear', 'stashes'];
+const FRESH = () => ({ items: {}, known: {}, people: {}, know: {}, quests: {}, heard: {}, lines: {}, wrecks: {}, traps: [], graves: [], dead: {}, caughtP: {}, npcBeat: {}, gym: { slots: [] }, dealer: { pts: 0, pen: [], rot: -1, bought: {} }, apps: {}, steps: 0, trapsUsed: {}, wear: {}, stashes: {}, flags: {} });
 function saveState(G) {
   const o = { v: 5, p: [Math.round(G.p.x), Math.round(G.p.y)], party: G.party.map(strip), box: G.box.map(strip), me: EF.save(G.me) };
   for (const k of SAVE_KEYS) o[k] = G[k];
@@ -2011,7 +2096,7 @@ const DEF = {
     G.started = true; G.zoneT = 2.5;
     if (cont && (G.starter || G.party.length)) LOD.toast('Welcome back 💾', 2);
     else if (cont) { G.strangerT = 2; } // saved before choosing a starter: he comes back
-    else { for (const k in OP.startItems) give(k, OP.startItems[k]); opening(); }
+    else { for (const k in OP.startItems) { give(k, OP.startItems[k]); if (ITEMS[k] && (ITEMS[k].kind === 'trap' || ITEMS[k].kind === 'bait')) G.known[k] = 1; } opening(); }
   },
   update(G, dt) {
     const real = FX.step(dt);
@@ -2044,6 +2129,6 @@ const DEF = {
   }
 };
 LOD.mission(DEF);
-window.__m3 = { maxHp, bestMove, learned, MOVES, bossTeam, tripOf, eStat, formFor, repOf, evolveCheck, feedFlow, fieldBook, bookPage, sketchy, fit, LINES, bagSize, catchChance, lineOf, WILD_LINES, eff, cname, healC, addXp, useMove, endTurnFx, tripSkip, stage, resetStg, encTable, immune, knockout, baseStat, curFoe, active, MINI, PROPS, propVisible, propUse, HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
+window.__m3 = { propVisible, interactables, throwBag, maxHp, bestMove, learned, MOVES, bossTeam, tripOf, eStat, formFor, repOf, evolveCheck, feedFlow, fieldBook, bookPage, sketchy, fit, LINES, bagSize, catchChance, lineOf, WILD_LINES, eff, cname, healC, addXp, useMove, endTurnFx, tripSkip, stage, resetStg, encTable, immune, knockout, baseStat, curFoe, active, MINI, PROPS, propVisible, propUse, HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
   CFG, SP, MAP, ZONES, D, S, tile, zoneAt, tc, mk, goals, startWild, startBoss, startPartner, startDev, startTrainer, startNpcFight, interact, bagMenu, walkable, useItem, give, saveState, loadState, MIGRATE, EF, FX, layer, spots, npcList: () => npcList, gameSpeed, encTable, knockout, catchChance, completion: () => S.completion() };
 })();

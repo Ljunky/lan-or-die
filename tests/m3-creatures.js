@@ -187,7 +187,7 @@ const mkParty = (p, list) => E(p, list => { const m = window.__m3; m.G.party = l
   await E(p, () => { Math.random = window.__realRandom; });
   g = await E(p, () => { const m = window.__m3, c = m.G.party[1]; return { sp: c.sp, sk: c.sk - Date.now(), sketchy: m.sketchy(c), fit: m.fit(c) }; });
   ok(g.sp === 'mollynx' && g.sketchy && !g.fit && g.sk > 29.9 * 60000 && g.sk <= 30 * 60000, 'a bad trip: it still evolves (MolLynx) but is sketchy for 30 real minutes (' + Math.round(g.sk / 60000) + ' min)');
-  r = await flow(p, 'bagMenu', [], ['^🐸 Party', 'Lynx|MolLynx', 'Back|Close']);
+  r = await flow(p, 'bagMenu', [], ['^🐸 Team', 'Lynx|MolLynx', 'Back|Close']);
   ok(r.texts.some(t => /Tap one to make it lead/.test(t)), 'the party menu opens in the bag');
   g = await E(p, () => { const m = window.__m3; return m.G.party.map(c => c.sp + ':' + m.fit(c)).sort().join(); });
   ok(g === 'badger:true,mollynx:false', 'only the healthy one is fit to fight (' + g + ')');

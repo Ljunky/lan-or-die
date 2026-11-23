@@ -193,6 +193,8 @@ tee1: { name: 'Tee 1', at: [58, 36], em: '⛳', minigame: 'golf', hole: { name: 
 lakespot: { name: 'A fishing spot', at: [66, 18], em: '🎣', minigame: 'fishing', catch: [['pike', 4], ['salmon', 3]], lv: [30, 36], junk: 'A shopping trolley.', cooldown: 20 },
 balloons: { name: 'Balloon stand', at: [27, 47], em: '🎈', show: { day: 'mon' } }     // show = when it is there (day, night, any dialogue condition)
 ```
+**Hidden stashes** are props with `stash: true` and a one-line `repeat: true` dialogue that gives one thing once (`give: { weed: 1 }` or `kr: 30`) and sets `got:<id>`. The cover object (`em`: a stone, a tyre, a bin) is the prop; `show: { notFlag: 'got:<id>' }` makes it vanish once emptied, and the first dialogue line (`if: { flag: 'got:<id>' }`) keeps a direct tap harmless. Put each on a walkable tile at least 2 tiles from other props, with `release` = the day its item is released. Rule: at most one stash per drug on the whole map (the test checks it). The speech bubble (three dots) over anything you can search or talk to is drawn by the engine, nothing to configure.
+
 Puzzles are props whose lines depend on flags set by other props (`set: { wod1: true }`, `if: { flag: 'wod1' }`), e.g. the kettlebells in The Box (light → heavy), three fuses in the store, herbs in the right order in the cave, the throne in the castle (a choice), the bar and DJ at the rave (only after dark). Solving one sets `edge:<hero>`: that hero's team is **3 levels lower** and he says something about it. `People` can have `show` too (Night-watch Nisse: `show: { night: true }`, Market-Maud: `show: { day: 'tue' }`).
 
 ### Mini-games (`minigames`)
@@ -306,6 +308,8 @@ Three ladders. **Ground** (mouse trap → live box → snare → pit trap → mo
 
 Every creature form says which ladders can hold it (`trap`), at which `tier` (a number or `[2, 4]`), where (`hab`: zone habitats, or the lake) and when (`day`, `night`). A ready trap of tier T rolls (`tuning.TRAP`): **nothing** 25 % · **lower** tier (T−1) 25 % (tier 1: junk) · **its own tier** 40 % · **higher** tier (T+1) 10 %: it wrecks the trap (Tore repairs it for half price) and the dazed creature is still there, hard to catch. Matching bait: −10 % nothing, +10 % own. Each upgrade step of the ladder: −5 % nothing, +5 % own. "Own" never goes over 60 %. A drug in the bait: nothing +10 %, and an own-tier catch has a 30 % chance to be that line's drug form. Creatures with `needs: 'reveal'` (Trippopotamus) roll first, and only while you are tripping. A creature bigger than the trap's `cap` only comes as a "higher" result. Texts: `trapText`.
 
+**Breakable traps:** an item with `uses: n` (the starter `shoebox`) is used up after n catches (`G.wear` counts, saved); it comes back to the bag until then. Not sold, no upgrade path.
+
 ### Trapper Tore
 `role: 'trapper'`: upgrades a trap you carry (`upgradeCost`), repairs wrecks, sells bait (`shop`). He is hidden until you have been told (`requires: 'know:tore'`; Hardware Jonas and Mountain guide Greta tell you).
 
@@ -320,6 +324,9 @@ Weed, coke, shrooms: the dealer. Xanax: Apotek, only after the `xanax_rx` quest 
 
 ### Check
 The browser console warns about unknown conditions, unknown knowledge/item ids, unknown people and unknown personalities (`[PX.data]`).
+
+### Auto-fight
+`tuning`: `AUTO_STOP_HP` (.3 = stops when your creature is under 30 % HP), `AUTO_GAP` (seconds the Stop button shows between turns). Fight → **⏩ Auto-fight** (wild and trap fights, not Epics) plays the best move every turn; the next wild fights start on auto until you tap Stop or it stops itself. Knock-out choices (Catch / Finish off) are always yours.
 
 ## Balance, Kenny the Fence, Inkasso-Ingvar
 ```js
@@ -341,7 +348,7 @@ apps.klarna: { …, once: 3, cooldownMin: 10 }                                 /
 ## Opening and blackout
 ```js
 opening: { blink: 4.2, thoughts: ['Zombies everywhere!', …], strangerAfter: 12, stranger: { name: '???', look: {…} },
-  lines: ['You have been chosen.', 'Now it is your time to choose.'], starters: ['badgerCub', 'lynxKitten', 'toadlet', 'hoglet', 'fawn'], startItems: { folkol: 2, … } }
+  lines: ['You have been chosen.', 'Now it is your time to choose.'], starters: ['badgerCub', 'lynxKitten', 'toadlet', 'hoglet', 'fawn'], startItems: { folkol: 3, fizztab: 2, bag: 8, shoebox: 1, worms: 2, … } }   // the shoebox (a trap with `uses: 3`) falls apart after that many catches; traps and bait in startItems start out known
 respawn: { at: [4, 62], lose: 'Everything goes black…', wakeVan: 'You wake up in the van… {lost} kr lighter.', … }
 ```
 **Starter pool:** on a LIVE day each player claims one starter on the server, first come first served (needs `backend/claims.gs` in the Apps Script). In practice or `?dev=all` the claims are kept on the phone, so you can test by switching names. `?dev=all&claims=reset` clears them.
