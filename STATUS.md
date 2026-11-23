@@ -61,6 +61,12 @@ Latest state is always: this file + `CHARACTERS.md` (every person and line, gene
 - **Hidden stashes** (9): a stone, tyres, a bin, a cooler, a log, a golf bag, a stump. 6 in the parking lot (weed Mon, speed/molly/keta Tue, coins), shrooms (lawn), LSD (golf), DMT (forest, Wed). Max one of each drug, each only on the day its drug is released.
 - **"Party" is now "Team"** in everything you read.
 
+## Batch B (design, Mon 23 Nov)
+- **Bag** is a grid of big icon tiles; **team** screens (bag and battle swap) are picture cards: picture (or type-coloured `?` disc until the art is drawn), name, level, type, HP bar, stats, trip, lead star, sketchy note.
+- **Phone** (`missions/m3-phone.js`): a real phone screen with status bar, clock, wallpaper and an icon grid. Old apps (Tibber, Swish, BankID, Strava, Klarna) live inside it. New: Messages (LAN squad chat with replies), SMHI weather, Flashlight, Camera (selfie counter). **Appbutiken** app store: Calculator (with easter eggs), Kompass (points at The Box), Fråga Björn (8-ball), Pruttis (four premium sounds), Hemnet (what your van is worth).
+- **Faunalens + Faunadex** replace the Fältboken as the main field guide: first catch → the phone offers an AI scan; yes → Faunalens installed, the Faunadex becomes a free download in the Appbutiken; later catches get a one-line scan. The paper Fältboken still works for players who already have one.
+- Saves: `installed`, `chatSeen`, `selfies` added (old saves start with an empty list).
+
 ## Balance pass (simulated, see BALANCE.md; `node tools/balance.js` re-runs it from the data)
 The simulator copies the game's battle, XP and encounter maths and was checked against real in-game fights (same win rate, turns and HP loss within noise). It assumes a party of four types, best move, swapping to the best matchup, no items and no trip traits. Times are an ideal grind in the best safe zone; real play is probably 2–3× slower. Re-run after the new roster: two multipliers were added so the numbers land where the old balance was: `tuning.WILD_STAT: 1.2` (wild creatures, also from traps and fishing) and `tuning.BOSS_STAT: .6` (hero teams, which are drug forms ×1.3 and rarer than a youngling party).
 - **Monday (old map only):** Lv 10 in ~9 min, Lv 20 in ~1.2 h, Lv 25 in 3.8 h, then it stalls on purpose (the old map tops out at Lv 11 foes). The first house (The Box, Lv 10) opens after minutes.

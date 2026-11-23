@@ -345,6 +345,19 @@ apps.klarna: { …, once: 3, cooldownMin: 10 }                                 /
 ```
 `role: 'fence'` on an NPC makes them buy creatures. The opening thought can use `{hero}`, which is a random hero other than yours.
 
+## The phone, the Appbutiken, Faunalens and the Faunadex
+`phone: { battery, wallpaper: [c1, c2], storeTitle, storeLine }` dresses the phone (`missions/m3-phone.js`). Every entry in `apps` is an icon on the home screen. Three kinds:
+```js
+tibber:  { name: 'Tibber', icon: '⚡', color: '#1f6feb', lines: ['…'], release: 'mon' },          // lines app: tap it, get a line. Optional use / once / cooldownMin / gate (as before)
+calc:    { widget: 'calc', name: 'Calculator', icon: '🧮', store: { price: 0, blurb: '…' }, easter: { '42': 'The answer.' } },   // widget app
+dex:     { custom: true, name: 'Faunadex', icon: '🔍', store: { price: 0, needs: 'lens', blurb: '…' } },                       // custom app: code in K.phoneApps[id]
+```
+Widgets: `torch` (on/off lines), `calc` (easter eggs by result), `compass` (points at The Box), `eight` (answers), `fart` (sounds `[{label, f, len}]`), `messages` (`from`, `pool`, `replies [{label, answer}]`), `weather` (`icons`, `lines`), `camera` (`captions`), `hemnet` (`lines`). `appstore: true` is the Appbutiken itself. **An app with `store: { price }` is not on the phone until you download it** (price in kr, 0 = free; `needs: 'x'` = only shown once app `x` is installed). Installed apps are saved in `G.installed`.
+
+**Faunalens / Faunadex:** `lens` holds the texts. After your first catch the phone offers a scan (`offer`, `yes`, `no`, `scan`, `done`, `later`). Yes installs Faunalens (an app) and unlocks the **Faunadex** (free) in the Appbutiken; No leaves Faunalens in the Appbutiken. With the lens installed every catch gets a one-line scan (`scanLine`). The Faunadex app lists the lines with pictures, tap one for its page (`fieldbook` data is unchanged: `margin`, `locked`, `intro`). The paper Fältboken (dealer, camper van) still works for players who have it.
+
+**Bag and team screens:** the bag is a 3-column grid of icon tiles (`ask(…, { tiles: true })`, a label starting with an emoji becomes the big icon) and the team is a list of picture cards (`ask(…, { cards: true })` with `{ card: { sp, name, lv, ty, hp, hpTxt, chips, star, note } }`, or `teamCard(c, i)`). No placeholders needed: a creature without art gets a type-coloured disc with a `?`.
+
 ## Opening and blackout
 ```js
 opening: { blink: 4.2, thoughts: ['Zombies everywhere!', …], strangerAfter: 12, stranger: { name: '???', look: {…} },
