@@ -205,14 +205,15 @@ const clickBtn = (p, re) => E(p, re => { const b = [...document.querySelectorAll
   ok(/Auto-fight/.test(g), 'the move list offers Auto-fight (' + g + ')');
   await E(p, () => { const m = window.__m3; m.curFoe().hp = 150; });
   await E(p, () => { window.__m3.speed = 1; }); await clickBtn(p, 'Auto-fight');
-  let stops = 0, manual = 0, end = false;
+  let stops = 0, manual = 0, end = false, turns = 0; const trace = [];
   for (let i = 0; i < 400 && !end; i++) {
     const s = await E(p, () => { const m = window.__m3, pd = m.pending; if (!m.B) return 'end'; if (!pd) return 'wait'; if (pd.say) { pd.res(); return 'say'; } const t = document.querySelector('#m3ui .m3txt').textContent, bt = [...document.querySelectorAll('#m3ui .m3grid button')].map(x => x.textContent).join('|'); if (/Stop auto/.test(bt)) return 'stop'; if (/Choose a move/.test(t)) return 'manual'; if (/Walk away/.test(bt)) { [...document.querySelectorAll('#m3ui .m3grid button')].find(x => /Walk away/.test(x.textContent)).click(); return 'ko'; } return 'other:' + t; });
-    if (s === 'stop') stops++; if (s === 'manual') manual++; if (s === 'end') end = true;
+    trace.push(s);
+    if (s === 'stop') stops++; turns = Math.max(turns, await E(p, () => (window.__m3.B && window.__m3.B.autoTurns) || 0)); if (s === 'manual') manual++; if (s === 'end') end = true;
     await p.waitForTimeout(40);
   }
   await E(p, () => { window.__m3.speed = 25; });
-  ok(end && stops >= 1 && manual === 0, 'auto-fight plays the turns by itself: the Stop button showed ' + stops + ' times, no move menu came up (' + manual + ')');
+  ok(end && turns >= 1 && manual === 0, 'auto-fight plays the turns by itself: ' + turns + ' auto turns, the Stop button showed ' + stops + ' times, no move menu came up (' + manual + ')');
   await E(p, () => { const m = window.__m3; m.G.scene = 'map'; m.G.party = [m.mk('badger', 18)]; m.startWild(m.ZONES.find(z => z.id === 'parking')); window.__a1 = !!m.B.auto; m.active().hp = 3; });
   ok(await E(p, () => window.__a1), 'the next wild fight starts on auto too (grinding)');
   await toMenu(p); await p.waitForTimeout(100);

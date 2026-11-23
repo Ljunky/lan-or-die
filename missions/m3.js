@@ -544,7 +544,7 @@ async function startBattle(o) {
   if (B.dazed) { for (const f of B.foes) { EF.apply(f, { type: 'stun', turns: 1 }); EF.apply(f, { type: 'catchBonus', value: B.dazed, turns: 99 }); } }
   const who = B.kind === 'boss' ? B.boss : B.kind === 'partner' ? B.partner : B.kind === 'trainer' || B.kind === 'npc' ? B.npc : B.kind === 'dev' ? 'dev' : null;
   if (who) { B.introT = 1.6; B.introId = who; }
-  if (autoPref && (B.kind === 'wild' || B.kind === 'trap') && SP[B.foes[0].sp].rarity !== 'E') B.auto = true;
+  if (autoPref && (B.kind === 'wild' || B.kind === 'trap') && (SP[B.foes[0].sp] || {}).rarity !== 'E') B.auto = true;
   SFX.start(); await sleep(B.introT ? 1.6 : .75);
   const foe = curFoe();
   if (B.kind === 'wild' || B.kind === 'trap') { G.seen[foe.sp] = 1; await say((B.kind === 'trap' ? 'A dazed ' : 'A wild ') + cname(foe) + ' appeared! (Lv ' + foe.lv + ')'); }
@@ -617,12 +617,13 @@ async function autoAct(me, foe) {
   const v = await pr;
   if (!B) return { k: 'none' };
   if (v === 'stop') { B.auto = autoPref = false; return null; }
+  B.autoTurns = (B.autoTurns || 0) + 1;
   return { k: 'move', mv: bestMove(me, foe) };
 }
 async function chooseAction() {
   for (;;) {
     const me = active(), foe = curFoe(), K = B.kind, hero = HERO[heroId()];
-    if (B.auto) { if (SP[foe.sp].rarity === 'E' || !(K === 'wild' || K === 'trap')) B.auto = false; else { const a = await autoAct(me, foe); if (a) return a; if (!B) return { k: 'none' }; } }
+    if (B.auto) { if ((SP[foe.sp] || {}).rarity === 'E' || !(K === 'wild' || K === 'trap')) B.auto = false; else { const a = await autoAct(me, foe); if (a) return a; if (!B) return { k: 'none' }; } }
     const nUse = usables().reduce((a, id) => a + G.items[id], 0), nThrow = throwables().length + (weaponOwned() ? 1 : 0) + (G.kr >= CFG.BAG_COST ? 1 : 0);
     const main = [
       K === 'partner' ? { label: '💬 Talk', value: 'talk', cls: 'hot' } : { label: '⚔️ Fight', value: 'fight', cls: 'hot' },
@@ -638,7 +639,7 @@ async function chooseAction() {
     const v = await ask(q, main);
     if (!B) return { k: 'none' };
     if (v === 'fight') {
-      const autoOk = (K === 'wild' || K === 'trap') && SP[foe.sp].rarity !== 'E';
+      const autoOk = (K === 'wild' || K === 'trap') && (SP[foe.sp] || {}).rarity !== 'E';
       const mv = await ask('Choose a move.', learned(me).map(id => { const m = MOVES[id]; return { label: m.name, value: id, ty: m.type || 'NONE', sub: m.p ? 'Power ' + m.p + (m.hits ? ' ×' + (Array.isArray(m.hits) ? m.hits.join('–') : m.hits) : '') + effHint(m.type, typeOf(foe)) : 'Status' }; }).concat(autoOk ? [{ label: '⏩ Auto-fight', value: '__auto', sub: 'Best move every turn, stops when low on HP' }] : [], [BACK()]));
       if (mv === '__auto') { B.auto = autoPref = true; LOD.toast('⏩ Auto-fight on. Tap Stop to take over.', 2); return { k: 'move', mv: bestMove(me, foe) }; }
       if (mv) return { k: 'move', mv };
