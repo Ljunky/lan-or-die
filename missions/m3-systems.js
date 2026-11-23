@@ -126,7 +126,12 @@ async function trapInteract(tr) {
   }
   g.traps.splice(g.traps.indexOf(tr), 1);
   const r = trapCatch(tr), reusable = !!it.ladder;
-  if (reusable && !r.higher) K.give(tr.item);                                      // the trap itself comes back with you (the bait is gone)
+  let broke = false;
+  if (reusable && !r.higher) {                                                     // the trap itself comes back with you (the bait is gone)
+    if (it.uses) { g.wear = g.wear || {}; g.wear[tr.item] = (g.wear[tr.item] || 0) + 1; if (g.wear[tr.item] >= it.uses) { g.wear[tr.item] = 0; broke = true; } }
+    if (!broke) K.give(tr.item);
+  }
+  if (broke) LOD.after(.2, () => LOD.toast(it.em + ' The ' + it.name.toLowerCase() + ' fell apart. It had a good run.', 3));
   if (r.nothing) { await K.say(it.em + ' ' + pick(TXT().nothing || ['Empty.']), { auto: false }); return; }
   if (r.junk) { await K.say(it.em + ' ' + pick(TXT().junk || ['Junk.']), { auto: false }); return; }
   K.hideBox();
