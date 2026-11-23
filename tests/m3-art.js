@@ -153,7 +153,7 @@ const fs = require('fs'), os = require('os'), path = require('path'), { spawnSyn
   const art = fs.readFileSync(path.join(outDir, 'badgerCub.png'));
   const p = await open(b, '?dev=all&date=2026-11-23', { route: async q => q.route(/assets\/creatures\/badgerCub\.png/, route => route.fulfill({ status: 200, contentType: 'image/png', body: art })) });
   await toBrief(p, 'bigwman'); await p.waitForTimeout(1200);
-  const g = await E(p, () => { const m = window.__m3, C = m.D.raw.creatures; return { has: !!window.M3_DATA.creatures.badgerCub.art, art: C.badgerCub.art, ready: PX.sprites.ready('cr:badgerCub'), ratReady: PX.sprites.ready('cr:rat'), ratArt: C.rat.art || null, warn: m.D.warnings.length, wraith: PX.sprites.ready('cr:wraith') }; });
+  const g = await E(p, () => { const m = window.__m3, C = m.D.raw.creatures; return { has: !!window.M3_DATA.creatures.badgerCub.art, art: C.badgerCub.art, ready: PX.sprites.ready('cr:badgerCub'), ratReady: PX.sprites.ready('cr:mollynx'), ratArt: C.mollynx.art || null, warn: m.D.warnings.length, wraith: PX.sprites.ready('cr:wraith') }; });
   ok(g.art === 'assets/creatures/badgerCub.png', 'assets/creatures/badgerCub.png is found without an art: line (' + g.art + ')');
   ok(g.ready && !g.ratReady && g.ratArt === null, 'it is loaded as a sprite; creatures without a file keep the placeholder');
   ok(g.warn === 0, 'a missing file is not a warning (' + g.warn + ' warnings)');
