@@ -1362,13 +1362,28 @@ function briefSave() { // Continue / New game on the brief of a save mission
   const sv = savedGame();
   go.textContent = sv ? 'Continue' : 'Go';
   let cb = $('#brief-code'); if (cb && !M.save) cb.remove(); else if (!cb && M.save) { cb = document.createElement('button'); cb.id = 'brief-code'; cb.className = 'btn ghost small'; cb.textContent = 'Save code (move or import a save)'; go.after(cb); cb.addEventListener('click', () => openSaveCode('scr-brief')); }
+  let hb = $('#brief-hero'); if (hb && !(sv && M.save)) { hb.remove(); hb = null; }
+  if (sv && !hb) { hb = document.createElement('button'); hb.id = 'brief-hero'; hb.className = 'btn ghost small'; hb.addEventListener('click', changeHero); (cb || go).after(hb); }
+  if (hb) hb.textContent = 'Change hero (same save) · now ' + ((fighter || LOD.getCharacter() || {}).name || '?');
   if (!sv) { if (nb) nb.remove(); return; }
+  if (saveProtected(sv)) {   // keepSaveMin: a save that long cannot be erased from the game any more
+    if (nb) nb.remove();
+    $('#brief-note').textContent += ' Saved game: ' + mmss(sv.t || 0) + ' played. 🔒 A save over ' + M.keepSaveMin + ' minutes is protected and cannot be erased.';
+    return;
+  }
   if (!nb) { nb = document.createElement('button'); nb.id = 'brief-new'; nb.className = 'btn ghost'; go.after(nb); nb.addEventListener('click', newGameClick); }
   nb.textContent = 'New game'; nb.classList.remove('danger'); newArm = 0;
   $('#brief-note').textContent += ' Saved game: ' + mmss(sv.t || 0) + ' played.';
 }
+/* keepSaveMin: n (opt-in mission flag): once a save holds n minutes of play it cannot be erased by New game or Reset test data. ?dev=… phones are exempt (testing). */
+const saveProtected = sv => !!(M && M.save && M.keepSaveMin && sv && (sv.t || 0) >= M.keepSaveMin * 60 && !DEV);
+function changeHero() {   // pick another hero and keep the same save (the save does not belong to a hero)
+  hideAll(); inGameUI(false);
+  const cur = LOD.getCharacter(), pre = cur ? cur.id : null;
+  LOD.showCharacterSelect(c => { fighter = c; showBrief(); }, { label: 'Same save · ' + missionLabel(M), title: 'Choose your hero', preselect: pre, onBack: () => showBrief(), poseOnHighlight: true, note: 'Player: ' + playerName + ' · your saved game stays as it is' });
+}
 function newGameClick() {
-  const nb = $('#brief-new');
+  const nb = $('#brief-new'); if (saveProtected(savedGame())) { if (nb) nb.remove(); return; }
   if (Date.now() - newArm > 3000) { newArm = Date.now(); nb.textContent = 'Tap again: erase the save'; nb.classList.add('danger'); return; }
   try { localStorage.removeItem(saveKey()); } catch (e) {}
   freshStart = true; beginPlay();
@@ -1641,7 +1656,10 @@ function resetData() {
   const b = $('#reset-data');
   if (Date.now() - resetArm > 3000) { resetArm = Date.now(); b.textContent = 'Tap again to erase everything on this phone'; b.classList.add('danger'); setTimeout(() => { if (Date.now() - resetArm >= 3000) { b.textContent = 'Reset test data'; b.classList.remove('danger'); } }, 3100); return; }
   resetArm = 0;
-  try { Object.keys(localStorage).filter(k => k.startsWith('lod.')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+  try {
+    const keep = k => { if (!/^lod\.save\.m(\d+)\./.test(k) || DEV) return false; const d = MISSIONS.find(m => 'lod.save.m' + m.id + '.' === k.slice(0, ('lod.save.m' + m.id + '.').length)); const sv = store.get(k, null); return !!(d && d.keepSaveMin && sv && (sv.t || 0) >= d.keepSaveMin * 60); };   // protected saves survive a reset
+    Object.keys(localStorage).filter(k => k.startsWith('lod.') && !keep(k)).forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
   playerName = ''; fighter = null; LOD.resetCharacter(); LOD.setMuted(false);
   b.textContent = 'Reset test data'; b.classList.remove('danger');
   goTitle();

@@ -172,6 +172,34 @@ const setName = (p, n, hero = 'bigwman') => E(p, ([n, h]) => { window.__lod.setN
   for (let i = 0; i < 40 && await E(M1, () => document.getElementById('scr-brief').hidden); i++) { await E(M1, () => { const c = [...document.querySelectorAll('button')].filter(b => b.offsetParent && !b.disabled); const x = c.find(x => x.matches('[data-a="select"]')) || c.find(x => x.matches('.cut [data-a="skip"]')); x && x.click(); }); await M1.waitForTimeout(250); }
   ok(await E(M1, () => !document.getElementById('scr-brief').hidden && !document.getElementById('brief-code')), 'Mission 1 (no save) shows no save code button');
   await M1.close();
+  // ===== protected saves (15+ minutes): no New game, Reset keeps them; short saves can still be erased =====
+  const P = await open(b, '?dev=day&date=2026-11-23'); await setName(P, 'Prot', 'wizcudi'); await P.evaluate(() => localStorage.removeItem('lod.save.m3.Prot'));
+  await toBrief(P, 'wizcudi'); await P.click('#brief-go'); await P.waitForTimeout(700);
+  await E(P, () => { window.__m3.G.kr = 4321; }); await E(P, () => document.getElementById('btn-pause').click()); await P.waitForTimeout(300);
+  await E(P, () => { const k = 'lod.save.m3.Prot', sv = JSON.parse(localStorage.getItem(k)); sv.t = 5 * 60; localStorage.setItem(k, JSON.stringify(sv)); });
+  await P.reload(); await P.waitForTimeout(700); await setName(P, 'Prot', 'wizcudi'); await toBrief(P, 'wizcudi');
+  ok(await E(P, () => !!document.getElementById('brief-new')), 'a short save (5 min) still offers New game');
+  await E(P, () => { const k = 'lod.save.m3.Prot', sv = JSON.parse(localStorage.getItem(k)); sv.t = 20 * 60; localStorage.setItem(k, JSON.stringify(sv)); });
+  await P.reload(); await P.waitForTimeout(700); await setName(P, 'Prot', 'wizcudi'); await toBrief(P, 'wizcudi');
+  const g1 = await E(P, () => ({ nb: !!document.getElementById('brief-new'), note: document.getElementById('brief-note').textContent, go: document.getElementById('brief-go').textContent }));
+  ok(!g1.nb && /protected/.test(g1.note) && g1.go === 'Continue', 'a save of 20 minutes cannot be erased: no New game button, a note says why (' + g1.note.slice(-70) + ')');
+  await E(P, () => { document.getElementById('brief-back').click(); }); await P.waitForTimeout(300);
+  await E(P, () => { const b = document.getElementById('reset-data'); if (b) { b.click(); b.click(); } }); await P.waitForTimeout(400);
+  ok(await E(P, () => !!localStorage.getItem('lod.save.m3.Prot')) && await E(P, () => JSON.parse(localStorage.getItem('lod.save.m3.Prot')).data.kr === 4321), 'Reset test data keeps a protected save');
+  // ===== change hero, same save =====
+  await setName(P, 'Prot', 'wizcudi'); await toBrief(P, 'wizcudi');
+  ok(await E(P, () => /Change hero/.test(document.getElementById('brief-hero').textContent)), 'the brief of a saved game offers "Change hero (same save)"');
+  await E(P, () => document.getElementById('brief-hero').click()); await P.waitForTimeout(500);
+  ok(await E(P, () => !!document.querySelector('.cs-name') && /saved game stays/.test(document.body.innerText)), 'it opens the hero choice and says the save stays');
+  for (let i = 0; i < 6; i++) { const cur = await E(P, () => document.querySelector('.cs-name').textContent.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')); if (cur === 'jrohn') break; await E(P, () => document.querySelector('[data-a="next"]').click()); await P.waitForTimeout(150); }
+  await E(P, () => document.querySelector('[data-a="select"]').click()); await P.waitForTimeout(1700);
+  const g2 = await E(P, () => ({ brief: !document.getElementById('scr-brief').hidden, hero: window.__lod.LOD.getCharacter().id, btn: document.getElementById('brief-hero').textContent }));
+  ok(g2.brief && g2.hero === 'jrohn' && /Jrohn/.test(g2.btn), 'picking Jrohn comes back to the brief as Jrohn (' + g2.btn + ')');
+  await P.click('#brief-go'); await P.waitForTimeout(900);
+  const g3 = await E(P, () => ({ kr: window.__m3.G.kr, mode: window.__m3.G.mode, hero: window.__lod.LOD.getCharacter().id }));
+  ok(g3.kr === 4321 && g3.mode === 'play' && g3.hero === 'jrohn', 'Continue keeps the same save (4321 kr) now playing as Jrohn (' + JSON.stringify(g3) + ')');
+  await P.close();
+
   // ===== a long code cut in two chat messages (4096 characters) that lost one character at the cut still imports =====
   const L1 = await open(b, '?dev=day&date=2026-11-23'); await setName(L1, 'Lang', 'jrohn'); await L1.evaluate(() => localStorage.removeItem('lod.save.m3.Lang'));
   await toBrief(L1, 'jrohn'); await L1.click('#brief-go'); await L1.waitForTimeout(600);

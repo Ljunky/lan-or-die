@@ -2110,7 +2110,7 @@ for (const w of PPL.validate()) D.warnings.push(w);
 /* ===================== THE MISSION ===================== */
 const DEF = {
   id: 3, title: 'Bad Trip at Maxi', unlock: '2026-11-23', until: '2026-11-25', cap: 300000,
-  world: { w: MW * T, h: MH * T }, eggs: false, noFire: true, noTimer: true, save: true, submitOnSave: true, briefPerks: false, briefClass: 'm3solid',
+  world: { w: MW * T, h: MH * T }, eggs: false, noFire: true, noTimer: true, save: true, keepSaveMin: 15, submitOnSave: true, briefPerks: false, briefClass: 'm3solid',
   viewScale: (W, H) => Math.min(W / (CFG.VIEW_TILES * T), H / (16 * T)),
   outro: (G) => G.why === 'done' ? {
     kind: 'chat', title: 'LAN SQUAD 🎮', sub: 'Löken, Wizcudi, Jrohn, BigWman, Ljunky', tbc: 'The LAN is on 28 Nov. Bring the shopping list.',
