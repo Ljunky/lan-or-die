@@ -145,7 +145,7 @@ const mkParty = (p, list) => E(p, list => { const m = window.__m3; m.G.party = l
   ok(g.starterLines === 5 && g.starterForms === 23 && g.wildLines === 21, 'five starter lines (23 forms), 21 wild lines (' + g.starterLines + '/' + g.starterForms + '/' + g.wildLines + ')');
   ok(g.badEvolve === 0 && g.badDrug === 0, 'every evolve and every drug recipe points at a real form of the same line (' + g.badEvolve + '/' + g.badDrug + ')');
   ok(g.oldTypes === -1, 'no FIZZ / GRUB / WILD / TECH / FROST / RUSTLE left in types, moves, creatures, items or zones');
-  ok(g.noArt >= 96 && g.warnings === 0, 'no art yet: the PNGs are still to be drawn and that is not a warning (' + g.warnings + ' warnings)');
+  ok(g.warnings === 0, 'forms without a PNG yet are not a warning, and the PNGs that exist match real form ids (' + g.noArt + ' forms still have no art, ' + g.warnings + ' warnings)');
   g = await E(p, () => { const m = window.__m3, e = m.eff; return [e('FANG', 'WING'), e('WING', 'ROOT'), e('ROOT', 'WATER'), e('WATER', 'STONE'), e('STONE', 'SHELL'), e('SHELL', 'FANG'), e('WING', 'FANG'), e('FANG', 'SHELL'), e('FANG', 'FANG'), e('MIND', 'FANG'), e('FANG', 'MIND')]; });
   ok(g.slice(0, 6).every(x => x === 1.5) && g[6] === .67 && g[7] === .67 && g[8] === 1 && g[9] === 1 && g[10] === 1, 'type chart: FANG › WING › ROOT › WATER › STONE › SHELL › FANG, MIND neutral (' + g.join(' ') + ')');
   g = await E(p, () => { const m = window.__m3; return [m.formFor('rat', 5), m.formFor('rat', 12), m.formFor('rat', 30), m.formFor('badger', 15), m.formFor('badger', 16), m.formFor('badger', 32), m.formFor('cokeroach', 20), m.formFor('pike', 25), m.formFor('ladybug', 11), m.formFor('ladybug', 12)]; });
