@@ -1335,7 +1335,7 @@ props: {
   stash_coins2: { name: 'A shopping trolley', at: [28, 50], em: '🛒', show: { notFlag: 'got:stash_coins2' }, stash: true, release: 'mon' },
   stash_speed: { name: 'A rusty tyre', at: [34, 59], em: '🛞', show: { notFlag: 'got:stash_speed' }, stash: true, release: 'tue' },
   stash_molly: { name: 'A bin behind the cars', at: [5, 57], em: '🗑️', show: { notFlag: 'got:stash_molly' }, stash: true, release: 'tue' },
-  stash_keta: { name: 'A cooler box', at: [45, 61], em: '🧊', show: { notFlag: 'got:stash_keta' }, stash: true, release: 'tue' },
+  stash_keta: { name: 'A cooler box', at: [41, 59], em: '🧊', show: { notFlag: 'got:stash_keta' }, stash: true, release: 'tue' },
   stash_shrooms: { name: 'A fallen log', at: [30, 12], em: '🪵', show: { notFlag: 'got:stash_shrooms' }, stash: true, release: 'tue' },
   stash_lsd: { name: 'A golf bag', at: [60, 30], em: '⛳', show: { notFlag: 'got:stash_lsd' }, stash: true, release: 'tue' },
   stash_dmt: { name: 'A hollow stump', at: [66, 60], em: '🌳', show: { notFlag: 'got:stash_dmt' }, stash: true, release: 'wed' }

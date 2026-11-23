@@ -37,7 +37,7 @@ async function play(p, hero = 'bigwman') { // fresh game, starter chosen, on the
   await toBrief(p, hero); await p.click('#brief-go'); await p.waitForTimeout(400);
   await E(p, () => { window.__m3.speed = 25; });
   await pickStarter(p, 'Badger Cub'); await E(p, () => { window.__m3.skipReplies = true; });
-  await E(p, () => { const m = window.__m3; m.G.party = ['badger', 'lynx', 'toad', 'hedgehog'].map(s => m.mk(s, 18)); m.G.kr = 5000; });
+  await E(p, () => { const m = window.__m3; m.G.party = ['badger', 'lynx', 'toad', 'hedgehog'].map(s => m.mk(s, 18)); m.G.kr = 5000; for (const k of ['worms', 'nuts', 'jam', 'shoebox']) delete m.G.items[k]; });
 }
 async function drive(p, prefer, max = 500) {
   for (let i = 0; i < max; i++) {
@@ -596,7 +596,7 @@ async function pickStarter(p, name) {
   for (let i = 0; i < 300 && !xo; i++) { xo = await E(p, () => { const m = window.__m3, pd = m.pending; if (pd && pd.say) { pd.res(); return null; } const bs = [...document.querySelectorAll('#m3ui .m3grid button')]; if (bs.length) return bs.map(x => !!(x.querySelector('img') && x.querySelector('img').getAttribute('src'))); if (m.G.scene === 'map' && !m.stranger) m.summon(); return null; }); await p.waitForTimeout(40); }
   ok(xo && xo.length === 5, 'cross-origin hosting: the 5 starters show (placeholders until the PNGs are drawn)');
   await pickStarter(p, 'Badger Cub');
-  await E(p, () => { window.__m3.bagMenu(); }); await until(p, 'Party'); await p.waitForTimeout(200);
+  await E(p, () => { window.__m3.bagMenu(); }); await until(p, 'Team'); await p.waitForTimeout(200);
   ok(await E(p, () => document.querySelectorAll('#m3ui .m3grid button').length >= 1), 'cross-origin hosting: party menu works');
   await drive(p, ['Back', 'Close']);
   await E(p, () => { const m = window.__m3; m.startWild(m.ZONES.find(z => z.id === 'parking')); }); await drive(p, ['Walk away', '^⚔️ Fight', 'Claw|Body|Bite|Maul|Peck|Nip']);

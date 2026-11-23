@@ -163,6 +163,7 @@ const clickBtn = (p, re) => E(p, re => { const b = [...document.querySelectorAll
     for (const k of st) {
       const pr = D.props[k], line = (D.dialogue[k].talk || []).find(l => !l.if), it = line && line.give ? Object.keys(line.give)[0] : null; if (it) items.push(it);
       const [px, py] = m.tc(...pr.at); if (!m.walkable(px, py + 4)) bad.push(k + ' not walkable');
+      for (const n of Object.values(D.npcs)) if (n.at && Math.hypot(n.at[0] - pr.at[0], n.at[1] - pr.at[1]) < 3) bad.push(k + ' too close to ' + n.name);
       for (const o of Object.keys(D.props)) if (o !== k && Math.abs(D.props[o].at[0] - pr.at[0]) + Math.abs(D.props[o].at[1] - pr.at[1]) < 2) bad.push(k + ' too close to ' + o);
       if (!line || (!line.give && !line.kr)) bad.push(k + ' gives nothing'); if (!D.dialogue[k].repeat) bad.push(k + ' no repeat');
       if (it && D.items[it].release && D.items[it].release !== pr.release && D.items[it].release !== 'mon') { if (['mon', 'tue', 'wed'].indexOf(pr.release) < ['mon', 'tue', 'wed'].indexOf(D.items[it].release)) bad.push(k + ' released before its item'); }
