@@ -22,12 +22,14 @@ A mobile zombie mini-game for 5 friends (Löken, Wizcudi, Jrohn, BigWman, Ljunky
 - Engine handles ranking badges (Legendary/Epic/Rare/Common/Participated), the 👑 Sidequest King (longest round), the scoreboard and the date lock. Missions don't touch these.
 - No copyrighted characters.
 - M2 zombies are drawn in canvas with `drawZombie()` (pale skin, glowing eyes, torn clothes, reaching arms; gold variant for bonus).
+- M3 (portrait RPG, `missions/m3.js` + `missions/m3-systems.js`): **all content is data** in `data/m3-data.js` (creatures, moves, items, NPCs, heroes, wives, zones, gym, graves, dealer, apps, tuning). Add content there without code; see `DATA.md`. Entries have `release: 'mon'|'tue'|'wed'`. The roster is 96 forms in 26 lines (younglings, 3-stage evolutions, drug forms by feeding, trip traits, trap ladders; design in `M3_CREATURES.md`, types FANG/WING/ROOT/WATER/STONE/SHELL). Creature art = one PNG per form (96x96 recommended, 48x48 also works) in `assets/creatures/<id>.png`, added with `art:` on the entry (no `art:` line needed: the file is found by name, until then the game shows a "?" disc; `node tools/import-art.js <image> <id>` or `tools/import-art.html` makes the PNG from any picture); fight-intro portraits in `assets/portraits/<id>.png`.
+- Generic engine kit `engine/*.js` (`window.PX`: sprites, fx, effects, data) knows nothing about LAN OR DIE. Only M3 uses it; M1/M2 never touch it. `?fx=off` turns off shake/particles/hit-stop.
 - M2 (landscape): edit `CFG` (CAM_HEIGHT zoom, SPACE_TIME, MISS_PENALTY…), `BILLBOARDS` (hero face + lines) and `WIFE` (texts) at the top of `missions/m2.js`. Running over a friend voids the round (`noSubmit`); Jrohn's space trip turns cars/zombies into asteroids.
 
 ## Mission lifecycle
 `Who's playing?` → title/mission list → character select → intro cutscene (phone chat) → brief → **play** (`init` → `start` → `update`/`draw` each frame) → `LOD.finish(win, why)` → optional outro cutscene → result screen → score submitted (only if the mission is LIVE today).
 
-Date fields: `unlock: 'YYYY-MM-DD'`, `until: 'YYYY-MM-DD'`. Before unlock = locked, between = LIVE (scores count), after = Practice (playable, no points). Test with `?dev=all` or `?dev=all&date=2026-11-21`.
+Date fields: `unlock: 'YYYY-MM-DD'`, `until: 'YYYY-MM-DD'`. Before unlock = locked, between = LIVE (scores count), after = Practice (playable, no points). Test with `?dev=all` or `?dev=all&date=2026-11-21`; `?dev=day&date=2026-11-23` plays a day the way players get it (release days and locks respected, nothing sent). Missions with `save: true` have a "Save code" button in the pause menu and on the brief to move a save to another phone.
 
 ## Mission template
 ```js
@@ -67,6 +69,7 @@ Total = `G.score` + sum of `bonus`, capped at `cap`.
 
 ## Engine API (`window.LOD`) – the parts missions use
 - **State:** `LOD.G` (round state), `LOD.M` (current mission), `LOD.player` (name), `LOD.fighter` (character), `LOD.view {W,H,scale}`, `LOD.cam`.
+- **Save missions (M3):** `noTimer: true` (no OVERLOAD, the clock is total playtime), `save: true` (engine keeps `saveState(G)` in `lod.save.m<id>.<player>` every 10 s and on pause; `loadState(G, data)` after `init`; `start(G, continued)`; brief shows Continue / New game), `submitOnSave: true` (sends a new best at most once a minute and on leaving). `perkText: {heroId: {intro, weakText}}` rewords the hero ability for a mission. `briefPerks: false` hides the ability/weakness text on the brief and the start callout; `briefClass: 'x'` adds a CSS class to the brief screen. `briefTitle: 'x'` replaces the "Your objective" heading.
 - **Layout:** `landscape: true` on a mission = landscape only (portrait pauses and shows a tilt-your-phone overlay). Pause button is top-left; in `hud()` add `LOD.view.hudLeftY` to y for anything in the left column. `result()` may return `noSubmit: true` to void a round (no score sent).
 - **Input:** `LOD.input.move()`, `LOD.input.fire` (bool), `LOD.weapon()` → `{id, kind:'gun'|'melee'|'spray', rate, range, dmg, noise, silenced}`. The mission does hit detection itself.
 - **Score:** `LOD.addScore(pts, category)`, `LOD.combo()` (1–5×), `LOD.comboBreak()`.

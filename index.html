@@ -288,6 +288,7 @@ textarea{width:100%;min-height:92px;font:600 15px var(--body);color:var(--fg);ba
       <h2>Paused</h2>
       <div class="row">
         <button id="resume" class="btn">Resume</button>
+        <button id="sc-open-pause" class="btn ghost" hidden>Save code</button>
         <button id="quit" class="btn ghost">Quit to missions</button>
       </div>
     </div>
@@ -319,5 +320,15 @@ textarea{width:100%;min-height:92px;font:600 15px var(--body);color:var(--fg);ba
 <!-- one line per mission -->
 <script src="missions/m1.js"></script>
 <script src="missions/m2.js"></script>
+<!-- generic engine kit (only Mission 3 uses it) + Mission 3 data -->
+<script src="engine/sprites.js"></script>
+<script src="engine/fx.js"></script>
+<script src="engine/effects.js"></script>
+<script src="engine/data.js"></script>
+<script src="data/m3-data.js"></script>
+<script src="missions/m3-systems.js"></script>
+<script src="missions/m3-people.js"></script>
+<script src="missions/m3-mini.js"></script>
+<script src="missions/m3.js"></script>
 </body>
 </html>

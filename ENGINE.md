@@ -19,6 +19,8 @@ Motorn (`engine.js`) äger allt som är lika i alla missions. En mission är en 
 - `unlock: 'YYYY-MM-DD'` = missionens första dag, `until: 'YYYY-MM-DD'` (valfri) = sista dagen den räknas. En gemensam rankning för hela perioden. Före: låst. Samma dag: **LIVE** (poäng skickas). Efter: **Practice** (spelbar, poäng skickas inte, räknas inte).
 - Rankbadges och 👑 räknas bara på missionens egen dag. Slutgiltiga 23:59.
 - `?dev=all` låser upp allt (som Practice). `?dev=all&date=2026-11-20` låtsas att det är ett annat datum (skickar aldrig poäng).
+- `?dev=day&date=2026-11-23` är ett **testläge som respekterar release-dagar och lås** (en mission före sitt unlock-datum är låst, M3 släpper bara det som är releasat den dagen). Skickar aldrig något till tavlan. `LOD.devDay`, `LOD.test` (= dev=all eller dev=day).
+- **Sparkod (opt-in, missions med `save: true`):** pausmenyn och briefen har "Save code": hela sparningen (+ bästa poäng) som en textkod med checksumma (komprimerad när webbläsaren kan), som man kan kopiera eller spara som fil och importera på en annan telefon. Bara samma mission och samma spelarnamn; ersätter sparningen först efter ett andra tryck. Ingen backend behövs.
 
 ## Mission-definition
 ```js
@@ -27,6 +29,14 @@ LOD.mission({
   cap: 300000,              // poängtak (håll lika med Code.gs)
   maxTime: 180,             // valfri, default CFG.MAX_TIME -> OVERLOAD
   landscape: true,          // valfri: spelas liggande. Stående telefon = paus + #rotate-warning, Telegram låser orienteringen
+  noTimer: true,            // valfri: ingen maxTime/OVERLOAD, klockan visar total speltid (M3)
+  briefPerks: false,        // valfri: dölj förmåga/svaghet i briefen och callouten vid start (M3)
+  briefClass: 'm3solid',    // valfri: extra CSS-klass på brief-skärmen (M3)
+  briefTitle: 'Wake up.',   // valfri: ersätter rubriken "Your objective" (M3)
+  save: true,               // valfri: sparar per spelare i localStorage 'lod.save.m<id>.<spelare>' var 10:e s, vid paus och när fliken döljs.
+                            //   Missionen ger datat: saveState(G) -> objekt, loadState(G, data) efter init, start(G, continued). Briefen får Continue / New game.
+  perkText: { loken: { intro, weakText } }, // valfri: egen text för hjältens förmåga/svaghet i briefen och startrutan
+  submitOnSave: true,       // valfri: skickar aktuell total när den slår spelarens bästa, max en gång per minut + när man lämnar
   world: { w: 1600, h: 1000 },
   intro: ({ player, fighter }) => ({ kind: 'chat', title, sub, button, lines: [{ at }, { from, text }, { sfx: 'zombie', text, shake }] }), // valfri, mobilchatt före briefen ('You' = spelaren)
   outro: (G, { player }) => spec | null,      // valfri, t.ex. { kind: 'call', music: 'game', tbc: 'text', lines } när man klarar banan
@@ -73,3 +83,10 @@ Svårighet och poäng per sekund ökar med tiden. Använd `LOD.ramp`. Senast vid
 1. Poängtak per mission: `const CAPS = {1: 300000, 2: 300000};` och kontrollera `score <= CAPS[mission]`.
 2. Valfritt: neka rader där dagen (Europe/Stockholm) inte är missionens dag.
 3. Valfritt: räkna rankbadges och 👑 i `morningPost`.
+
+## PX-kitet (`engine/*.js`, generiskt, bara M3 använder det)
+Vet ingenting om LAN OR DIE. Laddas efter missionerna i index.html; M1/M2 anropar det aldrig.
+- `engine/sprites.js` → `PX.sprites.define(id, {png | grid | rects | canvas, anims, fps, eyes})`, `PX.drawSprite(ctx, id, anim, t, x, y, {scale, flipX, flash, squash, alpha, idle, rot})`, `PX.sprites.doll(parts, spec, opts)` (paper doll), `PX.palette` (24 färger, navy kontur #1F2A44).
+- `engine/fx.js` → `PX.fx.step(dt)` (0 under hit-stop), `addTrauma`, `hitStop(ms)`, `shake(t)`, `tween`, `fade`, `setTint/clearTint`, `layer()` (partiklar, skadesiffror, kastbågar). `?fx=off` stänger av allt.
+- `engine/effects.js` → `PX.effects.define(type, handlers)`, `apply(holder, effect, ctx)` (stacks, maxStacks, onOverdose), `tick`, `turn`, `sum`, `has`, `clear`, `save`.
+- `engine/data.js` → `PX.data.load(raw, schema, {today, devAll, flag})` (validering, `released(entry)`), `migrate(save, steps)`, `fill`, `weighted`, `fmt`.
