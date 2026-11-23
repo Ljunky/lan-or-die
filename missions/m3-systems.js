@@ -1,5 +1,5 @@
 /* LAN OR DIE – Mission 3 systems: traps, cemetery (graves + resurrection + grave reward), The Box training board,
-   the dealer, the phone, filler shoppers, completion %. All numbers and texts come from data/m3-data.js.
+   the dealer, the  filler shoppers, completion %. All numbers and texts come from data/m3-data.js.
    missions/m3.js calls window.M3_SYSTEMS(K) once with its kernel K (state getters + helpers) and gets these functions back. */
 window.M3_SYSTEMS = function (K) {
 'use strict';
@@ -328,30 +328,7 @@ async function dealer(n) {
   }
 }
 
-/* ===================== THE PHONE ===================== */
-async function phone() {
-  const g = G();
-  for (;;) {
-    const ids = Object.keys(R.apps).filter(id => rel(R.apps[id]));
-    const a = await K.ask('📱 ' + (new Date()).toTimeString().slice(0, 5) + ' · 4 % 🔋', ids.map(id => ({ label: R.apps[id].icon + ' ' + R.apps[id].name, value: id }))
-      .concat([K.BACK('‹ Pocket')]));
-    if (!a) return;
-    const app = R.apps[a], used = g.apps[a] || 0, last = g.flags['appAt:' + a] || 0;
-    if (app.cooldownMin && app.use && used && (!app.once || used < app.once) && now() - last < app.cooldownMin * 60000 / Math.max(1e-6, K.trapSpeed)) {
-      const m = Math.ceil((app.cooldownMin * 60000 / Math.max(1e-6, K.trapSpeed) - (now() - last)) / 60000);
-      await K.say(app.name + ': "Your next payment plan opens in ' + m + ' min. Breathe."', { auto: false, who: app.icon + ' ' + app.name }); continue;
-    }
-    g.apps[a] = used + 1; g.flags['appAt:' + a] = now();
-    let line;
-    if (app.gate === 'door') { line = app.lines[used ? 1 : 0]; if (used) g.flags.bankid = 1; }
-    else line = pick(app.lines);
-    const vars = { price: (rand(4, 99)).toFixed(2), steps: fmt(Math.round(g.steps || 0)), name: pick(['Gunnel (wrong number)', 'Ica-Stig', 'your ex', 'Löken\'s mum', 'a stranger in Kiruna', 'Systembolaget']), kr: g.kr, debt: (g.debt || 0) + (app.use || []).filter(e => e.type === 'promiseDebt').length };
-    if (app.use && (!app.once || used < app.once)) K.applyAll(g.me, app.use, {});
-    else if (app.use && app.once) line = 'Klarna: "You have reached your limit. And ours."';
-    LOD.tone(1320, .04, 'square', .04);
-    await K.say(PX.data.fmt(line, vars), { auto: false, who: app.icon + ' ' + app.name });
-  }
-}
+/* the phone itself lives in missions/m3-phone.js */
 /* BankID gates The Box's door once BankID is out (until you approve in the app) */
 const bankidDoor = (tx, ty) => tx >= 41 && tx <= 42 && ty === 18;
 function blocked(tx, ty) { const g = G(); return !!(g && rel(R.apps.bankid) && !g.flags.bankid && bankidDoor(tx, ty) && g.p && g.p.y > 18.5 * T); }
@@ -408,6 +385,6 @@ function completion() {
 return {
   newGame() { const g = G(); g.fillers = makeFillers(); registerFillers(); },
   afterLoad() { const g = G(); if (!g.fillers || !Object.keys(g.fillers).length) g.fillers = makeFillers(); registerFillers(); if (trainOpen()) train(); },
-  placeTrap, trapper, candidates, addGrave, resurrect, board, dealer, dealerStock, phone, mapObjects, interact, drawMap, tick, completion, blocked, train, tierCap, trapReady, trapCatch, valueOf, graveSpot
+  placeTrap, trapper, candidates, addGrave, resurrect, board, dealer, dealerStock, mapObjects, interact, drawMap, tick, completion, blocked, train, tierCap, trapReady, trapCatch, valueOf, graveSpot
 };
 };

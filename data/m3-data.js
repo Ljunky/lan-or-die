@@ -397,12 +397,33 @@ items: {
 
 /* ---------- phone apps (bag → 📱). lines = one is shown at random; {vars} come from the game: {steps} {price} {name} {kr} {debt}
    use = effects when you open it (kr, promiseDebt…). gate: 'door' = BankID must approve doors marked bankid ---------- */
+phone: { battery: 4, wallpaper: ['#16264a', '#5a2064'], storeTitle: 'Appbutiken', storeLine: 'Download things you did not need. 100 % ad-free. 0 % useful.' },
 apps: {
-  tibber: { name: 'Tibber', icon: '⚡', lines: ['Electricity right now: {price} kr/kWh.\nWizcudi has been notified.', 'Price spike! {price} kr/kWh.\nTip: turn off the sun.', 'Your fridge used 14 kr while you read this.'], release: 'mon' },
-  swish: { name: 'Swish', icon: '💸', lines: ['You swished 10 kr to {name}.\nYou meant to swish Löken.', 'Payment sent to {name}.\nMessage: "pizza"', '{name} received 10 kr.\nNobody knows why.'], use: [{ type: 'kr', value: -10 }], release: 'mon' },
-  bankid: { name: 'BankID', icon: '🆔', lines: ['Open BankID on your other device.\nYou do not have another device.', 'Identification approved.\nDoors marked 🆔 open for you now.'], gate: 'door', release: 'wed' },
-  strava: { name: 'Strava', icon: '🏃', lines: ['Today: {steps} steps inside ICA Maxi.\nNew personal record: aisle 4.', '{steps} steps. Kudos from: nobody.'], release: 'wed' },
-  klarna: { name: 'Klarna', icon: '🩷', lines: ['Buy now, pay later!\n+200 kr. Promise debt: {debt}.', 'Smoooth. +200 kr. You promised to pay. Again.'], use: [{ type: 'kr', value: 200 }, { type: 'promiseDebt', value: 1 }], once: 3, cooldownMin: 10, release: 'wed' }
+  tibber: { color: '#1f6feb', name: 'Tibber', icon: '⚡', lines: ['Electricity right now: {price} kr/kWh.\nWizcudi has been notified.', 'Price spike! {price} kr/kWh.\nTip: turn off the sun.', 'Your fridge used 14 kr while you read this.'], release: 'mon' },
+  swish: { color: '#16a34a', name: 'Swish', icon: '💸', lines: ['You swished 10 kr to {name}.\nYou meant to swish Löken.', 'Payment sent to {name}.\nMessage: "pizza"', '{name} received 10 kr.\nNobody knows why.'], use: [{ type: 'kr', value: -10 }], release: 'mon' },
+  bankid: { color: '#0b3d5c', name: 'BankID', icon: '🆔', lines: ['Open BankID on your other device.\nYou do not have another device.', 'Identification approved.\nDoors marked 🆔 open for you now.'], gate: 'door', release: 'wed' },
+  strava: { color: '#fc4c02', name: 'Strava', icon: '🏃', lines: ['Today: {steps} steps inside ICA Maxi.\nNew personal record: aisle 4.', '{steps} steps. Kudos from: nobody.'], release: 'wed' },
+  klarna: { color: '#ff8fb5', name: 'Klarna', icon: '🩷', lines: ['Buy now, pay later!\n+200 kr. Promise debt: {debt}.', 'Smoooth. +200 kr. You promised to pay. Again.'], use: [{ type: 'kr', value: 200 }, { type: 'promiseDebt', value: 1 }], once: 3, cooldownMin: 10, release: 'wed' },
+  /* --- on the phone from the start --- */
+  lens: { name: 'Faunalens', icon: '📷', color: '#e11d48', release: 'mon', store: { price: 0, blurb: 'AI scans every animal you catch.' }, lines: ['Faunalens is active. It will scan the animals you catch.', 'Point at an animal. Or a Löken. The AI is not sure which is which.'] },
+  dex: { custom: true, name: 'Faunadex', icon: '🔍', color: '#0891b2', release: 'mon', store: { price: 0, needs: 'lens', blurb: 'Every animal you meet. With margin notes.' } },
+  store: { appstore: true, name: 'Appbutiken', icon: '🛍️', color: '#7c3aed', release: 'mon' },
+  messages: { widget: 'messages', name: 'Messages', icon: '💬', color: '#22a559', release: 'mon', from: ['Löken', 'Wizcudi', 'Jrohn', 'BigWman', 'Ljunky'],
+    pool: ['who has the van keys', 'Is Maxi open? Asking for a friend.', 'I found a pike. It found me back.', 'DO NOT eat the red ones', 'ok but who is Kenny', 'Did anyone feed the badger?', 'sent from my fridge', 'brb, hiding from Berit', 'Löken: gym at 6. Nobody asked.', 'LAN at 20:00. Bring snacks. And a creature.', 'who put a shoebox in the parking lot', 'my wife says hi. she is behind me.'],
+    replies: [{ label: 'On my way', answer: 'No you are not.' }, { label: '👍', answer: 'That is not a sentence.' }, { label: 'Wait, what?', answer: 'Exactly. Welcome.' }] },
+  weather: { widget: 'weather', name: 'SMHI', title: 'SMHI Väder', icon: '⛅', color: '#0ea5e9', release: 'mon', icons: ['🌧️', '⛅', '☀️', '❄️', '🌫️'],
+    lines: ['Rain. Or snow. Or both. It is Sweden.', 'Light breeze from the left. Strong opinions from the right.', 'Perfect weather to stay in the van.', 'Fog over the lake. Probably a creature. Probably.', 'Warning class 1: you are outside.'] },
+  torch: { widget: 'torch', name: 'Flashlight', icon: '🔦', color: '#eab308', release: 'mon', on: ['It is a flashlight. It is on.', 'Bright. Nothing in the parking lot got better.', 'You can see clearly now. It is worse.'], off: ['Off. Very dark. Very on-brand.', 'The flashlight rests.', 'Tap ON. It is not complicated.'] },
+  camera: { widget: 'camera', name: 'Camera', icon: '📷', color: '#475569', release: 'mon', hint: 'Say cheese. Or "Maxi".', captions: ['Selfie saved. You look tired.', 'Nice one. Your thumb is in it.', 'Saved to the cloud. The cloud is Löken.', 'You blinked.', 'A blurry creature is in the background. Lucky you.'] },
+  /* --- download them in the Appbutiken --- */
+  calc: { widget: 'calc', name: 'Calculator', icon: '🧮', color: '#f08a24', release: 'mon', store: { price: 0, blurb: 'Does maths. Mostly.' }, easter: { '42': 'The answer.', '69': 'Nice.', '1337': 'LEET.', '420': 'Löken noticed.', '8008': 'Grow up.', 'Ask Löken': 'Division by zero. Löken is busy.' } },
+  compass: { widget: 'compass', name: 'Kompass', icon: '🧭', color: '#0f766e', release: 'mon', label: 'Points to: The Box (Löken, probably flexing)', store: { price: 0, blurb: 'Always points at the gym. Useless. Reliable.' } },
+  eight: { widget: 'eight', name: 'Fråga Björn', icon: '🎱', color: '#312e81', release: 'mon', store: { price: 5, blurb: 'A wise bear answers yes/no questions.' },
+    answers: ['Yes. Obviously.', 'No. Ask Löken.', 'Maybe. Have a snack.', 'Björn is on a break.', 'Definitely. Do not tell Berit.', 'Skål.', 'Ask your wife.', 'Absolutely not. Do it anyway.'] },
+  fart: { widget: 'fart', name: 'Pruttis', icon: '💨', color: '#a16207', release: 'mon', store: { price: 10, blurb: 'Four premium sounds. Rated 4.9 by nobody.' },
+    sounds: [{ label: 'Classic', f: 260, len: .25 }, { label: 'The long one', f: 140, len: .7 }, { label: 'Squeaker', f: 520, len: .15 }, { label: 'Löken (deep)', f: 80, len: .9 }] },
+  hemnet: { widget: 'hemnet', name: 'Hemnet', icon: '🏠', color: '#16a34a', release: 'mon', store: { price: 0, blurb: 'What is your van worth today?' }, lines: ['Charming. Needs love. And a roof.', 'Great light. In the bad way.', 'Walking distance to a Maxi. Because it is in a Maxi parking lot.', 'Viewing tomorrow. Bring wellies.'] }
+
 },
 
 /* ---------- NPCs: one entry each. role: talker | merchant | trainer | gym | dealer | filler
@@ -607,9 +628,18 @@ legacy: { frog: 'toadlet', cuke: 'fawn', peng: 'hoglet', golem: 'hoglet', ghost:
   snake: 'adderling', bear: 'bearCub', lizard: 'adderling', salmon: 'perchFry', moth: 'caterpillar', pike: 'pikeFry', loyal: 'badgerCub', walter: 'foxKit', cat: 'lynxKitten', lich: 'badgerCub', elk: 'fawn', serpent: 'adderling' },
 
 /* ---------- Fältboken (the field book, replaces the creature list). margin = the previous owner's notes, one per line. A drug form shows as a black silhouette until you have seen its line; the recipe shows once you know it. ---------- */
+/* ---------- Faunalens: the AI scan offered after your first catch; after that the Faunadex can be downloaded in the Appbutiken ---------- */
+lens: {
+  offer: '📱 Faunalens AI: "New animal detected! Scan {name} for free? We will only use your data for… things."',
+  yes: '📷 Scan it', no: 'No thanks',
+  scan: ['Scanning… 🔍', '{name}: {type}, size {size}, {rarity}. Likes: {bait}. Confidence 94 %.'],
+  done: 'Faunalens is installed. The Faunadex app is now free in the Appbutiken (📱 Phone → 🛍️).',
+  later: 'Fine. Faunalens waits in the Appbutiken if you change your mind. It will not shut up about it.',
+  scanLine: '📷 Faunalens: {name} · {type} · {size} · likes {bait}.'
+},
 fieldbook: {
-  locked: 'You have no field guide. The guy behind the bottle machines sells one. Or somebody left one in a camper van, deep in the forest.',
-  intro: 'FÄLTBOKEN. Nordens Djur, med anteckningar. Coffee rings on every page.',
+  locked: 'You have no field guide. Catch something and your phone will offer to scan it (Faunalens). Then download the Faunadex in the Appbutiken. Or buy a paper Fältboken behind the bottle machines.',
+  intro: 'FAUNADEX. Nordens Djur, med anteckningar. Coffee rings on every page.',
   margin: {
     badger: 'It does not care. DO NOT feed it anything you would not eat yourself. (I did.)', lynx: 'Hates being looked at. Loves being looked at. Do not ask which.', toad: 'Sings at 3 a.m. Sings louder with the right drug. The elves hum along.',
     hedgehog: 'Crosses roads. Always. Give it a small mushroom and it grows a garden.', deer: 'Calm already. Give it weed and it levitates, emotionally.',

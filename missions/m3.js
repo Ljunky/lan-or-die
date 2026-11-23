@@ -19,7 +19,7 @@ const SCHEMA = {
   partners: { req: ['name', 'guy', 'at', 'look'], refs: { guy: 'heroes' } },
   npcs: { req: ['name', 'role', 'at'], enums: { role: ['talker', 'merchant', 'trainer', 'gym', 'dealer', 'filler', 'fence', 'boatman', 'trapper'] }, refs: { shop: 'items', party: 'cref' } },
   zones: { req: ['name', 'r'], refs: { enc: 'cref' } },
-  apps: { req: ['name', 'icon', 'lines'] },
+  apps: { req: ['name', 'icon'] },
   houses: { req: ['name', 'hero', 'level', 'door'], refs: { hero: 'heroes' }, nums: ['level'] }
 };
 /* LINES: a line is a family of forms (Mouse → Rat → Rat King, plus drug forms). Zones, trainer parties and quests may name a line: the game picks the form for the level.
@@ -344,6 +344,23 @@ const CSS = `
 #m3ui .m3grid button .ty{display:inline-block;white-space:nowrap;vertical-align:2px;font:400 10px Bungee,Impact,sans-serif;color:#fff;border-radius:4px;padding:1px 4px;margin-left:4px}
 #m3ui .m3grid button .hp{display:block;height:5px;border-radius:3px;background:#ddd;margin-top:3px;overflow:hidden}
 #m3ui .m3grid button .hp i{display:block;height:100%;background:#3ddc84}
+#m3ui .m3grid.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
+#m3ui .m3grid.tiles button{flex-direction:column;justify-content:center;text-align:center;gap:2px;min-height:78px;padding:8px 4px;background:linear-gradient(#fff,#f1ead6)}
+#m3ui .m3grid.tiles button .em{font-size:28px;line-height:1;font-weight:400}
+#m3ui .m3grid.tiles button.back{grid-column:1/-1;flex-direction:row;min-height:44px;background:#e8ecf2}
+#m3ui .m3grid.tiles button small{font-size:11px}
+#m3ui .m3grid button.card{flex-direction:row;align-items:center;gap:10px;padding:8px;background:linear-gradient(#fff,#f7f0dc)}
+#m3ui .m3grid button.card.lead{border-color:#8a6a00;box-shadow:inset 0 0 0 2px #ffd23a}
+#m3ui .m3grid button.card .pic{position:relative;flex:none;width:68px;height:68px;border-radius:10px;background:radial-gradient(circle at 50% 70%,#dfeaf5,#b9c9dc);border:2px solid #1F2A44;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#m3ui .m3grid button.card .pic img{width:64px;height:64px;image-rendering:auto}
+#m3ui .m3grid button.card .pic .noart{font:400 26px Bungee,Impact,sans-serif;font-style:normal;color:#1F2A44;width:44px;height:44px;border:4px solid;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e9eef5}
+#m3ui .m3grid button.card .pic .star{position:absolute;left:2px;top:0;color:#e3a900;font-size:18px;text-shadow:0 0 2px #fff}
+#m3ui .m3grid button.card .info{flex:1;min-width:0;display:block}
+#m3ui .m3grid button.card .nm{display:block;font:700 17px/1.1 Barlow,sans-serif}
+#m3ui .m3grid button.card .nm em{font-style:normal;font-weight:600;font-size:13px;opacity:.7}
+#m3ui .m3grid button.card .chips{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+#m3ui .m3grid button.card .chips u{text-decoration:none;font:700 10.5px Barlow,sans-serif;background:#1F2A44;color:#fbf6e8;border-radius:4px;padding:1px 5px}
+#m3ui .m3grid button.card small.note{color:#8f1d22;opacity:1}
 #m3ui .m3bag{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));width:66px;height:66px;border-radius:50%;
   pointer-events:auto;font-size:30px;border:3px solid #1F2A44;background:#fbf6e8;box-shadow:0 4px 14px rgba(0,0,0,.5);cursor:pointer;touch-action:manipulation}
 #m3ui .m3bag small{display:block;font:400 9px Bungee,Impact,sans-serif;margin-top:-4px;color:#1F2A44}
@@ -410,10 +427,11 @@ function ask(text, opts, o = {}) {
   return new Promise(res => {
     ui.box.hidden = false; boxText(text, o.who); ui.txt.classList.remove('more');
     const one = o.one != null ? o.one : G.scene !== 'battle' && (opts.length > 7 || opts.some(q => (q.label || '').length > 22)); // long lists read better in one column
-    ui.grid.className = 'm3grid' + (one ? ' one' : '');
+    ui.grid.className = 'm3grid' + (o.cards ? ' one cards' : one ? ' one' : '') + (o.tiles ? ' tiles' : '');
     layout(o.center != null ? o.center : G.scene !== 'battle');
-    ui.grid.innerHTML = opts.map((q, i) => '<button data-i="' + i + '"' + (q.dis ? ' disabled' : '') + (q.cls ? ' class="' + q.cls + '"' : '') + '>' +
-      (q.img ? '<img src="' + q.img + '" alt="">' : '') + '<span>' + esc(q.label) + (q.ty ? '<span class="ty" style="background:' + (TCOL[q.ty] || '#888') + '">' + q.ty + '</span>' : '') +
+    ui.grid.innerHTML = opts.map((q, i) => q.card ? cardHtml(q, i) : '<button data-i="' + i + '"' + (q.dis ? ' disabled' : '') + (q.cls ? ' class="' + q.cls + '"' : '') + '>' +
+      (o.tiles && /^\p{Extended_Pictographic}/u.test(q.label || '') ? tileHead(q) : '') +
+      (o.tiles && /^\p{Extended_Pictographic}/u.test(q.label || '') ? '' : q.img ? '<img src="' + q.img + '" alt="">' : '') + '<span>' + esc(o.tiles && /^\p{Extended_Pictographic}/u.test(q.label || '') ? tileLabel(q) : q.label) + (q.ty ? '<span class="ty" style="background:' + (TCOL[q.ty] || '#888') + '">' + q.ty + '</span>' : '') +
       (q.unk ? '<small class="unk">???</small>' : q.sub ? '<small>' + esc(q.sub) + '</small>' : '') + (q.hp != null ? '<span class="hp"><i style="width:' + Math.round(q.hp * 100) + '%;background:' + hpCol(q.hp) + '"></i></span>' : '') + '</span></button>').join('');
     const done = v => { if (pending && pending.res === done) pending = null; ui.grid.innerHTML = ''; if (tok === FLOW) res(v); };
     pending = { res: done, vals: opts.map(q => q.value) };
@@ -421,6 +439,23 @@ function ask(text, opts, o = {}) {
   });
 }
 const hpCol = f => f > .5 ? '#3ddc84' : f > .2 ? '#f5c242' : '#e5484d';
+/* big icon tiles (the bag) and picture cards (your team): the same ask() with o.tiles / o.cards. A tile label starts with its emoji ("🐸 Team"); a card is { card: { sp, name, lv, ty, hp, hpTxt, chips, star, note } } */
+const tileHead = q => { const m = /^(\p{Extended_Pictographic}️?)\s*/u.exec(q.label); return '<b class="em">' + m[1] + '</b> '; };
+const tileLabel = q => q.label.replace(/^\p{Extended_Pictographic}️?\s*/u, '');
+function cardPic(sp) {
+  const u = creatureIcon(sp), ty = SP[sp] ? SP[sp].type : 'NONE';
+  return u ? '<img src="' + u + '" alt="">' : '<i class="noart" style="border-color:' + (TCOL[ty] || '#888') + '">?</i>';
+}
+function cardHtml(q, i) {
+  const c = q.card;
+  return '<button data-i="' + i + '"' + (q.dis ? ' disabled' : '') + ' class="card' + (c.star ? ' lead' : '') + (q.cls ? ' ' + q.cls : '') + '"><span class="pic">' + cardPic(c.sp) + (c.star ? '<b class="star">★</b>' : '') + '</span>' +
+    '<span class="info"><span class="nm">' + esc(c.name) + ' <em>Lv ' + c.lv + '</em>' + (c.ty ? '<span class="ty" style="background:' + (TCOL[c.ty] || '#888') + '">' + c.ty + '</span>' : '') + '</span>' +
+    '<span class="hp"><i style="width:' + Math.round(c.hp * 100) + '%;background:' + hpCol(c.hp) + '"></i></span><small>' + esc(c.hpTxt || '') + '</small>' +
+    (c.chips && c.chips.length ? '<span class="chips">' + c.chips.map(x => '<u>' + esc(x) + '</u>').join('') + '</span>' : '') + (c.note ? '<small class="note">' + esc(c.note) + '</small>' : '') + '</span></button>';
+}
+const teamCard = (c, i, o = {}) => ({ value: i, dis: o.dis, card: { sp: c.sp, name: cname(c), lv: c.lv, ty: typeOf(c), hp: c.hp / maxHp(c), hpTxt: (c.hp > 0 ? c.hp : 0) + ' / ' + maxHp(c) + ' HP', star: o.star,
+  chips: ['ATK ' + baseStat(c, 1), 'DEF ' + baseStat(c, 2), 'SPD ' + baseStat(c, 3)].concat(tripOf(c) ? ['🌀 ' + tripOf(c).name] : []),
+  note: sketchy(c) ? '🥴 Sketchy for ' + Math.ceil((c.sk - Date.now()) / 60000) + ' more min' : o.note || '' } });
 const say2 = (who, t) => say(t, { who, auto: false });
 const BACK = (l = '‹ Back') => ({ label: l, value: null, cls: 'back' });
 
@@ -667,9 +702,9 @@ async function chooseAction() {
   }
 }
 async function pickParty(q, forced) {
-  const opts = G.party.map((c, i) => ({ label: cname(c) + ' Lv ' + c.lv + (i === B.me ? ' (out)' : '') + (sketchy(c) ? ' 🥴' : ''), img: creatureIcon(c.sp), ty: typeOf(c), sub: sketchy(c) ? 'Sketchy: ' + Math.ceil((c.sk - Date.now()) / 60000) + ' min' : c.hp + '/' + maxHp(c) + ' HP', hp: c.hp / maxHp(c), value: i, dis: !fit(c) || i === B.me }));
+  const opts = G.party.map((c, i) => teamCard(c, i, { dis: !fit(c) || i === B.me, star: i === B.me, note: i === B.me ? 'Out now' : '' }));
   if (!forced) opts.push(BACK());
-  return ask(q, opts, { one: true });
+  return ask(q, opts, { cards: true });
 }
 
 /* ---------- doing things ---------- */
@@ -992,6 +1027,7 @@ async function caught(foe) {
     personGone(foe.sp, 'caught');
   }
   if (addToParty(c, true) === 'van') await say('Your team is full. ' + cname(c) + ' went to the van.');
+  if (s.kind === 'creature') await lensFlow(foe);
 }
 
 /* ---------- knockout: Catch or Finish off ---------- */
@@ -1595,7 +1631,20 @@ async function feedFlow(id) {
     await say('🥴 ' + cname(c) + ' went somewhere dark. It cannot fight for ' + CFG.TRIP_MIN + ' real minutes. It will be fine. Probably.', { auto: false });
   }
 }
-/* ---------- Fältboken: the field guide. Without it you only see the creatures you own. ---------- */
+/* ---------- Faunalens: after your first catch the phone offers to scan the animal. Say yes and the Faunadex app shows up in the Appbutiken. ---------- */
+async function lensFlow(foe) {
+  const L = D.raw.lens, s = SP[foe.sp]; if (!L || !s || s.kind !== 'creature') return;
+  G.installed = G.installed || {};
+  const vars = { name: s.name, type: s.type, size: s.size, bait: (s.bait || []).map(b => (ITEMS[b] || { name: b }).name).join(', ') || 'unknown', rarity: ({ C: 'common', U: 'uncommon', R: 'rare', E: 'EPIC', M: 'mythic' })[s.rarity] || '?' }, f = t => PX.data.fmt(t, vars);
+  if (G.installed.lens) { await say(f(L.scanLine)); return; }
+  if (G.flags.lensAsked) return;
+  G.flags.lensAsked = 1;
+  const a = await ask(f(L.offer), [{ label: L.yes, value: 'y', cls: 'hot' }, { label: L.no, value: 'n' }], { one: true });
+  if (a === 'y') { G.installed.lens = 1; LOD.tone(1046, .08, 'triangle', .05); for (const t of L.scan) await say(f(t)); await say(f(L.done)); }
+  else await say(f(L.later));
+}
+const hasDex = () => has('faltboken') || !!(G.installed && G.installed.dex);
+/* ---------- Fältboken / Faunadex: the field guide. Without it you only see the creatures you own. ---------- */
 const FB = D.raw.fieldbook || {};
 const lineLabel = l => { const f = LINES[l].map(k => SP[k]).filter(x => x.stage !== 'drug').sort((a, b) => a.stage - b.stage); return (f[Math.min(1, f.length - 1)] || SP[LINES[l][0]]).name; };
 function bookPage(l) {
@@ -1618,13 +1667,31 @@ function bookPage(l) {
   if (caughtAny && FB.margin && FB.margin[l]) out.push('✏️ "' + FB.margin[l] + '"');
   return out.join('\n');
 }
+const dexLines = () => WILD_LINES().concat(Object.keys(LINES).filter(l => SP[LINES[l][0]].starter && LINES[l].some(k => G.seen[k] || G.caught[k]))).filter(l => LINES[l].some(k => rel(SP[k]) || G.caught[k] || G.seen[k]));
+function K_PHONE_DEX() { /* the Faunadex app inside the phone: a list with pictures, tap one for its page */
+  K.phoneApps.dex = (host, h) => {
+    const list = () => {
+      const rank = l => LINES[l].some(k => G.caught[k]) ? 0 : LINES[l].some(k => G.seen[k]) ? 1 : 2, ls = dexLines().slice().sort((a, b) => rank(a) - rank(b));
+      host.innerHTML = '<div class="ph-card">' + Object.keys(G.lines).length + ' / ' + WILD_LINES().length + ' lines caught</div>' + ls.map(l => { const any = LINES[l].some(k => G.seen[k] || G.caught[k]), got = LINES[l].some(k => G.caught[k]), sp = LINES[l].find(k => SP[k].stage === 1) || LINES[l][0];
+        return '<div class="ph-row" data-l="' + l + '"><u style="--c:#2c3550">' + (any ? cardPic(sp) : '❔') + '</u><div>' + esc(any ? lineLabel(l) : '???') + '<small>' + (got ? '● caught' : any ? '○ seen' : 'not seen yet') + '</small></div></div>'; }).join('');
+      host.querySelectorAll('.ph-row').forEach(r => { if (rank(r.dataset.l) < 2) r.addEventListener('click', () => page(r.dataset.l)); });
+    };
+    const page = l => {
+      const sp = LINES[l].find(k => SP[k].stage === 1) || LINES[l][0], any = LINES[l].some(k => G.seen[k] || G.caught[k]);
+      host.innerHTML = '<div class="ph-card" style="text-align:center"><div class="dexpic">' + (any ? cardPic(sp) : '❔') + '</div></div><div class="ph-card">' + esc(bookPage(l)) + '</div><button class="ph-btn alt">‹ List</button>';
+      host.querySelector('button').addEventListener('click', list);
+    };
+    list();
+  };
+}
 async function fieldBook() {
-  if (!has('faltboken')) {
+  if (hasDex() && G.installed && G.installed.dex) { await PHONE.open('dex'); return; }
+  if (!hasDex()) {
     const mine = G.party.concat(G.box).filter(c => isCreature(c.sp));
     await say(FB.locked + '\n\nYou have: ' + (mine.length ? mine.map(c => cname(c) + ' Lv ' + c.lv).join(', ') : 'nothing yet') + '.', { auto: false }); return;
   }
   for (;;) {
-    const ls = WILD_LINES().concat(Object.keys(LINES).filter(l => SP[LINES[l][0]].starter && LINES[l].some(k => G.seen[k] || G.caught[k]))).filter(l => LINES[l].some(k => rel(SP[k]) || G.caught[k] || G.seen[k]));   // a line you met in a boss team shows up even before its release day
+    const ls = dexLines();
     const l = await ask((FB.intro || 'Fältboken') + ' · ' + Object.keys(G.lines).length + '/' + WILD_LINES().length + ' lines caught', ls.map(l => { const any = LINES[l].some(k => G.seen[k] || G.caught[k]), got = LINES[l].some(k => G.caught[k]);
       return { label: (got ? '● ' : any ? '○ ' : '· ') + (any ? lineLabel(l) : '???'), img: any ? creatureIcon(LINES[l].find(k => SP[k].stage === 1) || LINES[l][0]) : '', ty: any ? SP[LINES[l][0]].type : '', value: l }; }).concat([BACK('‹ Close')]), { one: true });
     if (!l) return;
@@ -1640,12 +1707,12 @@ async function bagMenu() {
       const traps = Object.keys(ITEMS).filter(id => has(id) && ITEMS[id].kind === 'trap'), lures = Object.keys(ITEMS).filter(id => has(id) && ITEMS[id].kind === 'lure');
       const a = await ask('🎒 ' + G.kr + ' kr', [
         { label: '🐸 Team', value: 'party', sub: G.party.length + '/4' }, { label: '🍺 Use', value: 'use', sub: usables().length ? '' : 'Nothing' },
-        { label: '🪤 Traps & lures', value: 'traps', sub: (traps.length + lures.length) + ' kinds', dis: !traps.length && !lures.length },
-        { label: '🛒 Shopping list', value: 'list', sub: nItems + '/8' }, { label: '📕 ' + (has('faltboken') ? 'Fältboken' : 'Your creatures'), value: 'dex', sub: has('faltboken') ? spc + '/' + WILD_LINES().length + ' lines' : '' },
-        { label: '📓 Notes', value: 'notes' }, { label: '📱 Phone', value: 'phone' }, { label: '🏆 Goals', value: 'goals', sub: fmt(goals().total) + ' pts' }, BACK('‹ Close')]);
+        { label: '🪤 Traps & lures', value: 'traps', sub: (traps.length + lures.length) + (traps.length + lures.length === 1 ? ' kind' : ' kinds'), dis: !traps.length && !lures.length },
+        { label: '🛒 Shopping list', value: 'list', sub: nItems + '/8' }, { label: '📕 ' + (hasDex() ? 'Faunadex' : 'Your creatures'), value: 'dex', sub: hasDex() ? spc + '/' + WILD_LINES().length + ' lines' : '' },
+        { label: '📓 Notes', value: 'notes' }, { label: '📱 Phone', value: 'phone' }, { label: '🏆 Goals', value: 'goals', sub: fmt(goals().total) + ' pts' }, BACK('‹ Close')], { tiles: true, one: false });
       if (!a) break;
       if (a === 'party') {
-        const i = await ask('Tap one to make it lead.', G.party.map((c, i) => ({ label: (i === 0 ? '★ ' : '') + cname(c) + ' Lv ' + c.lv + (sketchy(c) ? ' 🥴' : ''), img: creatureIcon(c.sp), ty: typeOf(c), sub: (sketchy(c) ? 'Sketchy for ' + Math.ceil((c.sk - Date.now()) / 60000) + ' more min · ' : '') + c.hp + '/' + maxHp(c) + ' HP · ATK ' + baseStat(c, 1) + ' DEF ' + baseStat(c, 2) + ' SPD ' + baseStat(c, 3) + (tripOf(c) ? ' · ' + tripOf(c).name : ''), hp: c.hp / maxHp(c), value: i })).concat([BACK()]), { one: true });
+        const i = await ask('Your team. Tap one to make it lead.', G.party.map((c, i) => teamCard(c, i, { star: i === 0 })).concat([BACK()]), { cards: true });
         if (i) { const c = G.party.splice(i, 1)[0]; G.party.unshift(c); }
       } else if (a === 'use') {
         const d = await ask(usables().length ? 'Use what?' : 'Nothing to use.', usables().map(id => itemOpt(id)).concat([BACK()]));
@@ -1661,7 +1728,7 @@ async function bagMenu() {
       } else if (a === 'dex') {
         await fieldBook();
       } else if (a === 'notes') await say(PPL.notes(), { auto: false, center: true });
-      else if (a === 'phone') await S.phone();
+      else if (a === 'phone') await PHONE.open();
       else if (a === 'goals') {
         const g = goals(), c = S.completion();
         await say(g.rows.map(r => r[0] + ': ' + fmt(r[1])).join('\n') + '\nTotal: ' + fmt(g.total) + '\n\nCompletion: ' + c.pct + ' %' + (G.debt ? '\nPromise debt: ' + G.debt : ''), { auto: false });
@@ -1876,8 +1943,8 @@ function newList() {
 }
 const strip = c => { const o = { sp: c.sp, lv: c.lv, xp: c.xp, hp: c.hp }; if (c.sk && c.sk > Date.now()) o.sk = c.sk; if (c.nick) o.nick = c.nick; if (c.fx && c.fx.length) o.fx = EF.save(c); return o; };
 const SAVE_KEYS = ['dir', 'seen', 'caught', 'list', 'kr', 'items', 'beat', 'solved', 'dev', 'eggs', 'egg', 'debt', 'lvlPts', 'flags', 'stache', 'blurred', 'starter',
-  'known', 'people', 'know', 'quests', 'heard', 'traps', 'graves', 'dead', 'caughtP', 'npcBeat', 'gym', 'dealer', 'apps', 'steps', 'fillers', 'trapsUsed', 'lines', 'wrecks', 'wear', 'stashes'];
-const FRESH = () => ({ items: {}, known: {}, people: {}, know: {}, quests: {}, heard: {}, lines: {}, wrecks: {}, traps: [], graves: [], dead: {}, caughtP: {}, npcBeat: {}, gym: { slots: [] }, dealer: { pts: 0, pen: [], rot: -1, bought: {} }, apps: {}, steps: 0, trapsUsed: {}, wear: {}, stashes: {}, flags: {} });
+  'known', 'people', 'know', 'quests', 'heard', 'traps', 'graves', 'dead', 'caughtP', 'npcBeat', 'gym', 'dealer', 'apps', 'steps', 'fillers', 'trapsUsed', 'lines', 'wrecks', 'wear', 'stashes', 'installed', 'chatSeen', 'selfies'];
+const FRESH = () => ({ items: {}, known: {}, people: {}, know: {}, quests: {}, heard: {}, lines: {}, wrecks: {}, traps: [], graves: [], dead: {}, caughtP: {}, npcBeat: {}, gym: { slots: [] }, dealer: { pts: 0, pen: [], rot: -1, bought: {} }, apps: {}, steps: 0, trapsUsed: {}, wear: {}, stashes: {}, installed: {}, flags: {} });
 function saveState(G) {
   const o = { v: 5, p: [Math.round(G.p.x), Math.round(G.p.y)], party: G.party.map(strip), box: G.box.map(strip), me: EF.save(G.me) };
   for (const k of SAVE_KEYS) o[k] = G[k];
@@ -2041,11 +2108,13 @@ const K = {
   startBattle, startNpcFight, startPartner, applyAll, SFX, bubble, isCreature, SPECIES, robotLine, cemeteryOpen,
   LINES, formFor, repOf, lineOf, tripOf, sketchy, fit, bagSize, WILD_LINES, MOVES, shop,
   get PPL() { return PPL; }, get uiRoot() { return ui.root; }, tone: (...a) => LOD.tone(...a), haptic: h => LOD.haptic(h), takeCreature,
-  setHeart: fn => { ctxHeart = fn; }, get trapSpeed() { return TRAP_SPEED; }
+  setHeart: fn => { ctxHeart = fn; }, get trapSpeed() { return TRAP_SPEED; }, phoneApps: {}
 };
 const S = window.M3_SYSTEMS(K);
 const PPL = window.M3_PEOPLE(K);
 const MINI = window.M3_MINI(K);
+const PHONE = window.M3_PHONE(K);
+K_PHONE_DEX();
 for (const w of PPL.validate()) D.warnings.push(w);
 
 /* ===================== THE MISSION ===================== */
@@ -2129,6 +2198,6 @@ const DEF = {
   }
 };
 LOD.mission(DEF);
-window.__m3 = { propVisible, interactables, throwBag, maxHp, bestMove, learned, MOVES, bossTeam, tripOf, eStat, formFor, repOf, evolveCheck, feedFlow, fieldBook, bookPage, sketchy, fit, LINES, bagSize, catchChance, lineOf, WILD_LINES, eff, cname, healC, addXp, useMove, endTurnFx, tripSkip, stage, resetStg, encTable, immune, knockout, baseStat, curFoe, active, MINI, PROPS, propVisible, propUse, HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
+window.__m3 = { PHONE, propVisible, interactables, throwBag, maxHp, bestMove, learned, MOVES, bossTeam, tripOf, eStat, formFor, repOf, evolveCheck, feedFlow, fieldBook, bookPage, sketchy, fit, LINES, bagSize, catchChance, lineOf, WILD_LINES, eff, cname, healC, addXp, useMove, endTurnFx, tripSkip, stage, resetStg, encTable, immune, knockout, baseStat, curFoe, active, MINI, PROPS, propVisible, propUse, HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
   CFG, SP, MAP, ZONES, D, S, tile, zoneAt, tc, mk, goals, startWild, startBoss, startPartner, startDev, startTrainer, startNpcFight, interact, bagMenu, walkable, useItem, give, saveState, loadState, MIGRATE, EF, FX, layer, spots, npcList: () => npcList, gameSpeed, encTable, knockout, catchChance, completion: () => S.completion() };
 })();
