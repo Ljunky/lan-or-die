@@ -237,12 +237,6 @@ function zoneTiles(id) {
   return out;
 }
 const tc = (tx, ty) => [tx * T + T / 2, ty * T + T / 2];
-const SIGNS = [
-  [16.5, 46, 'ICA MAXI', '#e3000f', '#fff'], [40, 32, 'SYSTEMBOLAGET', '#0a6e3a', '#ffd23a'], [40, 44, 'APOTEK HJÄRTAT', '#2fa36b', '#fff'],
-  [6, 65, 'IRON BURGER', '#222', '#f39c34'], [17, 65, 'PIZZERIA BERGA', '#b02a1e', '#fff'], [28, 65, 'J&K99 SUSHI', '#1c2a36', '#ff6b6b'],
-  [40, 65, "TAILOR'S BARBER", '#3a2a4a', '#f4e08a'], [41.5, 50.5, 'E.ON', '#e3000f', '#fff'], [16.5, 27, 'STOCK ROOM', '#333', '#ff5a5a'],
-  [6.5, 18.6, 'CEMETERY', '#3a3a44', '#d8d8e0'], [44.5, 32.7, 'PANT', '#2e7d32', '#fff']
-];
 let mapCv = null;
 function hash(x, y) { let h = x * 374761393 + y * 668265263; h = (h ^ (h >> 13)) * 1274126177; return ((h ^ (h >> 16)) >>> 0) / 4294967296; }
 function renderMap() {
@@ -1758,12 +1752,7 @@ function drawWorld(ctx, G, t) {
   for (let y = y0; y < Math.min(y1, 8); y++) for (let x = x0; x < x1; x++) if (MAP[y][x] === '~' && hash(x, y + ((t * 2) | 0)) > .8) ctx.fillRect(x * T + 4 + ((t * 6 + x) % 8), y * T + 9, 3, 1);
   if (stockOpen()) { ctx.fillStyle = '#1a1210'; ctx.fillRect(16 * T + 2, 27 * T + 1, T - 4, T - 1); }
   if (!cemeteryOpen()) { ctx.fillStyle = '#5a5a66'; ctx.fillRect(6 * T + 2, 18 * T + 6, T - 4, 3); ctx.fillRect(6 * T + 6, 18 * T + 3, 4, 9); }
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '400 7px Bungee, Impact, sans-serif';
-  for (const [sx, sy, txt, bg, fg] of SIGNS) {
-    const w = ctx.measureText(txt).width + 6, x = sx * T, y = sy * T - 3;
-    if (y < y0 * T - 20 || y > y1 * T + 20) continue;
-    ctx.fillStyle = bg; ctx.fillRect(Math.round(x - w / 2), y - 5, Math.round(w), 10); ctx.fillStyle = fg; ctx.fillText(txt, x, y + .5);
-  }
+  SIGNS.draw(ctx, t, x0 * T, y0 * T, x1 * T, y1 * T);
   S.drawMap(ctx, t);
   for (const id in PROPS) if (propVisible(id)) { const [x, y] = tc(...PROPS[id].at); LOD.em(PROPS[id].em || '❔', x, y - 4 + Math.sin(t * 2 + x) * .8, 10); }
   for (const c of G.coins) LOD.em('🪙', c.x, c.y - 4, 8, Math.min(1, c.t));
@@ -2108,19 +2097,20 @@ const K = {
   startBattle, startNpcFight, startPartner, applyAll, SFX, bubble, isCreature, SPECIES, robotLine, cemeteryOpen,
   LINES, formFor, repOf, lineOf, tripOf, sketchy, fit, bagSize, WILD_LINES, MOVES, shop,
   get PPL() { return PPL; }, get uiRoot() { return ui.root; }, tone: (...a) => LOD.tone(...a), haptic: h => LOD.haptic(h), takeCreature,
-  setHeart: fn => { ctxHeart = fn; }, get trapSpeed() { return TRAP_SPEED; }, phoneApps: {}
+  setHeart: fn => { ctxHeart = fn; }, get trapSpeed() { return TRAP_SPEED; }, phoneApps: {}, houseOpen
 };
 const S = window.M3_SYSTEMS(K);
 const PPL = window.M3_PEOPLE(K);
 const MINI = window.M3_MINI(K);
 const PHONE = window.M3_PHONE(K);
+const SIGNS = window.M3_SIGNS(K);
 K_PHONE_DEX();
 for (const w of PPL.validate()) D.warnings.push(w);
 
 /* ===================== THE MISSION ===================== */
 const DEF = {
   id: 3, title: 'Bad Trip at Maxi', unlock: '2026-11-23', until: '2026-11-25', cap: 300000,
-  world: { w: MW * T, h: MH * T }, eggs: false, noFire: true, noTimer: true, save: true, submitOnSave: true, briefPerks: false, briefClass: 'm3solid',
+  world: { w: MW * T, h: MH * T }, eggs: false, noFire: true, noTimer: true, save: true, keepSaveMin: 15, submitOnSave: true, briefPerks: false, briefClass: 'm3solid',
   viewScale: (W, H) => Math.min(W / (CFG.VIEW_TILES * T), H / (16 * T)),
   outro: (G) => G.why === 'done' ? {
     kind: 'chat', title: 'LAN SQUAD 🎮', sub: 'Löken, Wizcudi, Jrohn, BigWman, Ljunky', tbc: 'The LAN is on 28 Nov. Bring the shopping list.',
@@ -2198,6 +2188,6 @@ const DEF = {
   }
 };
 LOD.mission(DEF);
-window.__m3 = { PHONE, propVisible, interactables, throwBag, maxHp, bestMove, learned, MOVES, bossTeam, tripOf, eStat, formFor, repOf, evolveCheck, feedFlow, fieldBook, bookPage, sketchy, fit, LINES, bagSize, catchChance, lineOf, WILD_LINES, eff, cname, healC, addXp, useMove, endTurnFx, tripSkip, stage, resetStg, encTable, immune, knockout, baseStat, curFoe, active, MINI, PROPS, propVisible, propUse, HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
+window.__m3 = { SIGNS, PHONE, propVisible, interactables, throwBag, maxHp, bestMove, learned, MOVES, bossTeam, tripOf, eStat, formFor, repOf, evolveCheck, feedFlow, fieldBook, bookPage, sketchy, fit, LINES, bagSize, catchChance, lineOf, WILD_LINES, eff, cname, healC, addXp, useMove, endTurnFx, tripSkip, stage, resetStg, encTable, immune, knockout, baseStat, curFoe, active, MINI, PROPS, propVisible, propUse, HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
   CFG, SP, MAP, ZONES, D, S, tile, zoneAt, tc, mk, goals, startWild, startBoss, startPartner, startDev, startTrainer, startNpcFight, interact, bagMenu, walkable, useItem, give, saveState, loadState, MIGRATE, EF, FX, layer, spots, npcList: () => npcList, gameSpeed, encTable, knockout, catchChance, completion: () => S.completion() };
 })();

@@ -67,6 +67,13 @@ Latest state is always: this file + `CHARACTERS.md` (every person and line, gene
 - **Faunalens + Faunadex** replace the Fältboken as the main field guide: first catch → the phone offers an AI scan; yes → Faunalens installed, the Faunadex becomes a free download in the Appbutiken; later catches get a one-line scan. The paper Fältboken still works for players who already have one.
 - Saves: `installed`, `chatSeen`, `selfies` added (old saves start with an empty list).
 
+## Saves can't be wiped by accident (Mon 23 Nov)
+- A save over **15 minutes** (`keepSaveMin: 15`) has no New game button any more and survives Reset test data. Change hero (same save) is on the brief. See ENGINE.md.
+
+## Batch C (signs, Mon 23 Nov)
+- **Shop signs** are data now (`signs` in `data/m3-data.js`, drawn by the new `missions/m3-signs.js`): cartoon boards with icon, chains and shine, striped awnings over the shop doors, a lit glow and white text at night. New sign: the pier ("FISKEBRYGGAN").
+- **Hero houses** have a hanging name plank with the hero's colour, pennants and `OPEN` / `HOME` / `🔒 LV n`.
+
 ## Balance pass (simulated, see BALANCE.md; `node tools/balance.js` re-runs it from the data)
 The simulator copies the game's battle, XP and encounter maths and was checked against real in-game fights (same win rate, turns and HP loss within noise). It assumes a party of four types, best move, swapping to the best matchup, no items and no trip traits. Times are an ideal grind in the best safe zone; real play is probably 2–3× slower. Re-run after the new roster: two multipliers were added so the numbers land where the old balance was: `tuning.WILD_STAT: 1.2` (wild creatures, also from traps and fishing) and `tuning.BOSS_STAT: .6` (hero teams, which are drug forms ×1.3 and rarer than a youngling party).
 - **Monday (old map only):** Lv 10 in ~9 min, Lv 20 in ~1.2 h, Lv 25 in 3.8 h, then it stalls on purpose (the old map tops out at Lv 11 foes). The first house (The Box, Lv 10) opens after minutes.

@@ -358,6 +358,13 @@ Widgets: `torch` (on/off lines), `calc` (easter eggs by result), `compass` (poin
 
 **Bag and team screens:** the bag is a 3-column grid of icon tiles (`ask(…, { tiles: true })`, a label starting with an emoji becomes the big icon) and the team is a list of picture cards (`ask(…, { cards: true })` with `{ card: { sp, name, lv, ty, hp, hpTxt, chips, star, note } }`, or `teamCard(c, i)`). No placeholders needed: a creature without art gets a type-coloured disc with a `?`.
 
+## Signs: shops and houses
+```js
+signStyle: { glow: .95 },                  // how strongly signs glow at night
+signs: [ { at: [17, 65], text: 'PIZZERIA BERGA', icon: '🍕', bg: '#b02a1e', fg: '#fff', awning: ['#b02a1e', '#fff', '#2f8f3a', '#fff'], flicker: true }, … ]
+```
+`at` = [tile x (.5 allowed), tile y] of the wall above the door. A sign gets a cartoon board (outline, shadow, chains, shine, optional `icon`). Unless `awning: false`, the game finds the door tiles (`r`) next to it and hangs a striped scalloped awning over them (`awning` = the stripe colours, default sign colour + cream). `flicker: true` for neon-ish signs, `glow: false` to switch the night glow off, `glowCol` to tint it, `release` to gate it. At night every sign glows and its text goes white. **Hero houses** (`houses`) get their name plank automatically (`name`, or `sign` to override), two waving pennants in the hero's colour, and `OPEN` / `HOME` or `🔒 LV n` depending on whether the door opens for you.
+
 ## Opening and blackout
 ```js
 opening: { blink: 4.2, thoughts: ['Zombies everywhere!', …], strangerAfter: 12, stranger: { name: '???', look: {…} },

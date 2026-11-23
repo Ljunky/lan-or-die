@@ -376,13 +376,23 @@ async function pickStarter(p, name) {
   await drive(p, []);
   await at(p, 60, 18); await E(p, () => { window.__m3.trapSpeed = 1e6; window.__m3.S.placeTrap('netTrap'); }); await p.waitForTimeout(100);
   ok(await E(p, () => window.__m3.G.traps.length === 1), 'on a shore it is set');
-  let caughtFish = null; for (let i = 0; i < 40 && !caughtFish; i++) { await E(p, () => { if (!window.__m3.G.traps.length) { window.__m3.give('netTrap'); window.__m3.S.placeTrap('netTrap'); } }); await p.waitForTimeout(60); await E(p, () => { window.__m3.interact(); }); await p.waitForTimeout(250); caughtFish = await E(p, () => window.__m3.B && window.__m3.B.kind === 'trap' && window.__m3.SP[window.__m3.B.foes[0].sp].line); if (!caughtFish) await drive(p, []); }
+  let caughtFish = null;
+  const poll = async (f, ms = 1500) => { for (let t = 0; t < ms; t += 50) { if (await E(p, f)) return true; await p.waitForTimeout(50); } return false; };   // poll: a slow machine must not fail on a fixed wait
+  for (let i = 0; i < 60 && !caughtFish; i++) {
+    await E(p, () => { if (!window.__m3.G.traps.length) { window.__m3.give('netTrap'); window.__m3.S.placeTrap('netTrap'); } });
+    await poll(() => window.__m3.G.traps.length > 0);
+    await E(p, () => { window.__m3.interact(); });
+    await poll(() => !!window.__m3.B || window.__m3.G.traps.length === 0);
+    caughtFish = await E(p, () => window.__m3.B && window.__m3.B.kind === 'trap' && window.__m3.SP[window.__m3.B.foes[0].sp].line);
+    if (!caughtFish) await drive(p, []);
+  }
   ok(['pike', 'perch', 'crayfish'].includes(caughtFish), 'the fishing net (water tier 2) holds a creature of the lake lines (' + caughtFish + ')');
   await drive(p, ['Walk away', '^⚔️ Fight', 'Claw|Body|Bite|Maul|Peck|Nip']);
   await E(p, () => { const m = window.__m3; m.give('net', 2); m.G.party = [m.mk('badger', 30)]; m.G.party[0].hp = 9999; m.startWild(m.ZONES.find(z => z.id === 'parking')); }); await p.waitForTimeout(300);
   await E(p, () => { const x = window.__m3.B.foes[0]; x.hp = 9999; });
-  await until(p, '^🎯 Throw'); await until(p, 'Fishing net'); await p.waitForTimeout(1500);
-  ok(await E(p, () => !!window.__m3.B && window.__m3.EF.has(window.__m3.B.foes[0], 'stun')), 'the fishing net holds a wild creature for two turns');
+  await until(p, '^🎯 Throw'); await until(p, 'Fishing net');
+  let held = false; for (let i = 0; i < 60 && !held; i++) { held = await E(p, () => !!window.__m3.B && window.__m3.EF.has(window.__m3.B.foes[0], 'stun')); if (!held) await p.waitForTimeout(50); }   // poll: a slow machine must not miss the 2 turns
+  ok(held, 'the fishing net holds a wild creature for two turns');
   await drive(p, ['Walk away', 'Run', '^⚔️ Fight', 'Claw|Body|Bite|Maul|Peck|Nip']);
   // the people tell you about the boat and the ferry
   await E(p, () => { const m = window.__m3; m.G.flags = {}; m.G.know = {}; m.G.people = {}; m.G.party = [m.mk('badger', 20)]; m.skipReplies = false; });

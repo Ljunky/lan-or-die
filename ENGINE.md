@@ -90,3 +90,9 @@ Vet ingenting om LAN OR DIE. Laddas efter missionerna i index.html; M1/M2 anropa
 - `engine/fx.js` → `PX.fx.step(dt)` (0 under hit-stop), `addTrauma`, `hitStop(ms)`, `shake(t)`, `tween`, `fade`, `setTint/clearTint`, `layer()` (partiklar, skadesiffror, kastbågar). `?fx=off` stänger av allt.
 - `engine/effects.js` → `PX.effects.define(type, handlers)`, `apply(holder, effect, ctx)` (stacks, maxStacks, onOverdose), `tick`, `turn`, `sum`, `has`, `clear`, `save`.
 - `engine/data.js` → `PX.data.load(raw, schema, {today, devAll, flag})` (validering, `released(entry)`), `migrate(save, steps)`, `fill`, `weighted`, `fmt`.
+
+
+## Protected saves and changing hero (opt-in, save missions)
+- `keepSaveMin: n` on a mission with `save: true` (M3 uses 15): once the save holds n minutes of play, the brief no longer shows **New game** and **Reset test data** keeps it. A shorter save can still be erased with the double tap. `?dev=all` phones are exempt (testing). The only way to replace a protected save is Save code → Import.
+- The brief of a save mission has **Change hero (same save)**: it opens the hero choice, then returns to the brief and Continue loads the same save with the new hero (the save does not belong to a hero). The hero-specific parts (perks, which hero houses you visit) follow whoever you play now.
+- Save-code import puts back one character lost at a chat app's 4096-character cut.
