@@ -203,7 +203,7 @@ const clickBtn = (p, re) => E(p, re => { const b = [...document.querySelectorAll
   await clickBtn(p, 'Fight'); await p.waitForTimeout(150);
   g = await E(p, () => [...document.querySelectorAll('#m3ui .m3grid button')].map(x => x.textContent).join('|'));
   ok(/Auto-fight/.test(g), 'the move list offers Auto-fight (' + g + ')');
-  await E(p, () => { const m = window.__m3; m.curFoe().hp = 150; });
+  await E(p, () => { const m = window.__m3; m.curFoe().hp = 400; m.active().hp = 9999; });
   await E(p, () => { window.__m3.speed = 1; }); await clickBtn(p, 'Auto-fight');
   let stops = 0, manual = 0, end = false, turns = 0; const trace = [];
   for (let i = 0; i < 400 && !end; i++) {
