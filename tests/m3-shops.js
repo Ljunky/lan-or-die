@@ -201,7 +201,7 @@ async function run(fx) {
   await E(p, () => { window.__m3.G.scene = 'map'; });
 
   // ---- the dealer: Mk3 for kr or for creature points
-  await E(p, () => { const m = window.__m3; m.G.kr = 400; m.G.dealer.pts = 0; m.G.items = {}; window.__dl = m.S.dealer({ d: m.D.raw.npcs.dealer, id: 'dealer' }); });
+  await E(p, () => { const m = window.__m3; m.G.kr = 400; m.G.dealer.pts = 10; m.G.items = {}; window.__dl = m.S.dealer({ d: m.D.raw.npcs.dealer, id: 'dealer' }); });
   await p.waitForTimeout(400);
   for (let i = 0; i < 20; i++) { const t = await E(p, () => { const pd = window.__m3.pending; if (pd && pd.say) { pd.res(); return 'say'; } return pd ? 'ask' : ''; }); if (t === 'ask') break; await p.waitForTimeout(60); }
   const dm = await menu(p);
@@ -210,7 +210,7 @@ async function run(fx) {
   await clickBtn(p, 'Snare · 220 kr'); await p.waitForTimeout(200);
   g = await E(p, () => ({ kr: window.__m3.G.kr, snare: window.__m3.G.items.snare | 0 }));
   ok(g.kr === 180 && g.snare === 1, 'paying the dealer 220 kr: a snare (' + JSON.stringify(g) + ')');
-  await E(p, () => { window.__m3.G.dealer.pts = 10; }); await clickBtn(p, 'Pit trap · 10 ✦'); await p.waitForTimeout(200);
+  await clickBtn(p, 'Pit trap · 10 ✦'); await p.waitForTimeout(200);
   ok(await E(p, () => window.__m3.G.items.pitTrap === 1 && window.__m3.G.dealer.pts === 0), 'paying with 10 creature points: a pit trap');
   await clickBtn(p, 'Leave'); await p.waitForTimeout(200);
 
@@ -229,7 +229,7 @@ async function run(fx) {
   await fail('bagJute', 0); const kept = await E(p, () => window.__m3.G.items.bagJute);
   ok(torn === 2 && kept === 3, 'a failed catch: a bag with 100 % tear chance is gone (3 → ' + torn + '), one with 0 % comes back (3 → ' + kept + ')');
   await E(p, () => { const m = window.__m3; m.B.over = true; m.B.result = 'run'; }); await drive(p, ['Walk away', 'Run']);
-  g = await E(p, () => { const m = window.__m3; m.G.scene = 'map'; m.G.items = {}; const z = m.ZONES.find(q => q.id === 'forest') || m.ZONES.find(q => q.enc && q.enc.length > 3), rare = t => t.filter(([ref]) => { const r = m.SP[ref] || m.SP[m.formFor(ref, 30)]; return r && (r.rarity === 'R' || r.rarity === 'E'); }).reduce((a, [, w]) => a + w, 0), tot = t => t.reduce((a, [, w]) => a + w, 0);
+  g = await E(p, () => { const m = window.__m3; m.G.scene = 'map'; m.G.items = {}; const rare = t => t.filter(([ref]) => { const r = m.SP[ref] || m.SP[m.formFor(ref, 30)]; return r && (r.rarity === 'R' || r.rarity === 'E'); }).reduce((a, [, w]) => a + w, 0), tot = t => t.reduce((a, [, w]) => a + w, 0), z = m.ZONES.find(q => q.enc && rare(m.encTable(q)) > 0);
     const a = m.encTable(z), before = rare(a) / tot(a); m.G.items.bagJute = 1; const c = m.encTable(z), after = rare(c) / tot(c); return { before, after, rareFound: rare(a) > 0 }; });
   ok(g.rareFound && g.after > g.before, 'carrying the jute bag makes Rare and Epic creatures show up more (' + Math.round(g.before * 1000) / 10 + ' % → ' + Math.round(g.after * 1000) / 10 + ' %)');
 
