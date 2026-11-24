@@ -345,6 +345,31 @@ apps.klarna: { …, once: 3, cooldownMin: 10 }                                 /
 ```
 `role: 'fence'` on an NPC makes them buy creatures. The opening thought can use `{hero}`, which is a random hero other than yours.
 
+## Bags, traps and shops
+**Bags.** Every item with `catch: true` is a bag; the highest `mk` is used first. At a knockout the game uses the best bag you carry; in the Throw menu you pick one. The plainest bag (lowest `mk`) can always be paid for in kr (`BAG_COST`) at a knockout.
+```js
+bagLife: { kind: 'throwable', name: 'Bag for life', em: '👜', price: 25, catch: true, mk: 2,
+  catchBonus: .12,      // added to the catch chance multiplier (negative = worse)
+  breakChance: .12,     // chance the bag is lost when the catch FAILS (it is always used up on success); 1 = always, 0 = never
+  rareSpawn: .35,       // optional: while you carry it, Rare/Epic creatures (tuning RARE_SPAWN_RARITY) show up this much more
+  learnedNote: 'A sturdier bag.', release: 'mon' },
+```
+**Trap tiers.** A trap is an item with `kind: 'trap'` (ladders, tiers and upgrades: see Traps above). `mk` (1–3) says which shop group it belongs to: Mk1 `mouseTrap` / `jamJar` / `rodTrap` at the checkout, Mk2 `liveBox` / `netTrap` in the garden corner, Mk3 `snare` / `pitTrap` only at the dealer. To add one: add the item (tier, `waitMin`, `catchBonus`, `upgradesTo` …) and list it in a shop's `stock`.
+
+**Shops.** A shop is an entry in `shops`; an NPC points at it with `shop: 'id'` (the old `shop: ['itemId', …]` list still works, without stock).
+```js
+shops: {
+  garden: { name: 'Garden & pet corner', release: 'mon',              // release: optional gate
+    restock: { every: 30, amount: 1 },                                 // optional: every 30 real minutes +1 per item, up to max
+    stock: [ { item: 'liveBox', price: 60, max: 3 },                   // price: optional (default = the item's price), max = stock limit
+             { item: 'worms', price: 4, max: 10 } ] }
+},
+npcs: { gardener: { name: 'Garden & Pet Gunnel', role: 'merchant', at: [28, 43], shop: 'garden', … } }
+```
+Stock falls by one per purchase, shows as "n left" / "sold out" and is saved per player (`G.shopStock`). Too little kr: "Not enough kr.", nothing else. Items still show `???` until used once.
+**Change a price or a stock limit:** edit `price` / `max` in the shop's `stock` (shops) or `price` on the item (it is the default price and what other NPCs charge).
+**The dealer** (`dealer.goods`): permanent goods that cost creature points or kr, e.g. `{ item: 'snare', pts: 6, kr: 220 }`. This is the only place for Mk3 traps.
+
 ## The phone, the Appbutiken, Faunalens and the Faunadex
 `phone: { battery, wallpaper: [c1, c2], storeTitle, storeLine }` dresses the phone (`missions/m3-phone.js`). Every entry in `apps` is an icon on the home screen. Three kinds:
 ```js
