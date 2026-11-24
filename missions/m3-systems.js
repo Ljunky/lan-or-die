@@ -299,6 +299,10 @@ async function dealer(n) {
     const stock = dealerStock();
     const opts = [{ label: '🤝 Trade a creature', value: 'trade', cls: 'hot', dis: !(g.party.length + g.box.length > 1) }]
       .concat(stock.map((s, i) => K.itemOpt(s.id, { label: ITEMS[s.id].em + ' ' + ITEMS[s.id].name + ' · ' + s.price + ' ✦' + (s.rare ? ' 🔥' : ''), value: 'buy:' + i, dis: g.dealer.bought[i] || g.dealer.pts < s.price })));
+    for (const [j, gd] of (DL.goods || []).entries()) if (ITEMS[gd.item] && rel(ITEMS[gd.item])) {   // permanent goods: the only place for Mk3 traps
+      opts.push(K.itemOpt(gd.item, { label: ITEMS[gd.item].em + ' ' + ITEMS[gd.item].name + ' · ' + gd.pts + ' ✦', value: 'good:' + j + ':pts', dis: g.dealer.pts < gd.pts }));
+      opts.push(K.itemOpt(gd.item, { label: ITEMS[gd.item].em + ' ' + ITEMS[gd.item].name + ' · ' + gd.kr + ' kr', value: 'good:' + j + ':kr', dis: g.kr < gd.kr }));
+    }
     if (DL.book && !K.has(DL.book.item)) opts.push({ label: '📕 Fältboken · ' + DL.book.price + ' ✦', value: 'book', sub: DL.book.line, dis: g.dealer.pts < DL.book.price });
     if (g.dealer.pen.length) opts.push({ label: '🔙 His creatures', value: 'pen', sub: g.dealer.pen.length + ' in the back' });
     if (!stock.length) opts.push({ label: DL.empty, value: null, dis: true });
@@ -317,6 +321,10 @@ async function dealer(n) {
       K.SFX.buy(); K.learn('dealer'); await K.say2(who, 'Pleasure. +' + v + ' ✦');
     } else if (a.startsWith('buy:')) {
       const i = +a.slice(4), s = stock[i]; g.dealer.pts -= s.price; g.dealer.bought[i] = 1; K.give(s.id); K.SFX.buy();
+    } else if (a.startsWith('good:')) {
+      const [, j, how] = a.split(':'), gd = DL.goods[+j];
+      if (how === 'pts') g.dealer.pts -= gd.pts; else g.kr -= gd.kr;
+      K.give(gd.item); K.SFX.buy(); K.learnItem(gd.item);
     } else if (a === 'book') {
       g.dealer.pts -= DL.book.price; K.give(DL.book.item); K.SFX.buy(); LOD.haptic('success'); await K.say2(who, DL.book.line + ' Do not spill anything on it.');
     } else if (a === 'pen') {

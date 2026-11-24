@@ -26,6 +26,7 @@ tuning: {
   BOSS_STAT: .6,                      // stat multiplier for hero teams and trainer drug forms: they are drug forms (×1.3, rarer) fighting your youngling-stage party, plus their trip traits
   TRIP_MIN: 30,                       // a bad trip: the creature is 'sketchy' (cannot fight) for this many REAL minutes, also while the game is closed
   BOSS_AT_GATE: false,                // false: hero teams follow the old ladder (BOSS_LV + steps). true: levels = the house gate −2 / ±0 / +2 (use once the heroes live in their houses)
+  RARE_SPAWN_RARITY: ['R', 'E'],   // rarities that an item's rareSpawn makes more common
   AUTO_STOP_HP: .3, AUTO_GAP: .5,   // auto-fight: stops below this share of max HP; seconds the Stop button shows between turns
   TRAP: { nothing: .25, lower: .25, own: .4, higher: .1, bait: .1, step: .05, ownCap: .6, drug: .3, drugNothing: .1 },   // what a ready trap rolls (see M3_CREATURES.md §7)
   PTS: { item: 2500, species: 2000, speciesMax: 20, hero: 30000, partner: 4000, dev: 50000, egg: 50000 }  // goals only, max 300 000. Levels give no points
@@ -296,7 +297,11 @@ choices: {
    Effects: see the effect list in DATA.md. ---------- */
 items: {
   // catching
-  bag: { kind: 'throwable', name: 'Carrier bag', em: '🛍️', price: 10, catch: true, learnedNote: 'Catches a weakened creature. Better after a knockout.', release: 'mon' },
+  /* bags: every item with catch: true is a bag. mk = tier (the lowest is the one you can always buy with kr at a knockout). catchBonus is added to the catch chance multiplier,
+     breakChance = chance that the bag is lost when the catch FAILS (it is always used up on success), rareSpawn = while you carry it, Rare and Epic creatures show up this much more often. */
+  bag: { kind: 'throwable', name: 'Plastic carrier bag', em: '🛍️', price: 10, catch: true, mk: 1, catchBonus: -.1, breakChance: .35, learnedNote: 'Catches a weakened creature. Better after a knockout. Tears easily.', release: 'mon' },
+  bagLife: { kind: 'throwable', name: 'Bag for life', em: '👜', price: 25, catch: true, mk: 2, catchBonus: .12, breakChance: .12, learnedNote: 'A sturdier bag. Catches better and rarely tears.', release: 'mon' },
+  bagJute: { kind: 'throwable', name: 'Reusable jute bag', em: '🧺', price: 60, catch: true, mk: 3, catchBonus: .25, breakChance: .04, rareSpawn: .35, learnedNote: 'Hardly ever tears. Rare creatures show up more while you carry it.', release: 'mon' },
   // throwables (sold by Hardware Jonas, the freezer, the checkouts)
   rock: { kind: 'throwable', name: 'Rock', em: '🪨', price: 3, hit: .55, throw: [{ type: 'damage', value: 14 }], learnedNote: 'Cheap. Misses a lot.', release: 'mon' },
   bottle: { kind: 'throwable', name: 'Empty bottle', em: '🍾', price: 6, hit: .7, onMiss: 'near', koBelow: .35, throw: [{ type: 'damage', value: 18 }], learnedNote: 'A hit on a weak foe knocks it out. A miss lands next to it.', release: 'mon' },
@@ -312,17 +317,17 @@ items: {
   // ---- traps: three ladders (ground / water / air), tier 1-5. cap = biggest creature size it holds (S M L XL), waitMin = real minutes, place = ground | shore | deep (pier end or boat) | boat | night.
   //      You never buy tier 2+: Trapper Tore upgrades a lower trap (upgradesTo + upgradeCost { kr, fur, feather, scale, chitin, shell, antler }). value = what it cost to build (repairs cost half) ----
   shoebox: { kind: 'trap', name: 'Shoebox trap', em: '👞', price: 0, notSold: true, value: 5, ladder: 'ground', tier: 1, cap: 'S', waitMin: 3, place: 'ground', uses: 3, learnedNote: 'Ground trap, tier 1. A homemade starter: falls apart after 3 catches. Small things only.', release: 'mon' },
-  mouseTrap: { kind: 'trap', name: 'Mouse trap', em: '🪤', price: 30, value: 30, ladder: 'ground', tier: 1, cap: 'S', waitMin: 4, place: 'ground', upgradesTo: 'liveBox', upgradeCost: { kr: 60, fur: 3 }, learnedNote: 'Ground trap, tier 1. Small things: mice, roaches, beetles.', release: 'mon' },
-  liveBox: { kind: 'trap', name: 'Live box', em: '📦', price: 0, notSold: true, value: 60, ladder: 'ground', tier: 2, cap: 'M', waitMin: 3.5, place: 'ground', upgradesTo: 'snare', upgradeCost: { kr: 100, fur: 4, chitin: 2 }, learnedNote: 'Ground trap, tier 2. Up to medium: squirrels, fox kits, crowlings.', release: 'mon' },
-  snare: { kind: 'trap', name: 'Snare', em: '➰', price: 0, notSold: true, value: 100, ladder: 'ground', tier: 3, cap: 'M', waitMin: 3, place: 'ground', upgradesTo: 'pitTrap', upgradeCost: { kr: 160, fur: 6, shell: 2 }, learnedNote: 'Ground trap, tier 3. Foxes, adders, boarlets.', release: 'mon' },
-  pitTrap: { kind: 'trap', name: 'Pit trap', em: '🕳️', price: 0, notSold: true, value: 160, ladder: 'ground', tier: 4, cap: 'L', waitMin: 2.5, place: 'ground', upgradesTo: 'moosePen', upgradeCost: { kr: 250, fur: 6, antler: 4 }, learnedNote: 'Ground trap, tier 4. Big ones: boars, deer-sized.', release: 'mon' },
+  mouseTrap: { kind: 'trap', name: 'Mouse trap', em: '🪤', mk: 1, price: 30, value: 30, ladder: 'ground', tier: 1, cap: 'S', waitMin: 4, place: 'ground', upgradesTo: 'liveBox', upgradeCost: { kr: 60, fur: 3 }, learnedNote: 'Ground trap, tier 1. Small things: mice, roaches, beetles.', release: 'mon' },
+  liveBox: { kind: 'trap', name: 'Live box', em: '📦', mk: 2, price: 0, notSold: true, value: 60, ladder: 'ground', tier: 2, cap: 'M', waitMin: 3.5, place: 'ground', upgradesTo: 'snare', upgradeCost: { kr: 100, fur: 4, chitin: 2 }, learnedNote: 'Ground trap, tier 2. Up to medium: squirrels, fox kits, crowlings.', release: 'mon' },
+  snare: { kind: 'trap', name: 'Snare', em: '➰', mk: 3, price: 0, notSold: true, value: 100, ladder: 'ground', tier: 3, cap: 'M', waitMin: 3, place: 'ground', upgradesTo: 'pitTrap', upgradeCost: { kr: 160, fur: 6, shell: 2 }, learnedNote: 'Ground trap, tier 3. Foxes, adders, boarlets.', release: 'mon' },
+  pitTrap: { kind: 'trap', name: 'Pit trap', em: '🕳️', mk: 3, price: 0, notSold: true, value: 160, ladder: 'ground', tier: 4, cap: 'L', waitMin: 2.5, place: 'ground', upgradesTo: 'moosePen', upgradeCost: { kr: 250, fur: 6, antler: 4 }, learnedNote: 'Ground trap, tier 4. Big ones: boars, deer-sized.', release: 'mon' },
   moosePen: { kind: 'trap', name: 'Moose pen (with salt lick)', em: '🪵', price: 0, notSold: true, value: 250, ladder: 'ground', tier: 5, cap: 'XL', waitMin: 2, place: 'ground', learnedNote: 'Ground trap, tier 5. Moose and bears.', release: 'mon' },
-  rodTrap: { kind: 'trap', name: 'Rod & worm', em: '🎣', price: 35, value: 35, ladder: 'water', tier: 1, cap: 'S', waitMin: 4, place: 'shore', upgradesTo: 'netTrap', upgradeCost: { kr: 60, scale: 3 }, learnedNote: 'Water trap, tier 1. Set it on a shore: perch fry, crayling, pike fry.', release: 'mon' },
-  netTrap: { kind: 'trap', name: 'Fishing net', em: '🥅', price: 80, value: 80, ladder: 'water', tier: 2, cap: 'M', waitMin: 3.5, place: 'shore', upgradesTo: 'crayCage', upgradeCost: { kr: 120, scale: 3 }, learnedNote: 'Water trap, tier 2. Set it on a shore: the reeds. Pike, perch.', release: 'tue' },
+  rodTrap: { kind: 'trap', name: 'Rod & worm', em: '🎣', mk: 1, price: 35, value: 35, ladder: 'water', tier: 1, cap: 'S', waitMin: 4, place: 'shore', upgradesTo: 'netTrap', upgradeCost: { kr: 60, scale: 3 }, learnedNote: 'Water trap, tier 1. Set it on a shore: perch fry, crayling, pike fry.', release: 'mon' },
+  netTrap: { kind: 'trap', name: 'Fishing net', em: '🥅', mk: 2, price: 80, value: 80, ladder: 'water', tier: 2, cap: 'M', waitMin: 3.5, place: 'shore', upgradesTo: 'crayCage', upgradeCost: { kr: 120, scale: 3 }, learnedNote: 'Water trap, tier 2. Set it on a shore: the reeds. Pike, perch.', release: 'tue' },
   crayCage: { kind: 'trap', name: 'Crayfish cage', em: '🧺', price: 0, notSold: true, value: 120, ladder: 'water', tier: 3, cap: 'M', waitMin: 3, place: 'shore', night: true, upgradesTo: 'longline', upgradeCost: { kr: 180, scale: 5, shell: 3 }, learnedNote: 'Water trap, tier 3. The lake bottom, at night. The crayfish line.', release: 'tue' },
   longline: { kind: 'trap', name: 'Deep longline', em: '🪝', price: 0, notSold: true, value: 180, ladder: 'water', tier: 4, cap: 'L', waitMin: 2.5, place: 'deep', upgradesTo: 'trawl', upgradeCost: { kr: 300, scale: 8, shell: 4 }, learnedNote: 'Water trap, tier 4. Needs deep water: the pier end or a boat.', release: 'tue' },
   trawl: { kind: 'trap', name: 'Trawl', em: '⚓', price: 0, notSold: true, value: 300, ladder: 'water', tier: 5, cap: 'XL', waitMin: 2, place: 'boat', learnedNote: 'Water trap, tier 5. Only from a boat, in the deepest water.', release: 'wed' },
-  jamJar: { kind: 'trap', name: 'Jam jar', em: '🍯', price: 20, value: 20, ladder: 'air', tier: 1, cap: 'S', waitMin: 4, place: 'ground', upgradesTo: 'mistNet', upgradeCost: { kr: 60, feather: 3 }, learnedNote: 'Air trap, tier 1. Ladybugs and beetles.', release: 'mon' },
+  jamJar: { kind: 'trap', name: 'Jam jar', em: '🍯', mk: 1, price: 20, value: 20, ladder: 'air', tier: 1, cap: 'S', waitMin: 4, place: 'ground', upgradesTo: 'mistNet', upgradeCost: { kr: 60, feather: 3 }, learnedNote: 'Air trap, tier 1. Ladybugs and beetles.', release: 'mon' },
   mistNet: { kind: 'trap', name: 'Mist net', em: '🕸️', price: 0, notSold: true, value: 60, ladder: 'air', tier: 2, cap: 'M', waitMin: 3, place: 'ground', upgradesTo: 'lightTrap', upgradeCost: { kr: 100, feather: 4, chitin: 4 }, learnedNote: 'Air trap, tier 2. Crows and eaglets.', release: 'tue' },
   lightTrap: { kind: 'trap', name: 'Light trap', em: '💡', price: 0, notSold: true, value: 100, ladder: 'air', tier: 3, cap: 'L', waitMin: 2.5, place: 'ground', night: true, learnedNote: 'Air trap, tier 3. Only after dark (20:00-06:00): moths.', release: 'tue' },
   saleSign: { kind: 'trap', name: '"70 % off" sign', em: '🏷️', price: 45, lure: 'WIFE', tier: 1, waitMin: 4, catchBonus: .3, learnedNote: 'Attracts wives.', release: 'tue' },
@@ -435,7 +440,7 @@ npcs: {
     look: { hair: '#1a1a1a', style: 'hat', beard: '#1a1a1a', patch: 1, top: '#7a2a2a', legs: '#3a2a1a' }, release: 'mon',
     lines: { pool: ['Arr. The van smells of Löken\'s gym bag.', 'I saw a pike with a crown. Swear on me parrot.', 'Something tall glows on the lawn when ye\'ve had the mushrooms.'], when: [{ flag: 'dead:loken', text: 'Arr… the lawn be quiet without Löken.' }] } },
   berit: { name: 'Bagging-area Berit', role: 'merchant', at: [5, 44], area: [2, 43, 9, 3], gossip: true, canDie: true, catchable: true, likes: 'buns', epitaph: 'Unexpected item in the grave area.',
-    look: { skin: '#f0c8a8', hair: '#d8d8d8', style: 'bob', top: '#d8312f', legs: '#2a2a33' }, shop: ['bag', 'surstromming', 'banana', 'snus'], release: 'mon',
+    look: { skin: '#f0c8a8', hair: '#d8d8d8', style: 'bob', top: '#d8312f', legs: '#2a2a33' }, shop: 'checkout', release: 'mon',
     lines: { pool: ['Unexpected item in bagging area. Unexpected YOU.', 'Bags are 10 kr. Souls are extra.'] } },
   pelle: { name: 'Bottle-return Pelle', role: 'talker', at: [37, 33], area: [35, 33, 8, 2], gossip: true, canDie: true, catchable: true, likes: 'buns', epitaph: 'Returned his last bottle.',
     look: { hair: '#8a6a4a', style: 'short', beard: '#9a9a9a', top: '#2e7d32', prop: 'bag' }, release: 'mon',
@@ -455,6 +460,9 @@ npcs: {
   fia: { name: 'Flower Fia', role: 'merchant', at: [29, 37], area: [28, 35, 2, 3], canDie: true, catchable: true, likes: 'WIFE', epitaph: 'Pushing up her own daisies.',
     look: { skin: '#f0c8a8', hair: '#a0522d', style: 'long', top: '#5fae3e', legs: '#34343c', prop: 'bouquet' }, shop: ['bouquet', 'glitter', 'giftcard', 'ringbox', 'chores', 'saleSign', 'furniture', 'samples'], release: 'mon',
     lines: { pool: ['Flowers solve everything. Except chlorine flowers. Those make it worse.', 'Never give a wife a chore chart. Trust me.'] } },
+  gardener: { name: 'Garden & Pet Gunnel', role: 'merchant', at: [28, 43], area: [26, 42, 4, 2], canDie: true, catchable: true, likes: 'buns', epitaph: 'Planted. Finally.',
+    look: { skin: '#e6b48f', hair: '#8a8a8a', style: 'bob', top: '#4f8f3a', legs: '#4a3a22', prop: 'bag' }, shop: 'garden', release: 'mon',
+    lines: { pool: ['Traps are in the green crates. Mind the dog food.', 'Peat is half price. The cats are full price.', 'Everything with a lid is a trap, technically.'] } },
   system: { name: 'Systembolaget cashier', role: 'merchant', at: [42, 29], canDie: false, look: { hair: '#5a3a22', style: 'bob', top: '#0a6e3a' }, shop: ['folkol', 'lager', 'ipa', 'gt', 'whisky', 'glogg', 'snaps', 'beer6'], release: 'mon',
     lines: { pool: ['ID, please. …You look 47. Go ahead.'] } },
   apotek: { name: 'Pharmacist', role: 'merchant', at: [40, 37], canDie: false, heal: true, look: { skin: '#f0c8a8', hair: '#3a2a1a', style: 'short', glasses: 1, top: '#f4f4f4' }, shop: ['fizztab', 'xanax'], release: 'mon',
@@ -616,6 +624,7 @@ dealer: {
   npc: 'dealer', rotateMin: 20, size: 3, levelBonus: .08, buyBack: 60,
   book: { item: 'faltboken', price: 4, line: 'Field research. Very academic.' },   // always for sale (in creature points) until you own it
   rates: { C: 1, U: 2, R: 4, E: 7, L: 9, M: 12, H: 5 },
+  goods: [{ item: 'snare', pts: 6, kr: 220 }, { item: 'pitTrap', pts: 10, kr: 360 }],        // always in stock, the only place for Mk3 traps: pay with creature points (✦) or kr
   stock: [['coke', 3, 3], ['weed', 2, 3], ['snus', 1, 2], ['glogg', 1, 2], ['shrooms', 4, 1]], // [item, price in creature points, weight]
   rare: [['shrooms', 4, .25], ['coke', 2, .15]],                                               // [item, price, chance per rotation] (discount specials)
   refuse: ['Whoa. That\'s somebody\'s wife. I have standards. Low ones, but still.', 'No wives. Bad for business. Bad for karma.'],
@@ -643,8 +652,19 @@ signs: [
   { at: [16.5, 27], text: 'STOCK ROOM', bg: '#333', fg: '#ff5a5a', awning: false },
   { at: [6.5, 18.6], text: 'CEMETERY', icon: '🪦', bg: '#3a3a44', fg: '#d8d8e0', awning: false },
   { at: [44.5, 32.7], text: 'PANT', icon: '♻️', bg: '#2e7d32', fg: '#fff', awning: false },
+  { at: [28, 41.3], text: 'TRÄDGÅRD & DJUR', icon: '🪴', bg: '#3b7a3a', fg: '#fff', awning: false },
   { at: [23, 3.6], text: 'FISKEBRYGGAN', icon: '🎣', bg: '#2b5d8a', fg: '#ffffff', awning: false }
 ],
+/* ---------- shops: a shop is an entry here; an NPC points at it with shop: 'id' (a plain list of item ids still works). stock = [{ item, price (default: the item's price), max, release? }].
+   restock: every n real minutes the shop gets `amount` back, up to max (omit for no restock). Stock is saved per player. ---------- */
+shops: {
+  checkout: { name: 'ICA checkout', restock: { every: 20, amount: 2 }, stock: [
+    { item: 'bag', price: 10, max: 12 }, { item: 'bagLife', price: 25, max: 6 }, { item: 'bagJute', price: 60, max: 3 },
+    { item: 'mouseTrap', price: 30, max: 4 }, { item: 'jamJar', price: 20, max: 4 }, { item: 'rodTrap', price: 35, max: 3 },
+    { item: 'surstromming', max: 6 }, { item: 'banana', max: 8 }, { item: 'snus', max: 8 }] },
+  garden: { name: 'Garden & pet corner', restock: { every: 30, amount: 1 }, stock: [
+    { item: 'liveBox', price: 60, max: 3 }, { item: 'netTrap', price: 80, max: 3 }, { item: 'worms', price: 4, max: 10 }, { item: 'cheese', price: 4, max: 10 }] }
+},
 /* ---------- Faunalens: the AI scan offered after your first catch; after that the Faunadex can be downloaded in the Appbutiken ---------- */
 lens: {
   offer: '📱 Faunalens AI: "New animal detected! Scan {name} for free? We will only use your data for… things."',
