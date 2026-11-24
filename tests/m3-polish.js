@@ -197,7 +197,7 @@ async function pickStarter(p, name) {
   // relationship changes prices and trade
   await E(p, () => { window.__m3.PPL.pst('berit').rel = 5; });
   await at(p, 5, 44); await p.waitForTimeout(200); await E(p, () => { window.__m3.skipReplies = true; window.__m3.G.kr = 500; window.__m3.interact(); }); await until(p, 'Shop'); await p.waitForTimeout(150);
-  ok(/Carrier bag.* 8 kr ♥/.test(await btnText(p)), 'a friend (+5) gets 25 % off: carrier bag 8 kr instead of 10');
+  ok(/[Cc]arrier bag.* 8 kr ♥/.test(await btnText(p)), 'a friend (+5) gets 25 % off: carrier bag 8 kr instead of 10');
   await until(p, '^‹ Leave'); await until(p, '^‹ Leave'); await drive(p, []);
   await E(p, () => { window.__m3.PPL.pst('berit').rel = -3; window.__m3.interact(); }); await until(p, 'Shop'); await p.waitForTimeout(100);
   ok(await E(p, () => { const b = [...document.querySelectorAll('#m3ui .m3grid button')].find(x => /Shop/.test(x.textContent)); return !b || b.disabled; }), 'an enemy (−3) refuses to trade');
@@ -839,7 +839,7 @@ async function pickStarter(p, name) {
   await E(p, () => { window.__m3.interact(); }); await p.waitForTimeout(300);
   ok(await E(p, () => window.__m3.B && window.__m3.B.foes[0].sp === 'wraith' && window.__m3.B.trapItem === 'mythicTrap'), 'the Mythic Trap holds the Wraith');
   await E(p, () => { const m = window.__m3; m.G.me.fx.push({ type: 'catchBonus', value: 50, t: 60, n: 1, src: 'test' }); m.B.foes[0].hp = 1; });
-  await drive(p, ['^🛍️ Catch', '^🎯 Throw', 'Carrier bag', '^⚔️ Fight', 'Claw|Body|Bite|Maul|Peck|Nip'], 900);
+  await drive(p, ['^🛍️ Catch', '^🎯 Throw', '[Cc]arrier bag', '^⚔️ Fight', 'Claw|Body|Bite|Maul|Peck|Nip'], 900);
   ok(await E(p, () => !!window.__m3.G.caught.wraith && !!window.__m3.G.flags.mythicCaught), 'mythic creature caught with the Mythic Trap');
   ok(p.errs.length === 0, 'no page errors (Ljunky chain)' + (p.errs.length ? ': ' + p.errs.join(' | ') : ''));
   await p.close();

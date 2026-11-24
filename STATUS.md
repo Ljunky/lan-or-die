@@ -70,6 +70,11 @@ Latest state is always: this file + `CHARACTERS.md` (every person and line, gene
 ## Saves can't be wiped by accident (Mon 23 Nov)
 - A save over **15 minutes** (`keepSaveMin: 15`) has no New game button any more and survives Reset test data. Change hero (same save) is on the brief. See ENGINE.md.
 
+## Bags, traps and shops (Tue 24 Nov)
+- **Three bags:** Plastic carrier bag Mk1 (cheap, tears often), Bag for life Mk2, Reusable jute bag Mk3 (best catch chance, rarely tears, more Rare/Epic spawns while carried). All data: `catchBonus`, `breakChance`, `rareSpawn`.
+- **Shops are data** (`shops`, with stock limits and a restock timer; saved). Checkout: bags + Mk1 traps. New **Garden & pet corner** (Gunnel, by the self-checkout): Mk2 traps + bait. **Dealer:** Mk3 traps for creature points or kr.
+- Old saves load (empty stock = full shelves).
+
 ## Batch C (signs, Mon 23 Nov)
 - **Shop signs** are data now (`signs` in `data/m3-data.js`, drawn by the new `missions/m3-signs.js`): cartoon boards with icon, chains and shine, striped awnings over the shop doors, a lit glow and white text at night. New sign: the pier ("FISKEBRYGGAN").
 - **Hero houses** have a hanging name plank with the hero's colour, pennants and `OPEN` / `HOME` / `🔒 LV n`.

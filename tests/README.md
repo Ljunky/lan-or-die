@@ -17,6 +17,7 @@ Small Playwright scripts that open the game in a hidden Chrome, click through th
 | `m3-batcha.js` | Batch A: starter kit, the 3-use shoebox trap (wear saved), hidden stashes (data rules, once only, release days, bubble), "Team" wording, auto-fight (Stop button, no move menu, next fight on auto, stops when hurt), the drawn carrier bag (sucked in, tied = caught, ripped = escaped). |
 | `m3-batchb.js` | Batch B: the bag as icon tiles, the team as picture cards (HP bars, lead star, sketchy note, tap to lead), the phone (home screen, old line apps, Appbutiken with prices, calculator, flashlight, messages, Pruttis, installed apps saved), Faunalens offered once after the first catch (yes / no / later via the store), Faunadex unlocked by the lens and listing lines. |
 | `m3-batchc.js` | Batch C: every sign comes from data (position, colours), every shop sign finds its door and gets an awning, signs and house planks draw by day and by night without errors (screenshots in `tests/out/batchc-*.png`). |
+| `m3-shops.js` | Bags and shops: three bag tiers (catch bonus, tear chance, rare spawns), data shops with stock limit and restock timer, buying at the checkout and garden corner, "Not enough kr.", Mk1 trap bought + placed + spawn, Mk3 only at the dealer (kr or creature points), old save defaults. Also with `?fx=off`; screenshots `tests/out/shops-*.png`. |
 | `flow.js` | Helper: clicks through name → hero → intro → brief → play. |
 
 ## Run them

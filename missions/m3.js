@@ -17,7 +17,8 @@ const SCHEMA = {
   items: { req: ['kind', 'name'], enums: { kind: ['throwable', 'trap', 'lure', 'weapon', 'drug', 'app', 'key', 'bait', 'material'] }, nums: ['price', 'waitMin', 'tier'], refs: { upgradesTo: 'items', rare: 'creatures', spawn: 'creatures' } },
   heroes: { req: ['name', 'team', 'at', 'look'], refs: { team: 'creatures', moves: 'moves' } },
   partners: { req: ['name', 'guy', 'at', 'look'], refs: { guy: 'heroes' } },
-  npcs: { req: ['name', 'role', 'at'], enums: { role: ['talker', 'merchant', 'trainer', 'gym', 'dealer', 'filler', 'fence', 'boatman', 'trapper'] }, refs: { shop: 'items', party: 'cref' } },
+  npcs: { req: ['name', 'role', 'at'], enums: { role: ['talker', 'merchant', 'trainer', 'gym', 'dealer', 'filler', 'fence', 'boatman', 'trapper'] }, refs: { shop: 'sref', party: 'cref' } },
+  shops: { req: ['name', 'stock'], check: (e, id, warn, raw) => { for (const st of e.stock || []) { if (!raw.items[st.item]) warn('shops.' + id + ': stock → unknown item "' + st.item + '"'); if (!(st.max > 0)) warn('shops.' + id + '.' + st.item + ': max (stock limit) must be above 0'); } } },
   zones: { req: ['name', 'r'], refs: { enc: 'cref' } },
   apps: { req: ['name', 'icon'] },
   houses: { req: ['name', 'hero', 'level', 'door'], refs: { hero: 'heroes' }, nums: ['level'] }
@@ -25,6 +26,7 @@ const SCHEMA = {
 /* LINES: a line is a family of forms (Mouse → Rat → Rat King, plus drug forms). Zones, trainer parties and quests may name a line: the game picks the form for the level.
    cref = every creature id and every line id, used only to check those references */
 const LINES = {};
+window.M3_DATA.sref = Object.assign({}, window.M3_DATA.items, window.M3_DATA.shops);   // an NPC's shop: a list of item ids or one shop id
 window.M3_DATA.cref = {};
 for (const id in window.M3_DATA.creatures) { const c = window.M3_DATA.creatures[id]; window.M3_DATA.cref[id] = 1; if (c.line) { window.M3_DATA.cref[c.line] = 1; (LINES[c.line] = LINES[c.line] || []).push(id); } }
 const D = PX.data.load(window.M3_DATA, SCHEMA, { today: LOD.today, devAll: LOD.dev, flag: f => !!(G && (f.startsWith('know:') ? G.know && G.know[f.slice(5)] : G.flags && G.flags[f])) });
@@ -462,6 +464,24 @@ function learn(id, note) {
   return true;
 }
 const itemNote = id => ITEMS[id] && ITEMS[id].learnedNote;
+/* ---------- bags: every item with catch: true is a bag (data: mk, catchBonus, breakChance, rareSpawn) ---------- */
+const bagIds = () => Object.keys(ITEMS).filter(i => ITEMS[i].catch).sort((a, b) => (ITEMS[b].mk || 0) - (ITEMS[a].mk || 0));   // best first
+const payBag = () => bagIds().slice(-1)[0];                    // the plainest bag: the one you can pay for in kr at a knockout
+const bestBag = () => bagIds().find(i => has(i)) || null;
+const curBag = () => (B && B.bagId) || bestBag() || payBag();
+const rareSpawnMul = () => 1 + Object.keys(ITEMS).reduce((a, i) => a + (has(i) ? ITEMS[i].rareSpawn || 0 : 0), 0);
+/* ---------- shops: a shop is data (D.raw.shops); an NPC has shop: 'id' or a plain list of item ids ---------- */
+const SHOPS = D.raw.shops || {};
+const shopDef = d => (typeof d.shop === 'string' ? SHOPS[d.shop] || null : null);
+const shopIds = d => (shopDef(d) ? shopDef(d).stock.map(s => s.item) : d.shop || []);
+function stockRow(sid, st) {     // how many are left (and top up with the restock timer)
+  G.shopStock = G.shopStock || {}; const S = (G.shopStock[sid] = G.shopStock[sid] || {}), rs = SHOPS[sid].restock, speed = Math.max(1e-6, TRAP_SPEED);
+  let r = S[st.item]; if (!r) r = S[st.item] = { n: st.max, t: Date.now() };
+  if (r.n > st.max) r.n = st.max;
+  if (rs && r.n < st.max) { const per = rs.every * 60000 / speed, k = Math.floor((Date.now() - r.t) / per); if (k > 0) { r.n = Math.min(st.max, r.n + k * (rs.amount || 1)); r.t = r.n >= st.max ? Date.now() : r.t + k * per; } }
+  else if (r.n >= st.max) r.t = Date.now();
+  return r;
+}
 function itemOpt(id, extra = {}) { // a bag/shop button for an item
   const it = ITEMS[id], n = G.items[id] || 0;
   return Object.assign({ label: it.em + ' ' + it.name + (n > 1 ? ' ×' + n : ''), unk: !known(id), sub: itemNote(id), value: id }, extra);
@@ -677,9 +697,13 @@ async function chooseAction() {
       if (d) return { k: 'use', id: d };
     } else if (v === 'throw') {
       const opts = [];
-      if (K === 'wild' || K === 'trap') opts.push(Object.assign(itemOpt('bag'), { label: '🛍️ Carrier bag' + (has('bag') ? ' ×' + G.items.bag : ' · ' + CFG.BAG_COST + ' kr'), sub: heroId() === 'bigwman' ? Math.round(catchChance(foe) * 100) + ' %' : ITEMS.bag.learnedNote, unk: false, cls: 'hot', value: 'bag', dis: !has('bag') && G.kr < CFG.BAG_COST }));
+      if (K === 'wild' || K === 'trap') for (const id of bagIds()) {
+        if (!has(id) && !(id === payBag() && !bestBag())) continue;
+        B.bagId = id; const pc = heroId() === 'bigwman' ? Math.round(catchChance(foe) * 100) + ' %' : ITEMS[id].learnedNote; B.bagId = null;
+        opts.push(Object.assign(itemOpt(id), { label: ITEMS[id].em + ' ' + ITEMS[id].name + (has(id) ? ' ×' + G.items[id] : ' · ' + CFG.BAG_COST + ' kr'), sub: pc, unk: false, cls: id === bestBag() || !bestBag() ? 'hot' : '', value: id, dis: !has(id) && G.kr < CFG.BAG_COST }));
+      }
       const w = weaponOwned(); if (w) opts.push(itemOpt(w, { label: ITEMS[w].em + ' ' + ITEMS[w].name }));
-      for (const id of throwables()) if (id !== 'bag') opts.push(itemOpt(id, ITEMS[id].kind === 'drug' && !ITEMS[id].throw ? { label: 'Lure: ' + ITEMS[id].em + ' ' + ITEMS[id].name } : {}));
+      for (const id of throwables()) if (!ITEMS[id].catch) opts.push(itemOpt(id, ITEMS[id].kind === 'drug' && !ITEMS[id].throw ? { label: 'Lure: ' + ITEMS[id].em + ' ' + ITEMS[id].name } : {}));
       const t = await ask('Throw what?', opts.concat([BACK()]));
       if (t) return { k: 'throw', id: t };
     } else if (v === 'party') {
@@ -881,7 +905,7 @@ function logDrink() {
 }
 function catchChance(f) {
   const s = SP[f.sp], R = CFG.CATCH_R[s.rarity] || .5, hpF = f.hp / maxHp(f);
-  const mol = tripOf(active()); const bonus = 1 + EF.sum(f, 'catchBonus') + EF.sum(G.me, 'catchBonus') + (mol && mol.catchBonus ? mol.catchBonus : 0);
+  const mol = tripOf(active()); const bonus = 1 + EF.sum(f, 'catchBonus') + EF.sum(G.me, 'catchBonus') + (mol && mol.catchBonus ? mol.catchBonus : 0) + ((ITEMS[curBag()] || {}).catchBonus || 0);
   if (s.trapOnly && !(B.trapItem === s.trapOnly)) return 0;
   if (!bagSize(s, B.kind)) return 0;
   if (f.hp <= 0) return clamp((CFG.KO_CATCH[s.rarity] || .6) * bonus * (heroId() === 'ljunky' ? 1.1 : 1), .05, .98);
@@ -890,7 +914,7 @@ function catchChance(f) {
 /* throw something: carrier bag, weapon, throwable or a drink as a lure. An arc flies to the foe, then the effects land. */
 async function throwIt(id) {
   const foe = curFoe(), it = ITEMS[id];
-  if (id === 'bag') { if (has('bag')) take('bag'); else G.kr -= CFG.BAG_COST; return throwBag(); }
+  if (it.catch) { B.bagId = id; B.bagPaid = !has(id); if (has(id)) take(id); else G.kr -= CFG.BAG_COST; return throwBag(); }
   const weapon = it.kind === 'weapon';
   if (!weapon) take(id);
   await say(weapon ? 'You aim the ' + it.name + '…' : 'You throw the ' + it.name + '!');
@@ -963,13 +987,14 @@ function drawBagScene(ctx, fx, fy, sc, t) {
 }
 async function throwBag(ko) {
   const foe = curFoe();
-  await say(ko ? 'You pull out a carrier bag…' : 'You threw a carrier bag!');
+  const bagName = (ITEMS[B.bagId || curBag()] || {}).name || 'bag';
+  await say(ko ? 'You pull out a ' + bagName.toLowerCase() + '…' : 'You threw a ' + bagName.toLowerCase() + '!');
   const p = catchChance(foe), ok = Math.random() < p;
   if (p === 0) { await say(bagSize(SP[foe.sp], B.kind) ? 'The bag goes straight through it. Something else is needed.' : 'Far too big for a carrier bag. Only a trap holds something like this.'); return false; }
   const shakes = ok ? 3 : Math.random() < p * 1.6 ? 2 : Math.random() < .5 ? 1 : 0, sc = spots.sc, u = sc * 1.55;
   SFX.whoosh();
   await layer.arc(spots.mx, spots.my - 30 * sc, spots.fx, spots.fy - 20 * sc, { h: 70 * sc / 3, dur: .5, spin: 5, draw: (c, x, y, k, r) => { drawBag(c, x, y, u * (.55 + .45 * k), { mid: true, rot: r }); } });
-  learnItem('bag');
+  learnItem(B.bagId || curBag());
   // impact: the bag opens over it, the foe is sucked in
   B.bag = { foeK: 1, s: .6, y: -20 * sc, rot: 0, sx: 1, sy: 1, dots: -1, alpha: 1, glow: 0, eyes: 0, tied: 0, rip: 0 };
   SFX.whoosh(); FX.addTrauma(.1); layer.burst(spots.fx, spots.fy - 20 * sc, { n: 10, color: ['#fff', '#cfe6ff'], speed: 90, size: 3, gravity: 0, life: .35 });
@@ -991,7 +1016,9 @@ async function throwBag(ko) {
     layer.number(spots.fx, spots.fy - 44 * sc, 'ESCAPED!', { color: '#ff5a5f', size: 22 });
     await Promise.all([bagTw({ alpha: 0, sy: .7 }, .35), bagTw({ foeK: 1 }, .35, 'outBack')]);
     B.bag = null;
-    await say(pick(['Oh no! It broke free!', 'Argh! Almost had it!', 'It ripped the bag.', 'It chewed through the handle. Rude.']));
+    const bgid = B.bagId || curBag(), bg = ITEMS[bgid] || {}, torn = B.bagPaid || Math.random() < (bg.breakChance == null ? 1 : bg.breakChance);
+    if (!torn) give(bgid);
+    await say(pick(['Oh no! It broke free!', 'Argh! Almost had it!', 'It ripped the bag.', 'It chewed through the handle. Rude.']) + (torn ? ' The bag is ruined.' : ' The bag survived.'));
     return false;
   }
   // caught: the bag ties shut, gold glow, stars, a little victory hop
@@ -1030,16 +1057,17 @@ async function knockout(foe, who) {
   const canCatch = (s.kind === 'creature' && bagSize(s, B.kind) && !(s.trapOnly && B.trapItem !== s.trapOnly)) || (s.kind !== 'creature' && who && who.catchable !== false);
   const canDie = !who || who.canDie !== false;
   const opts = [
-    { label: '🛍️ Catch', value: 'catch', cls: 'hot', dis: !canCatch, sub: s.kind === 'creature' && !bagSize(s, B.kind) ? 'Too big for a bag' : heroId() === 'bigwman' && canCatch ? Math.round(catchChance(foe) * 100) + ' %' : (has('bag') ? '×' + G.items.bag : CFG.BAG_COST + ' kr') },
+    { label: '🛍️ Catch', value: 'catch', cls: 'hot', dis: !canCatch, sub: s.kind === 'creature' && !bagSize(s, B.kind) ? 'Too big for a bag' : heroId() === 'bigwman' && canCatch ? Math.round(catchChance(foe) * 100) + ' %' : (bestBag() ? '×' + G.items[bestBag()] : CFG.BAG_COST + ' kr') },
     { label: '🪦 Finish off', value: 'kill', cls: 'bad', dis: !canDie },
     { label: person ? '🤝 Let it go' : '🌿 Walk away', value: 'leave' }
   ];
   for (;;) {
     const a = await ask(cname(foe) + ' is knocked out.', opts);
     if (a === 'catch') {
-      if (has('bag')) take('bag'); else if (G.kr >= CFG.BAG_COST) G.kr -= CFG.BAG_COST; else { await say('No bags and no money.'); continue; }
+      const bid = bestBag(); if (bid) take(bid); else if (G.kr >= CFG.BAG_COST) G.kr -= CFG.BAG_COST; else { await say('No bags and no money.'); continue; }
+      B.bagId = bid || payBag(); B.bagPaid = !bid;
       if (await throwBag(true)) return 'caught';
-      foe.hp = 0; opts[0].sub = (has('bag') ? '×' + G.items.bag : CFG.BAG_COST + ' kr'); continue;
+      foe.hp = 0; opts[0].sub = (bestBag() ? '×' + G.items[bestBag()] : CFG.BAG_COST + ' kr'); continue;
     }
     if (a === 'kill') { await finishOff(foe); return 'killed'; }
     return 'left';
@@ -1234,7 +1262,7 @@ function encTable(z) {
   const reveal = EF.has(G.me, 'reveal') || G.party.some(c => { const t = tripOf(c); return (t && t.reveal) || abilityOf(c) === 'reveal'; }), attract = EF.all(G.me, 'attract').map(f => f.value), night = PPL.isNight();
   const extra = EF.all(G.me, 'spawnTable').flatMap(f => f.value || []); // spawnTable effect: extra creatures join every table while it lasts
   return (z.enc || []).concat(extra).filter(([ref]) => { const r = repOf(ref); return r && rel(r) && !r.starter && (!r.needs || (r.needs === 'reveal' && reveal)) && !r.trapOnly && !(r.night && !night) && !(r.day && night); })
-    .map(([ref, w]) => { const r = repOf(ref); return [ref, w * (attract.includes(r.type) ? 4 : 1) * (r.needs ? 2 : 1) * (r.nightBoost && night ? 2 : 1)]; });
+    .map(([ref, w]) => { const r = repOf(ref); return [ref, w * (attract.includes(r.type) ? 4 : 1) * (r.needs ? 2 : 1) * (r.nightBoost && night ? 2 : 1) * ((CFG.RARE_SPAWN_RARITY || []).includes(r.rarity) ? rareSpawnMul() : 1)]; });
 }
 const wildC = c => { if (CFG.WILD_STAT && CFG.WILD_STAT !== 1) { c.sm = CFG.WILD_STAT; c.hp = maxHp(c); } return c; };   // wild creatures get the WILD_STAT multiplier
 function wildFor(z, rare) {
@@ -1458,8 +1486,8 @@ async function npcTalk(n) {
   for (;;) {
     const opts = [];
     if (d.heal) opts.push({ label: '❤️ Heal the team', value: 'heal', cls: 'hot' });
-    if (d.shop && d.shop.some(i => ITEMS[i] && rel(ITEMS[i]) && !ITEMS[i].notSold)) opts.push({ label: '🛒 Shop', value: 'shop', cls: d.heal ? '' : 'hot', dis: PPL.refuses(id), sub: PPL.refuses(id) ? 'Refuses to trade with you' : '' });
-    if (d.shop && d.shop.includes('tranq') && weaponOwned() && ITEMS[weaponOwned()].upgradesTo) opts.push({ label: '🔧 Upgrade the tranq gun', value: 'upgrade' });
+    if (shopIds(d).some(i => ITEMS[i] && rel(ITEMS[i]) && (shopDef(d) || !ITEMS[i].notSold))) opts.push({ label: '🛒 Shop', value: 'shop', cls: d.heal ? '' : 'hot', dis: PPL.refuses(id), sub: PPL.refuses(id) ? 'Refuses to trade with you' : '' });
+    if (shopIds(d).includes('tranq') && weaponOwned() && ITEMS[weaponOwned()].upgradesTo) opts.push({ label: '🔧 Upgrade the tranq gun', value: 'upgrade' });
     const challenge = !G.npcBeat[id] && (d.role === 'trainer' || (d.role === 'gym' && isGymBoss(id)));
     if (challenge) opts.push({ label: '⚔️ Challenge', value: 'trainer', cls: 'hot' });
     else if (d.canDie !== false) opts.push({ label: '👊 Pick a fight', value: 'fight' });
@@ -1504,11 +1532,15 @@ async function debtCollector() {
 }
 const isGymBoss = id => heroId() === D.raw.gyms.box.boss && id === D.raw.gyms.box.bossIfSelf;
 async function shop(d, id) {
-  const who = d.name, pm = id ? PPL.priceMul(id) : 1, pr = i => Math.max(1, Math.round(ITEMS[i].price * pm));
+  const who = d.name, pm = id ? PPL.priceMul(id) : 1, def = shopDef(d);
+  const base = i => (def && (def.stock.find(st => st.item === i) || {}).price) || ITEMS[i].price, pr = i => Math.max(1, Math.round(base(i) * pm));
   for (;;) {
-    const ids = d.shop.filter(i => ITEMS[i] && rel(ITEMS[i]) && !ITEMS[i].notSold && !(ITEMS[i].kind === 'weapon' && weaponOwned()) && !(ITEMS[i].cosmetic && G.stache));
-    const a = await ask(who + ' · you have ' + G.kr + ' kr', ids.map(i => itemOpt(i, { label: ITEMS[i].em + ' ' + ITEMS[i].name + ' · ' + pr(i) + ' kr' + (pm < 1 ? ' ♥' : pm > 1 ? ' 💢' : ''), dis: G.kr < pr(i), sub: (known(i) ? ITEMS[i].learnedNote : '') + (has(i) && ITEMS[i].kind !== 'weapon' ? ' · have ' + G.items[i] : '') })).concat([BACK('‹ Leave')]), { who });
+    const ids = shopIds(d).filter(i => ITEMS[i] && rel(ITEMS[i]) && (def || !ITEMS[i].notSold) && !(ITEMS[i].kind === 'weapon' && weaponOwned()) && !(ITEMS[i].cosmetic && G.stache));
+    const left = i => { if (!def) return null; const st = def.stock.find(q => q.item === i), r = stockRow(d.shop, st); return r.n; };
+    const a = await ask((def ? def.name + ' · ' : who + ' · ') + 'you have ' + G.kr + ' kr', ids.map(i => itemOpt(i, { label: ITEMS[i].em + ' ' + ITEMS[i].name + ' · ' + pr(i) + ' kr' + (pm < 1 ? ' ♥' : pm > 1 ? ' 💢' : '') + (def ? (left(i) > 0 ? ' · ' + left(i) + ' left' : ' · sold out') : ''), dis: def ? left(i) <= 0 : G.kr < pr(i), sub: (known(i) ? ITEMS[i].learnedNote : '') + (has(i) && ITEMS[i].kind !== 'weapon' ? ' · have ' + G.items[i] : '') })).concat([BACK('‹ Leave')]), { who });
     if (!a) return;
+    if (G.kr < pr(a)) { await say2(who, 'Not enough kr.'); continue; }
+    if (def) { const r = stockRow(d.shop, def.stock.find(q => q.item === a)); if (r.n <= 0) continue; r.n--; if (r.n === def.stock.find(q => q.item === a).max - 1) r.t = Date.now(); }
     G.kr -= pr(a); SFX.buy();
     if (ITEMS[a].cosmetic) { G.stache = 1; learnItem(a); await say2(who, '✂️ Snip snip. A magnificent moustache.'); return; }
     give(a);
@@ -1932,8 +1964,8 @@ function newList() {
 }
 const strip = c => { const o = { sp: c.sp, lv: c.lv, xp: c.xp, hp: c.hp }; if (c.sk && c.sk > Date.now()) o.sk = c.sk; if (c.nick) o.nick = c.nick; if (c.fx && c.fx.length) o.fx = EF.save(c); return o; };
 const SAVE_KEYS = ['dir', 'seen', 'caught', 'list', 'kr', 'items', 'beat', 'solved', 'dev', 'eggs', 'egg', 'debt', 'lvlPts', 'flags', 'stache', 'blurred', 'starter',
-  'known', 'people', 'know', 'quests', 'heard', 'traps', 'graves', 'dead', 'caughtP', 'npcBeat', 'gym', 'dealer', 'apps', 'steps', 'fillers', 'trapsUsed', 'lines', 'wrecks', 'wear', 'stashes', 'installed', 'chatSeen', 'selfies'];
-const FRESH = () => ({ items: {}, known: {}, people: {}, know: {}, quests: {}, heard: {}, lines: {}, wrecks: {}, traps: [], graves: [], dead: {}, caughtP: {}, npcBeat: {}, gym: { slots: [] }, dealer: { pts: 0, pen: [], rot: -1, bought: {} }, apps: {}, steps: 0, trapsUsed: {}, wear: {}, stashes: {}, installed: {}, flags: {} });
+  'known', 'people', 'know', 'quests', 'heard', 'traps', 'graves', 'dead', 'caughtP', 'npcBeat', 'gym', 'dealer', 'apps', 'steps', 'fillers', 'trapsUsed', 'lines', 'wrecks', 'wear', 'stashes', 'installed', 'shopStock', 'chatSeen', 'selfies'];
+const FRESH = () => ({ items: {}, known: {}, people: {}, know: {}, quests: {}, heard: {}, lines: {}, wrecks: {}, traps: [], graves: [], dead: {}, caughtP: {}, npcBeat: {}, gym: { slots: [] }, dealer: { pts: 0, pen: [], rot: -1, bought: {} }, apps: {}, steps: 0, trapsUsed: {}, wear: {}, stashes: {}, installed: {}, shopStock: {}, flags: {} });
 function saveState(G) {
   const o = { v: 5, p: [Math.round(G.p.x), Math.round(G.p.y)], party: G.party.map(strip), box: G.box.map(strip), me: EF.save(G.me) };
   for (const k of SAVE_KEYS) o[k] = G[k];
@@ -2188,6 +2220,6 @@ const DEF = {
   }
 };
 LOD.mission(DEF);
-window.__m3 = { SIGNS, PHONE, propVisible, interactables, throwBag, maxHp, bestMove, learned, MOVES, bossTeam, tripOf, eStat, formFor, repOf, evolveCheck, feedFlow, fieldBook, bookPage, sketchy, fit, LINES, bagSize, catchChance, lineOf, WILD_LINES, eff, cname, healC, addXp, useMove, endTurnFx, tripSkip, stage, resetStg, encTable, immune, knockout, baseStat, curFoe, active, MINI, PROPS, propVisible, propUse, HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
+window.__m3 = { shop, bagIds, bestBag, SHOPS, SIGNS, PHONE, propVisible, interactables, throwBag, maxHp, bestMove, learned, MOVES, bossTeam, tripOf, eStat, formFor, repOf, evolveCheck, feedFlow, fieldBook, bookPage, sketchy, fit, LINES, bagSize, catchChance, lineOf, WILD_LINES, eff, cname, healC, addXp, useMove, endTurnFx, tripSkip, stage, resetStg, encTable, immune, knockout, baseStat, curFoe, active, MINI, PROPS, propVisible, propUse, HOUSES, houseOpen, bestLevel, housesDone, stockOpen, sailOK, ferryCreature, solidAt, PPL, set fakeHour(v) { PPL.test.hour = v; }, set skipReplies(v) { PPL.test.skipReplies = v; }, xpNeed, summon() { if (G) G.strangerT = 0; }, get stranger() { return stranger; }, get wakeT() { return wakeT; }, get devTile() { return devTile; }, set speed(v) { TEST_SPEED = v; }, set trapSpeed(v) { TRAP_SPEED = v; }, get G() { return G; }, get B() { return B; }, get pending() { return pending; },
   CFG, SP, MAP, ZONES, D, S, tile, zoneAt, tc, mk, goals, startWild, startBoss, startPartner, startDev, startTrainer, startNpcFight, interact, bagMenu, walkable, useItem, give, saveState, loadState, MIGRATE, EF, FX, layer, spots, npcList: () => npcList, gameSpeed, encTable, knockout, catchChance, completion: () => S.completion() };
 })();

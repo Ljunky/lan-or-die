@@ -118,7 +118,7 @@ async function pickStarter(p, name) {
     await E(p, () => { const m = window.__m3; m.G.kr = 500; m.startWild(m.ZONES.find(z => z.id === 'charger')); });
     await p.waitForTimeout(200);
     await E(p, () => { const m = window.__m3; const f = m.B.foes[0]; f.hp = 1; m.B.lure = 50; f.sp = 'cockroach'; });
-    await drive(p, ['^🎯 Throw', 'Carrier bag', 'Catch', 'Fight', 'Body|Claw|Bite']);
+    await drive(p, ['^🎯 Throw', '[Cc]arrier bag', 'Catch', 'Fight', 'Body|Claw|Bite']);
     caught = await E(p, () => !!window.__m3.G.caught.cockroach);
   }
   ok(caught, 'a weakened, lured creature goes in the bag');
